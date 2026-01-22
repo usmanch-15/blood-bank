@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../constants/app_colors.dart';
-import '../../constants/app_constants.dart';
-import '../../models/blood_request_model.dart';
-import '../../widgets/custom_button.dart';
 
-/// SOS Emergency Screen - Demo Version (No Scroll)
 class SosEmergencyScreen extends StatefulWidget {
   const SosEmergencyScreen({super.key});
 
@@ -13,94 +10,389 @@ class SosEmergencyScreen extends StatefulWidget {
 }
 
 class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
-  String? _selectedBloodGroup;
-  bool _isLoading = false;
+  bool _isSosActive = false;
+  int _countdown = 10;
+  bool _isSending = false;
+  String _selectedBloodGroup = 'O+';
+  String _selectedUrgency = 'critical';
+  final List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+  final List<String> _urgencyLevels = ['urgent', 'critical', 'life_threatening'];
 
-  // Dummy user data
-  final String userId = 'dummyUser123';
-  final String userName = 'John Doe';
-  final String userPhone = '03001234567';
-  final String userLocation = 'Lahore';
-
-  Future<void> _handleEmergencyRequest() async {
-    if (_selectedBloodGroup == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a blood group'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final request = BloodRequestModel(
-        id: 'emergency123',
-        requesterId: userId,
-        requesterName: userName,
-        requesterPhone: userPhone,
-        bloodGroup: _selectedBloodGroup!,
-        quantity: 2,
-        hospitalName: userLocation,
-        location: userLocation,
-        urgency: 'emergency',
-        notes: 'SOS EMERGENCY REQUEST',
-        createdAt: DateTime.now(),
-      );
-
-      if (mounted) {
-        _showEmergencyAlert();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+  @override
+  void initState() {
+    super.initState();
+    // SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
-  void _showEmergencyAlert() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: const [
-            Icon(Icons.warning, color: AppColors.error, size: 28),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'EMERGENCY REQUEST SENT',
-                style: TextStyle(
-                  color: AppColors.error,
-                  fontWeight: FontWeight.bold,
+  @override
+  void dispose() {
+    // SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    super.dispose();
+  }
+
+  void _startSosCountdown() {
+    if (_isSosActive) return;
+
+    setState(() {
+      _isSosActive = true;
+      _countdown = 10;
+      _isSending = false;
+    });
+
+    // Start countdown
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (_countdown > 0) {
+        setState(() {
+          _countdown--;
+        });
+        return true;
+      } else {
+        // Auto-send when countdown reaches 0
+        _sendSosAlert();
+        return false;
+      }
+    });
+  }
+
+  void _cancelSos() {
+    setState(() {
+      _isSosActive = false;
+      _countdown = 10;
+      _isSending = false;
+    });
+  }
+
+  void _sendSosAlert() async {
+    if (_isSending) return;
+
+    setState(() {
+      _isSending = true;
+    });
+
+    // Simulate sending process
+    await Future.delayed(const Duration(seconds: 2));
+
+    // Show success message
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Text('SOS Alert sent successfully!'),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    // Navigate back after delay
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    });
+  }
+
+  Widget _buildBloodGroupSelector() {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.bloodtype, color: Colors.red, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Blood Group Required',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _bloodGroups.map((group) {
+                bool isSelected = _selectedBloodGroup == group;
+                return ChoiceChip(
+                  label: Text(group),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() {
+                      _selectedBloodGroup = group;
+                    });
+                  },
+                  selectedColor: Colors.red.withOpacity(0.2),
+                  backgroundColor: Colors.grey[100],
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.red : Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(
+                      color: isSelected ? Colors.red : Colors.grey[300]!,
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ),
-        content: const Text(
-          'Your emergency blood request has been sent successfully.\n\n'
-              'Nearby donors have been notified (demo mode).',
+      ),
+    );
+  }
+
+  Widget _buildUrgencySelector() {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.warning, color: Colors.orange, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Emergency Level',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _selectedUrgency,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.grey),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              items: _urgencyLevels.map((level) {
+                return DropdownMenuItem(
+                  value: level,
+                  child: Text(
+                    level.replaceAll('_', ' ').toUpperCase(),
+                    style: TextStyle(
+                      color: level == 'critical' || level == 'life_threatening'
+                          ? Colors.red
+                          : Colors.orange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedUrgency = value!;
+                });
+              },
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: const Text('OK'),
+      ),
+    );
+  }
+
+  Widget _buildSosButton() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 20),
+      child: Column(
+        children: [
+          if (_isSosActive && !_isSending)
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red, width: 2),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'COUNTDOWN',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$_countdown',
+                    style: const TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Alert will be sent automatically',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          if (_isSending)
+            Container(
+              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green, width: 2),
+              ),
+              child: Column(
+                children: [
+                  const CircularProgressIndicator(color: Colors.green),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'SENDING SOS ALERT...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Notifying nearby donors and hospitals',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.green),
+                  ),
+                ],
+              ),
+            ),
+
+          // SOS Button
+          GestureDetector(
+            onTap: _isSosActive ? _cancelSos : _startSosCountdown,
+            onLongPress: _isSending ? null : _startSosCountdown,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: _isSosActive ? 200 : 220,
+              height: _isSosActive ? 200 : 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _isSosActive ? Colors.red.shade700 : Colors.red,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(_isSosActive ? 0.5 : 0.3),
+                    blurRadius: _isSosActive ? 30 : 20,
+                    spreadRadius: _isSosActive ? 10 : 5,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _isSosActive ? Icons.cancel : Icons.warning,
+                    size: _isSosActive ? 60 : 70,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _isSosActive ? 'CANCEL SOS' : 'PRESS FOR SOS',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  if (_isSosActive && !_isSending)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Tap to cancel',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
+
+          if (!_isSosActive && !_isSending)
+            Container(
+              margin: const EdgeInsets.only(top: 20),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[200]!),
+              ),
+              child: Column(
+                children: [
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.info, color: Colors.orange, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'How SOS Works:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '• Press to start 10-second countdown\n'
+                        '• Alert sends automatically\n'
+                        '• Nearby donors notified\n'
+                        '• Emergency contacts called\n'
+                        '• Hospital alert sent',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Long press for instant SOS',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -109,150 +401,211 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.error.withOpacity(0.05),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: AppColors.error,
+        backgroundColor: Colors.red,
         foregroundColor: Colors.white,
-        title: const Text(
-          'SOS Emergency',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: const Row(
+          children: [
+            Icon(Icons.emergency, size: 24),
+            SizedBox(width: 10),
+            Text('SOS EMERGENCY'),
+          ],
         ),
+        centerTitle: false,
+        elevation: 0,
+        actions: [
+          if (_isSosActive)
+            IconButton(
+              icon: const Icon(Icons.phone),
+              onPressed: () {
+                // Simulate emergency call
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Emergency Call'),
+                    content: const Text('Calling nearest emergency contact...'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Emergency call initiated'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        child: const Text('Call Now'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🔴 Emergency Icon
-            Center(
-              child: Container(
-                width: 90,
-                height: 90,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.error, width: 3),
-                ),
-                child: const Icon(
-                  Icons.warning,
-                  size: 50,
-                  color: AppColors.error,
-                ),
-              ),
-            ),
-
-            /// 🔴 Title
-            const Text(
-              'EMERGENCY BLOOD REQUEST',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.error,
-                letterSpacing: 1.2,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            /// ℹ️ Info Box
+            // Warning Header
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.08),
+                color: Colors.red.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.error.withOpacity(0.3),
-                ),
+                border: Border.all(color: Colors.red, width: 1),
               ),
-              child: const Text(
-                'Use this only for life-threatening emergencies.\n'
-                    'Nearby donors will be notified immediately (demo).',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14),
-              ),
-            ),
-
-            const SizedBox(height: 18),
-
-            /// 🩸 Blood Group Title
-            const Text(
-              'Select Blood Group',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            /// 🩸 Blood Group Grid (Fits Screen)
-            Expanded(
-              child: GridView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 1,
-                ),
-                itemCount: AppConstants.bloodGroups.length,
-                itemBuilder: (context, index) {
-                  final group = AppConstants.bloodGroups[index];
-                  final isSelected = _selectedBloodGroup == group;
-
-                  return InkWell(
-                    onTap: () {
-                      setState(() => _selectedBloodGroup = group);
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.error
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.error
-                              : AppColors.textLight,
-                          width: isSelected ? 2 : 1,
-                        ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.red, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'USE ONLY IN LIFE-THREATENING SITUATIONS',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
                       ),
-                      child: Center(
-                        child: Text(
-                          group,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Blood Group Selector
+            _buildBloodGroupSelector(),
+            const SizedBox(height: 16),
+
+            // Urgency Selector
+            _buildUrgencySelector(),
+            const SizedBox(height: 20),
+
+            // Location Info
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.location_on, color: Colors.blue, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Your Location',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isSelected
-                                ? Colors.white
-                                : AppColors.textPrimary,
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Lahore, Pakistan',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
                       ),
                     ),
-                  );
-                },
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.my_location, size: 16),
+                      label: const Text('Update Location'),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Location updated (Demo Mode)'),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        minimumSize: const Size(double.infinity, 40),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
-            /// 🔥 Emergency Button
-            CustomButton(
-              text: 'SEND EMERGENCY REQUEST',
-              onPressed: _isLoading ? null : _handleEmergencyRequest,
-              isLoading: _isLoading,
-              backgroundColor: AppColors.error,
-              height: 55,
+            const SizedBox(height: 30),
+
+            // SOS Button
+            Center(
+              child: _buildSosButton(),
             ),
 
-            /// ❌ Cancel
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(fontSize: 15),
+            const SizedBox(height: 20),
+
+            // Emergency Contacts
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.contact_phone, color: Colors.green, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Emergency Contacts',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Colors.green,
+                        child: Icon(Icons.person, color: Colors.white, size: 20),
+                      ),
+                      title: const Text('Ambulance'),
+                      subtitle: const Text('1020'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.phone, color: Colors.green),
+                        onPressed: () {},
+                      ),
+                    ),
+                    ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Colors.orange,
+                        child: Icon(Icons.local_hospital, color: Colors.white, size: 20),
+                      ),
+                      title: const Text('Nearest Hospital'),
+                      subtitle: const Text('City Hospital'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.phone, color: Colors.orange),
+                        onPressed: () {},
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
