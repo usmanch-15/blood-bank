@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
 // import 'package:firebase_auth/firebase_auth.dart'; // 🔴 Firebase Auth commented
 import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
@@ -21,12 +22,53 @@ class DonationHistoryScreen extends StatelessWidget {
       );
     }
     */
+=======
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:intl/intl.dart';
+import '../../constants/app_colors.dart';
+import '../../services/firestore_service.dart';
+import '../../models/donation_model.dart';
+
+/// Donation History Screen - View all past donations
+class DonationHistoryScreen extends StatefulWidget {
+  const DonationHistoryScreen({super.key});
+
+  @override
+  State<DonationHistoryScreen> createState() => _DonationHistoryScreenState();
+}
+
+class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
+  late FirestoreService _firestoreService;
+  final user = FirebaseAuth.instance.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _firestoreService = FirestoreService();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Donation History'),
+          backgroundColor: AppColors.primaryRed,
+        ),
+        body: const Center(
+          child: Text('Please login to view donation history'),
+        ),
+      );
+    }
+>>>>>>> 6a6249e (first commit)
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Donation History'),
         backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
+<<<<<<< HEAD
       ),
 
       // 🔴 Firebase StreamBuilder commented
@@ -74,6 +116,54 @@ class DonationHistoryScreen extends StatelessWidget {
           final donations = snapshot.data ?? [];
 
           if (donations.isEmpty) {
+=======
+        elevation: 0,
+      ),
+      body: StreamBuilder<List<DonationModel>>(
+        stream: _firestoreService.getDonationHistory(user!.uid),
+        builder: (context, snapshot) {
+          // Loading state with shimmer
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: 5,
+              itemBuilder: (context, index) => Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          // Error state
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                  const SizedBox(height: 16),
+                  const Text('Error loading donation history'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => setState(() {}),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          // Empty state
+          if (snapshot.data?.isEmpty ?? true) {
+>>>>>>> 6a6249e (first commit)
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -104,6 +194,11 @@ class DonationHistoryScreen extends StatelessWidget {
             );
           }
 
+<<<<<<< HEAD
+=======
+          // List of donations
+          final donations = snapshot.data ?? [];
+>>>>>>> 6a6249e (first commit)
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: donations.length,
@@ -114,10 +209,17 @@ class DonationHistoryScreen extends StatelessWidget {
           );
         },
       ),
+<<<<<<< HEAD
       */
     );
   }
 
+=======
+    );
+  }
+
+  /// Build a single donation card
+>>>>>>> 6a6249e (first commit)
   Widget _buildDonationCard(DonationModel donation) {
     final dateFormat = DateFormat('MMM dd, yyyy');
 
@@ -155,7 +257,11 @@ class DonationHistoryScreen extends StatelessWidget {
                   Text(
                     dateFormat.format(donation.donationDate),
                     style: const TextStyle(
+<<<<<<< HEAD
                       fontSize: 18,
+=======
+                      fontSize: 16,
+>>>>>>> 6a6249e (first commit)
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
@@ -164,23 +270,43 @@ class DonationHistoryScreen extends StatelessWidget {
                   Text(
                     donation.location,
                     style: const TextStyle(
+<<<<<<< HEAD
                       fontSize: 14,
                       color: AppColors.textSecondary,
                     ),
+=======
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+>>>>>>> 6a6249e (first commit)
                   ),
                   const SizedBox(height: 5),
                   Row(
                     children: [
                       const Icon(
+<<<<<<< HEAD
                         Icons.stars,
                         size: 16,
+=======
+                        Icons.star,
+                        size: 14,
+>>>>>>> 6a6249e (first commit)
                         color: AppColors.warning,
                       ),
                       const SizedBox(width: 5),
                       Text(
+<<<<<<< HEAD
                         '${donation.pointsEarned} points',
                         style: const TextStyle(
                           fontSize: 12,
+=======
+                        '${donation.pointsEarned} points earned',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+>>>>>>> 6a6249e (first commit)
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -202,6 +328,10 @@ class DonationHistoryScreen extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
+<<<<<<< HEAD
+=======
+                  fontSize: 14,
+>>>>>>> 6a6249e (first commit)
                 ),
               ),
             ),
