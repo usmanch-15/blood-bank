@@ -16,22 +16,36 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
   final String userId = 'user123';
 
   final List<BloodRequestModel> dummyRequests = [
+
     BloodRequestModel(
       id: '1',
       requesterId: 'user123',
       requesterName: 'Usman',
       requesterPhone: '03044009797',
+
+      patientName: 'Ali',
+      patientAge: 25,
+      patientGender: 'Male',
+
       bloodGroup: 'O+',
-      quantity: 2,
+      unitsRequired: 2,
+
       hospitalName: 'City Hospital',
+      hospitalAddress: 'Lahore, Main Road',
+
       location: 'Lahore',
+      reason: 'Accident emergency',
+      requiredBy: DateTime.now().add(const Duration(hours: 3)),
+
       urgency: 'urgent',
       status: 'pending',
+
       notes: 'Please deliver quickly',
-      createdAt: DateTime.now(),
+      // or real GPS accuracy if used
+
+      createdAt: DateTime.now(), contactNumber: '',
     ),
   ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -226,7 +240,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             ),
             const SizedBox(height: 14),
             Text(
-              '${request.bloodGroup} • ${request.quantity} Units',
+              '${request.bloodGroup} • ${request.unitsRequired} Units',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,

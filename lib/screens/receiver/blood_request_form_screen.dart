@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../models/blood_request_model.dart';
@@ -14,22 +13,11 @@ class BloodRequestFormScreen extends StatefulWidget {
       _BloodRequestFormScreenState();
 }
 
-class _BloodRequestFormScreenState
-    extends State<BloodRequestFormScreen> {
-<<<<<<< HEAD
-  String selectedGroup = 'B+';
-
-  final List<String> bloodGroups = [
-    'A+', 'A-', 'B+', 'B-',
-    'O+', 'O-', 'AB+', 'AB-',
-    'AB+', 'B+', 'AB', 'AB',
-  ];
-
-=======
+class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final FirestoreService _firestoreService = FirestoreService();
 
-  // Form controllers
+  // Controllers
   final _patientNameController = TextEditingController();
   final _patientAgeController = TextEditingController();
   final _hospitalNameController = TextEditingController();
@@ -38,7 +26,7 @@ class _BloodRequestFormScreenState
   final _contactNumberController = TextEditingController();
   final _reasonController = TextEditingController();
 
-  // Form data
+  // Form values
   String _selectedBloodGroup = 'B+';
   String _selectedUrgency = 'Normal';
   String _selectedGender = 'Male';
@@ -77,9 +65,7 @@ class _BloodRequestFormScreenState
           _currentLocation = address;
         });
       }
-    } catch (e) {
-      // Handle location error silently
-    }
+    } catch (_) {}
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -88,23 +74,10 @@ class _BloodRequestFormScreenState
       initialDate: DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 30)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Colors.red,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
-    if (picked != null && picked != _requiredByDate) {
-      setState(() {
-        _requiredByDate = picked;
-      });
+
+    if (picked != null) {
+      setState(() => _requiredByDate = picked);
     }
   }
 
@@ -130,16 +103,25 @@ class _BloodRequestFormScreenState
       final request = BloodRequestModel(
         id: '',
         requesterId: user.uid,
+
+        // ✅ ADD THESE (missing fields causing error)
+        requesterName: user.displayName ?? 'Unknown',
+        requesterPhone: user.phoneNumber ?? '',
+
         patientName: _patientNameController.text.trim(),
         patientAge: int.parse(_patientAgeController.text.trim()),
         patientGender: _selectedGender,
+
         bloodGroup: _selectedBloodGroup,
         unitsRequired: int.parse(_unitsRequiredController.text.trim()),
+
         hospitalName: _hospitalNameController.text.trim(),
         hospitalAddress: _hospitalAddressController.text.trim(),
+
         urgency: _selectedUrgency,
         reason: _reasonController.text.trim(),
         contactNumber: _contactNumberController.text.trim(),
+
         requiredBy: _requiredByDate!,
         status: 'pending',
         createdAt: DateTime.now(),
@@ -167,292 +149,74 @@ class _BloodRequestFormScreenState
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
->>>>>>> 6a6249e (first commit)
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-<<<<<<< HEAD
-        title: const Text('Request Blood'),
-=======
         title: const Text('Blood Request Form'),
->>>>>>> 6a6249e (first commit)
-        backgroundColor: Colors.red.shade900,
+        backgroundColor: Colors.red,
         foregroundColor: Colors.white,
-        elevation: 0,
       ),
-      body: Stack(
-        children: [
-<<<<<<< HEAD
-          /// 🔴 Bottom Curve
-=======
-          // Bottom Curve
->>>>>>> 6a6249e (first commit)
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: 90,
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(40),
-                  topRight: Radius.circular(40),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              _buildTextField(
+                controller: _patientNameController,
+                label: 'Patient Name',
+                hint: 'Enter patient name',
+                validator: (v) =>
+                v!.isEmpty ? 'Patient name required' : null,
+              ),
+              const SizedBox(height: 12),
+              _buildTextField(
+                controller: _patientAgeController,
+                label: 'Age',
+                hint: 'Enter age',
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              _buildDropdown(
+                label: 'Blood Group',
+                value: _selectedBloodGroup,
+                items: _bloodGroups,
+                onChanged: (v) =>
+                    setState(() => _selectedBloodGroup = v!),
+              ),
+              const SizedBox(height: 12),
+              _buildDropdown(
+                label: 'Urgency',
+                value: _selectedUrgency,
+                items: _urgencyLevels,
+                onChanged: (v) =>
+                    setState(() => _selectedUrgency = v!),
+              ),
+              const SizedBox(height: 12),
+              _buildDateField(),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submitRequest,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(
+                      color: Colors.white)
+                      : const Text('Submit Request'),
                 ),
               ),
-            ),
+            ],
           ),
-
-<<<<<<< HEAD
-          /// Content
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final double boxWidth =
-                  (constraints.maxWidth - 48) / 4;
-              final double boxHeight = 42;
-
-              return SingleChildScrollView(
-                padding:
-                const EdgeInsets.fromLTRB(20, 20, 20, 120),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 10),
-
-                    const Text(
-                      'Post Size',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.red,
-                      ),
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    /// 🔳 Blood Group Boxes (Image Style)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 10,
-                      children: bloodGroups.map((group) {
-                        final bool isSelected =
-                            selectedGroup == group;
-
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              selectedGroup = group;
-                            });
-                          },
-                          child: Container(
-                            width: boxWidth,
-                            height: boxHeight,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.red
-                                  : Colors.white,
-                              borderRadius:
-                              BorderRadius.circular(6),
-                              border:
-                              Border.all(color: Colors.red),
-                              boxShadow: [
-                                BoxShadow(
-=======
-          // Content
-          Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Patient Information Section
-                  _buildSectionHeader('Patient Information'),
-                  _buildTextField(
-                    controller: _patientNameController,
-                    label: 'Patient Name',
-                    hint: 'Enter patient full name',
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Patient name is required';
-                      if (value!.length < 2) return 'Name must be at least 2 characters';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          controller: _patientAgeController,
-                          label: 'Age',
-                          hint: 'Years',
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value?.isEmpty ?? true) return 'Age is required';
-                            final age = int.tryParse(value!);
-                            if (age == null || age < 1 || age > 120) {
-                              return 'Enter valid age (1-120)';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildDropdownField(
-                          label: 'Gender',
-                          value: _selectedGender,
-                          items: _genders,
-                          onChanged: (value) => setState(() => _selectedGender = value!),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Blood Requirements Section
-                  _buildSectionHeader('Blood Requirements'),
-                  _buildDropdownField(
-                    label: 'Blood Group Required',
-                    value: _selectedBloodGroup,
-                    items: _bloodGroups,
-                    onChanged: (value) => setState(() => _selectedBloodGroup = value!),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildTextField(
-                    controller: _unitsRequiredController,
-                    label: 'Units Required',
-                    hint: 'Number of units needed',
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Units required is needed';
-                      final units = int.tryParse(value!);
-                      if (units == null || units < 1 || units > 10) {
-                        return 'Enter valid units (1-10)';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDropdownField(
-                    label: 'Urgency Level',
-                    value: _selectedUrgency,
-                    items: _urgencyLevels,
-                    onChanged: (value) => setState(() => _selectedUrgency = value!),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Hospital Information Section
-                  _buildSectionHeader('Hospital Information'),
-                  _buildTextField(
-                    controller: _hospitalNameController,
-                    label: 'Hospital Name',
-                    hint: 'Enter hospital name',
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Hospital name is required';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildTextField(
-                    controller: _hospitalAddressController,
-                    label: 'Hospital Address',
-                    hint: 'Complete hospital address',
-                    maxLines: 3,
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Hospital address is required';
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Contact & Timeline Section
-                  _buildSectionHeader('Contact & Timeline'),
-                  _buildTextField(
-                    controller: _contactNumberController,
-                    label: 'Contact Number',
-                    hint: '+92 300 1234567',
-                    keyboardType: TextInputType.phone,
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Contact number is required';
-                      if (!RegExp(r'^\+?[\d\s\-\(\)]{10,}$').hasMatch(value!)) {
-                        return 'Enter valid phone number';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDateField(),
-
-                  const SizedBox(height: 24),
-
-                  // Additional Information Section
-                  _buildSectionHeader('Additional Information'),
-                  _buildTextField(
-                    controller: _reasonController,
-                    label: 'Reason for Request',
-                    hint: 'Brief description of medical condition',
-                    maxLines: 3,
-                    validator: (value) {
-                      if (value?.isEmpty ?? true) return 'Reason is required';
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Submit Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade900,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        elevation: 2,
-                      ),
-                      onPressed: _isLoading ? null : _submitRequest,
-                      child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              'Submit Blood Request',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.red.shade900,
         ),
       ),
     );
@@ -462,32 +226,24 @@ class _BloodRequestFormScreenState
     required TextEditingController controller,
     required String label,
     required String hint,
-    TextInputType keyboardType = TextInputType.text,
-    int maxLines = 1,
     String? Function(String?)? validator,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     return TextFormField(
       controller: controller,
+      validator: validator,
       keyboardType: keyboardType,
-      maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
-      validator: validator,
     );
   }
 
-  Widget _buildDropdownField({
+  Widget _buildDropdown({
     required String label,
     required String value,
     required List<String> items,
@@ -495,29 +251,16 @@ class _BloodRequestFormScreenState
   }) {
     return DropdownButtonFormField<String>(
       value: value,
+      items: items
+          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+          .toList(),
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
-      items: items.map((item) {
-        return DropdownMenuItem(
-          value: item,
-          child: Text(item),
-        );
-      }).toList(),
-      onChanged: onChanged,
-      validator: (value) {
-        if (value?.isEmpty ?? true) return 'This field is required';
-        return null;
-      },
     );
   }
 
@@ -529,22 +272,12 @@ class _BloodRequestFormScreenState
           labelText: 'Required By Date',
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.grey),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.red, width: 2),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          suffixIcon: const Icon(Icons.calendar_today, color: Colors.red),
         ),
         child: Text(
-          _requiredByDate != null
-              ? DateFormat('MMM dd, yyyy').format(_requiredByDate!)
-              : 'Select date',
-          style: TextStyle(
-            color: _requiredByDate != null ? Colors.black : Colors.grey,
-          ),
+          _requiredByDate == null
+              ? 'Select date'
+              : DateFormat('dd MMM yyyy').format(_requiredByDate!),
         ),
       ),
     );

@@ -146,7 +146,7 @@ class AdminRequestsScreen extends StatelessWidget {
                 const Icon(Icons.bloodtype, size: 20, color: AppColors.primaryRed),
                 const SizedBox(width: 10),
                 Text(
-                  '${request.bloodGroup} - ${request.quantity} units',
+                  '${request.bloodGroup} - ${request.unitsRequired} units',
                   style: const TextStyle(fontSize: 16),
                 ),
               ],

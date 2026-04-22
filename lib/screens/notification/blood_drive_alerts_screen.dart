@@ -29,7 +29,7 @@ class _BloodDriveAlertsScreenState extends State<BloodDriveAlertsScreen> {
         backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
       ),
-      body: StreamBuilder(
+      body: StreamBuilder<List<BloodDriveModel>>(
         stream: _firestoreService.getAllBloodDrives(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -40,7 +40,7 @@ class _BloodDriveAlertsScreenState extends State<BloodDriveAlertsScreen> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          final drives = snapshot.data ?? [];
+          final drives = snapshot.data ?? <BloodDriveModel>[];
 
           if (drives.isEmpty) {
             return Center(
