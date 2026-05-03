@@ -13,43 +13,129 @@ dependencies:
 
   # UI
   cupertino_icons: ^1.0.8
-  
+
   # Firebase
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.4
   firebase_messaging: ^15.1.3
   firebase_storage: ^12.3.4
-  
+
   # Google Maps
   google_maps_flutter: ^2.9.0
   geolocator: ^13.0.1
   geocoding: ^3.0.0
-  
+
   # State Management
   provider: ^6.1.2
-  
+
   # Utilities
   shared_preferences: ^2.3.2
   intl: ^0.19.0
   url_launcher: ^6.3.1
   image_picker: ^1.1.2
   cached_network_image: ^3.4.1
-  
+
   # UI Enhancements
   flutter_svg: ^2.0.10+1
   lottie: ^3.1.2
   shimmer: ^3.0.0
+
+  # PDF & Certificates
+  pdf: ^3.11.1
+  printing: ^5.13.1
+
+  # Notifications
+  flutter_local_notifications: ^17.2.2
+
+  # Connectivity
+  connectivity_plus: ^6.1.1
+
+  # Charts (Admin Dashboard) - Web Compatible
+  fl_chart: ^0.69.0
+  syncfusion_flutter_charts: ^26.1.41  # Added for advanced analytics
+
+  # Animations
+  flutter_animate: ^4.5.0
+
+  # Permission Handler
+  permission_handler: ^11.3.1
+
+  # Phone Formatting
+  phone_form_field: ^10.0.0
+
+  # Secure Storage
+  flutter_secure_storage: ^9.2.2
+
+  # Toast Messages
+  fluttertoast: ^8.2.8
+
+  # Skeleton Loading
+  skeletonizer: ^1.4.2
+
+  # Timeline
+  timelines_plus: ^1.0.2
+
+  # Native Splash
+  flutter_native_splash: ^2.4.1
+
+  # Web Specific Dependencies
+  google_fonts: ^6.2.1  # For better web typography
+  responsive_framework: ^1.4.0  # For responsive web design
+  drag_and_drop_lists: ^0.3.4  # For drag-drop features in admin
+  file_picker: ^8.0.0+1  # For file uploads in web
+  uuid: ^4.4.0  # For generating unique IDs
+  qr_flutter: ^4.1.0  # For QR code generation
+  excel: ^4.0.3  # For exporting data to Excel
+  csv: ^6.0.0  # For CSV exports
+  universal_html: ^1.11.0  # For web-specific HTML handling
+  js: ^0.7.1  # For JavaScript interop
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
 
+  # App Icon Generator
+  flutter_launcher_icons: ^0.14.1
+
+  # Web Specific Dev Dependencies
+  build_runner: ^2.4.9  # For code generation
+
 flutter:
   uses-material-design: true
-  
-#  # Assets
-#  assets:
-#    - assets/images/
-#    - assets/icons/
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/animations/
+    - assets/fonts/
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+
+# Splash Configuration
+flutter_native_splash:
+  color: "#8B0000"
+  image: assets/images/splash_logo.png
+  android: true
+  ios: true
+  web: true  # ✅ Web splash screen enabled
+  fullscreen: true
+
+# App Icon Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    background_color: "#8B0000"
+    theme_color: "#8B0000"
