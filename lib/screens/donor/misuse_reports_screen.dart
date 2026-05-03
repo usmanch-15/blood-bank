@@ -24,7 +24,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
       reportType: 'fake_profile',
       title: 'Fake Donor Profile',
       description:
-          'This user claims to be a donor but never responds to requests. '
+      'This user claims to be a donor but never responds to requests. '
           'Profile picture looks stock. Phone number is invalid.',
       reportedAt: DateTime.now().subtract(const Duration(hours: 3)),
       status: 'pending',
@@ -36,7 +36,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
       reportType: 'fraud',
       title: 'Requesting Blood for Money',
       description:
-          'This user sent a blood request and then privately asked me to '
+      'This user sent a blood request and then privately asked me to '
           'pay for the donation. This is against platform rules.',
       reportedAt: DateTime.now().subtract(const Duration(days: 1)),
       status: 'investigating',
@@ -50,7 +50,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
       reportType: 'misuse',
       title: 'Repeated False SOS Alerts',
       description:
-          'This user has sent 4 SOS alerts in 2 days, none of which were '
+      'This user has sent 4 SOS alerts in 2 days, none of which were '
           'genuine emergencies. Donors wasted time and travel.',
       reportedAt: DateTime.now().subtract(const Duration(days: 2)),
       status: 'resolved',
@@ -65,7 +65,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
       reportType: 'other',
       title: 'App Bug Causing Double Requests',
       description:
-          'When I submit a blood request, it gets submitted twice. I have '
+      'When I submit a blood request, it gets submitted twice. I have '
           'to manually cancel the duplicate. This might be a technical issue.',
       reportedAt: DateTime.now().subtract(const Duration(days: 3)),
       status: 'dismissed',
@@ -80,7 +80,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
       reportType: 'fake_profile',
       title: 'Unverified Medical Claims',
       description:
-          'User claims to be a certified doctor recommending blood types '
+      'User claims to be a certified doctor recommending blood types '
           'in comments, but has no credentials on profile.',
       reportedAt: DateTime.now().subtract(const Duration(minutes: 45)),
       status: 'pending',
@@ -125,9 +125,9 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
           adminNotes: notes ?? _reports[idx].adminNotes,
           adminReviewedBy: 'Admin Najeeb',
           resolvedAt:
-              (newStatus == 'resolved' || newStatus == 'dismissed')
-                  ? DateTime.now()
-                  : null,
+          (newStatus == 'resolved' || newStatus == 'dismissed')
+              ? DateTime.now()
+              : null,
         );
         _reports[idx] = updated;
       }
@@ -199,7 +199,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
               const SizedBox(width: 8),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.warning,
                   borderRadius: BorderRadius.circular(12),
@@ -234,7 +234,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
           // Summary bar
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: AppColors.error.withOpacity(0.06),
             child: Row(
               children: [
@@ -327,7 +327,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
       shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -340,7 +340,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
                 CircleAvatar(
                   backgroundColor: typeColor.withOpacity(0.12),
                   child:
-                      Icon(Icons.flag_outlined, color: typeColor, size: 20),
+                  Icon(Icons.flag_outlined, color: typeColor, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -495,7 +495,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.textSecondary,
                 side:
-                    const BorderSide(color: AppColors.textSecondary),
+                const BorderSide(color: AppColors.textSecondary),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
@@ -572,20 +572,20 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
   }
 
   void _showNotesDialog(
-    MisuseReportModel report,
-    String actionTitle,
-    String newStatus,
-    IconData icon,
-    Color color,
-  ) {
+      MisuseReportModel report,
+      String actionTitle,
+      String newStatus,
+      IconData icon,
+      Color color,
+      ) {
     final notesController =
-        TextEditingController(text: report.adminNotes ?? '');
+    TextEditingController(text: report.adminNotes ?? '');
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(icon, color: color, size: 22),
@@ -633,7 +633,7 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen>
               );
             },
             style:
-                ElevatedButton.styleFrom(backgroundColor: color),
+            ElevatedButton.styleFrom(backgroundColor: color),
             child: const Text('Confirm',
                 style: TextStyle(color: Colors.white)),
           ),

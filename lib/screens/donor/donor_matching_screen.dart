@@ -89,7 +89,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
         break;
       case 'Most Donations':
         list.sort(
-            (a, b) => (b['donations'] as int).compareTo(a['donations'] as int));
+                (a, b) => (b['donations'] as int).compareTo(a['donations'] as int));
         break;
       case 'Available':
         list = list.where((d) => d['isEligible'] == true).toList();
@@ -214,7 +214,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
               ),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.success.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -253,7 +253,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                         ? AppColors.primaryRed
                         : AppColors.textSecondary,
                     fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
+                    isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               );
@@ -266,11 +266,11 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
           child: donors.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: donors.length,
-                  itemBuilder: (context, index) =>
-                      _buildDonorCard(donors[index], index),
-                ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: donors.length,
+            itemBuilder: (context, index) =>
+                _buildDonorCard(donors[index], index),
+          ),
         ),
       ],
     );
@@ -447,14 +447,14 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                   child: OutlinedButton.icon(
                     onPressed: isEligible
                         ? () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    'Calling ${donor['name']}...'),
-                                backgroundColor: AppColors.secondaryBlue,
-                              ),
-                            );
-                          }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              'Calling ${donor['name']}...'),
+                          backgroundColor: AppColors.secondaryBlue,
+                        ),
+                      );
+                    }
                         : null,
                     icon: const Icon(Icons.call_outlined, size: 16),
                     label: const Text('Call'),
@@ -474,8 +474,8 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                   child: ElevatedButton.icon(
                     onPressed: isEligible
                         ? () {
-                            _showConfirmDialog(donor);
-                          }
+                      _showConfirmDialog(donor);
+                    }
                         : null,
                     icon: const Icon(Icons.send, size: 16),
                     label: const Text('Send Request'),

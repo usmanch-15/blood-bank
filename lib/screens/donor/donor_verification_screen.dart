@@ -157,7 +157,7 @@ class _DonorVerificationScreenState extends State<DonorVerificationScreen>
               const SizedBox(width: 8),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.warning,
                   borderRadius: BorderRadius.circular(12),
@@ -375,7 +375,7 @@ class _DonorVerificationScreenState extends State<DonorVerificationScreen>
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content:
-                                Text('${donor['name']} has been rejected.'),
+                            Text('${donor['name']} has been rejected.'),
                             backgroundColor: AppColors.error,
                           ),
                         );
@@ -398,7 +398,7 @@ class _DonorVerificationScreenState extends State<DonorVerificationScreen>
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content:
-                                Text('${donor['name']} has been verified!'),
+                            Text('${donor['name']} has been verified!'),
                             backgroundColor: AppColors.success,
                           ),
                         );

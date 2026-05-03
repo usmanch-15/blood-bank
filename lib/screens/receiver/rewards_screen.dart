@@ -263,7 +263,7 @@ class _RewardsScreenState extends State<RewardsScreen>
                       minHeight: 10,
                       backgroundColor: Colors.white30,
                       valueColor:
-                          const AlwaysStoppedAnimation<Color>(Colors.white),
+                      const AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   ),
                 ] else
@@ -350,7 +350,7 @@ class _RewardsScreenState extends State<RewardsScreen>
       elevation: 1,
       margin: const EdgeInsets.only(bottom: 10),
       shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: isEarn
