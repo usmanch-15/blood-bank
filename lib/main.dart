@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
+import 'providers/auth_provider.dart';
 import 'constants/app_colors.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -36,8 +38,12 @@ class BloodBankApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Blood Bank',
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppAuthProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Blood Bank',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -74,7 +80,7 @@ class BloodBankApp extends StatelessWidget {
             ),
           ),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -109,13 +115,14 @@ class BloodBankApp extends StatelessWidget {
         '/admin/reports': (context) => const AdminWebReports(),
         '/admin/notifications': (context) => const AdminWebNotifications(),
       },
-      onGenerateRoute: (settings) {
-        return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Page not found')),
-          ),
-        );
-      },
+        onGenerateRoute: (settings) {
+          return MaterialPageRoute(
+            builder: (_) => const Scaffold(
+              body: Center(child: Text('Page not found')),
+            ),
+          );
+        },
+      ),
     );
   }
 }

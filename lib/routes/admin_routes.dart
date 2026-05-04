@@ -3,6 +3,10 @@ import '../screens/admin/web/admin_web_login.dart';
 import '../screens/admin/web/admin_web_dashboard.dart';
 import '../screens/admin/web/admin_web_users.dart';
 import '../screens/admin/web/admin_web_requests.dart';
+import '../screens/admin/web/admin_web_analytics.dart';
+import '../screens/admin/web/admin_web_donations.dart';
+import '../screens/admin/web/admin_web_reports.dart';
+import '../screens/admin/web/admin_web_notifications.dart';
 
 class AdminRoutes {
   static const String login = '/admin/login';
@@ -24,6 +28,14 @@ class AdminRoutes {
         return MaterialPageRoute(builder: (_) => const AdminWebUsers());
       case requests:
         return MaterialPageRoute(builder: (_) => const AdminWebRequests());
+      case analytics:
+        return MaterialPageRoute(builder: (_) => const AdminWebAnalytics());
+      case donations:
+        return MaterialPageRoute(builder: (_) => const AdminWebDonations());
+      case reports:
+        return MaterialPageRoute(builder: (_) => const AdminWebReports());
+      case notifications:
+        return MaterialPageRoute(builder: (_) => const AdminWebNotifications());
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(

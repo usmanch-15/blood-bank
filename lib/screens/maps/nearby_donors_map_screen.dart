@@ -34,7 +34,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nearby Donors'),
-        backgroundColor: AppColors.secondaryBlue,
+        backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
       ),
       body: GoogleMap(
