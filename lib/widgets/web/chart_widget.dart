@@ -36,6 +36,14 @@ class _ChartWidgetState extends State<ChartWidget> {
 
   List<ChartData> get _data => widget.data ?? _defaultData;
 
+  ChartType _currentType = ChartType.line;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentType = widget.type;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -66,13 +74,14 @@ class _ChartWidgetState extends State<ChartWidget> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: DropdownButton<ChartType>(
-                  value: widget.type,
+                  value: _currentType,
                   underline: const SizedBox(),
                   icon: const Icon(Icons.arrow_drop_down),
                   items: ChartType.values.map((type) {
@@ -84,7 +93,7 @@ class _ChartWidgetState extends State<ChartWidget> {
                   onChanged: (value) {
                     if (value != null) {
                       setState(() {
-                        // This would need to be handled by parent
+                        _currentType = value;
                       });
                     }
                   },
@@ -103,7 +112,7 @@ class _ChartWidgetState extends State<ChartWidget> {
   }
 
   Widget _buildChart() {
-    switch (widget.type) {
+    switch (_currentType) {
       case ChartType.line:
         return _buildLineChart();
       case ChartType.bar:
@@ -165,19 +174,18 @@ class _ChartWidgetState extends State<ChartWidget> {
             sideTitles: SideTitles(showTitles: false),
           ),
         ),
-        borderData: FlBorderData(
-          show: false,
-        ),
+        borderData: FlBorderData(show: false),
         lineBarsData: [
           LineChartBarData(
             spots: _data.asMap().entries.map((entry) {
-              return FlSpot(entry.key.toDouble(), entry.value.value.toDouble());
+              return FlSpot(
+                  entry.key.toDouble(), entry.value.value.toDouble());
             }).toList(),
             isCurved: true,
             color: Colors.red.shade600,
             barWidth: 3,
             isStrokeCapRound: true,
-            dotData: FlDotData(show: true),
+            dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(
               show: true,
               color: Colors.red.shade100.withOpacity(0.3),
@@ -225,7 +233,10 @@ class _ChartWidgetState extends State<ChartWidget> {
         ),
         gridData: FlGridData(
           show: true,
-          color: Colors.grey.shade200,
+          getDrawingHorizontalLine: (value) => FlLine(  // ✅ Fixed
+            color: Colors.grey.shade200,
+            strokeWidth: 1,
+          ),
         ),
         barGroups: _data.asMap().entries.map((entry) {
           return BarChartGroupData(
@@ -245,20 +256,28 @@ class _ChartWidgetState extends State<ChartWidget> {
   }
 
   Widget _buildPieChart() {
+    final colors = [
+      Colors.red.shade400,
+      Colors.blue.shade400,
+      Colors.green.shade400,
+      Colors.orange.shade400,
+      Colors.purple.shade400,
+      Colors.teal.shade400,
+    ];
+
     return PieChart(
       PieChartData(
-        sections: _data.take(6).map((data) {
+        sections: _data.take(6).toList().asMap().entries.map((entry) {
           return PieChartSectionData(
-            value: data.value.toDouble(),
-            title: '${data.value}',
-            color: _getRandomColor(),
+            value: entry.value.value.toDouble(),
+            title: '${entry.value.value}',
+            color: colors[entry.key % colors.length],  // ✅ Fixed color logic
             radius: 100,
             titleStyle: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
-            badgeWidget: Container(),
           );
         }).toList(),
         sectionsSpace: 2,
@@ -269,19 +288,11 @@ class _ChartWidgetState extends State<ChartWidget> {
   }
 
   double _getMaxValue() {
-    return _data.map((e) => e.value).reduce((a, b) => a > b ? a : b).toDouble() + 20;
-  }
-
-  Color _getRandomColor() {
-    final colors = [
-      Colors.red.shade400,
-      Colors.blue.shade400,
-      Colors.green.shade400,
-      Colors.orange.shade400,
-      Colors.purple.shade400,
-      Colors.teal.shade400,
-    ];
-    return colors[_data.indexOf(_data.first) % colors.length];
+    return _data
+        .map((e) => e.value)
+        .reduce((a, b) => a > b ? a : b)
+        .toDouble() +
+        20;
   }
 }
 

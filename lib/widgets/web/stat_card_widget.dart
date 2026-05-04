@@ -111,7 +111,7 @@ class StatCardWidget extends StatelessWidget {
               value,
               style: GoogleFonts.poppins(
                 fontSize: 28,
-                fchart_widget.dartontWeight: FontWeight.bold,
+                fontWeight: FontWeight.bold,
                 color: Colors.grey.shade800,
               ),
             ),

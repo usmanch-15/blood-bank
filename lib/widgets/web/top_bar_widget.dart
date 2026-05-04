@@ -118,9 +118,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               const SizedBox(width: 8),
               // Settings Button
               IconButton(
-                onPressed: () {
-                  // Navigate to settings
-                },
+                onPressed: () {},
                 icon: const Icon(Icons.settings_outlined),
                 tooltip: 'Settings',
               ),
@@ -133,7 +131,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               ),
               const SizedBox(width: 16),
               // User Profile
-              PopupMenuButton(
+              PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == 'logout') {
                     widget.onLogout();
@@ -141,7 +139,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                     // Navigate to profile
                   }
                 },
-                itemBuilder: (context) => [
+                itemBuilder: (context) => <PopupMenuEntry<String>>[  // ✅ Fixed
                   const PopupMenuItem(
                     value: 'profile',
                     child: Row(
