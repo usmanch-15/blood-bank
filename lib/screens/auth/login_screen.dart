@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../constants/app_colors.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 import 'signup_screen.dart';
@@ -23,9 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _rememberMe = false;
 
-  // Dummy credentials
-  final String _dummyEmail = 'usman@gmail.com';
-  final String _dummyPassword = '123456';
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -37,41 +36,45 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Hide keyboard
     FocusScope.of(context).unfocus();
-
     setState(() => _isLoading = true);
 
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (_emailController.text.trim() == _dummyEmail &&
-        _passwordController.text == _dummyPassword) {
-      // Login successful
+    try {
+      await _authService.signInWithEmailPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const RoleSelectionScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
         );
       }
-    } else {
-      // Login failed
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Invalid email or password'),
-            backgroundColor: AppColors.primaryRed,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+    } catch (_) {
+      // Firebase not configured — fall back to demo credentials
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      if (email == 'usman@gmail.com' && password == '123456') {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Invalid email or password'),
+              backgroundColor: AppColors.primaryRed,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
-    }
-
-    if (mounted) {
-      setState(() => _isLoading = false);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

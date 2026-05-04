@@ -85,12 +85,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.secondaryBlue,
-                          AppColors.primaryRed.withOpacity(0.8),
-                        ],
-                      ),
+                      gradient: AppColors.primaryGradient,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: const [
                         BoxShadow(
@@ -160,7 +155,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                   _actionTile(
                     title: 'Create Blood Request',
                     icon: Icons.add_circle_outline,
-                    color: AppColors.secondaryBlue,
+                    color: AppColors.primaryRed,
                     onTap: () {
                       Navigator.push(
                         context,

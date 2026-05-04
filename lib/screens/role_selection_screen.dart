@@ -152,7 +152,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           title: 'Receiver',
                           subtitle: 'I need to find blood',
                           icon: Icons.local_hospital,
-                          color: AppColors.secondaryBlue,
+                          color: AppColors.primaryDarkRed,
                           isLoading: _isLoading && _selectedRole == 'receiver',
                           onTap: () => _handleRoleSelection('receiver'),
                         ),

@@ -1,27 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-
-import 'firebase_options.dart'; // 🔥 flutterfire CLI se generate hoti hai
+import 'firebase_options.dart';
 import 'constants/app_colors.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/role_selection_screen.dart';
+import 'screens/donor/donor_dashboard_screen.dart';
+import 'screens/receiver/receiver_dashboard_screen.dart';
 import 'screens/admin/web/admin_web_login.dart';
 import 'screens/admin/web/admin_web_dashboard.dart';
+import 'screens/admin/web/admin_web_users.dart';
+import 'screens/admin/web/admin_web_requests.dart';
+import 'screens/admin/web/admin_web_analytics.dart';
+import 'screens/admin/web/admin_web_donations.dart';
+import 'screens/admin/web/admin_web_reports.dart';
+import 'screens/admin/web/admin_web_notifications.dart';
 
-
-/// Main entry point of the Blood Bank application
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Proper Firebase initialization (Web + Android safe)
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase not configured — running in demo mode: $e');
+  }
 
   runApp(const BloodBankApp());
 }
 
-/// Root widget of the application
 class BloodBankApp extends StatelessWidget {
   const BloodBankApp({super.key});
 
@@ -30,14 +39,12 @@ class BloodBankApp extends StatelessWidget {
     return MaterialApp(
       title: 'Blood Bank',
       debugShowCheckedModeBanner: false,
-
-      // Theme Configuration
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primaryRed,
           primary: AppColors.primaryRed,
-          secondary: AppColors.secondaryBlue,
+          secondary: AppColors.primaryLightRed,
         ),
         scaffoldBackgroundColor: AppColors.backgroundLight,
         appBarTheme: const AppBarTheme(
@@ -52,6 +59,10 @@ class BloodBankApp extends StatelessWidget {
           ),
           filled: true,
           fillColor: Colors.grey[50],
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primaryRed),
+          ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -69,18 +80,26 @@ class BloodBankApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
+        checkboxTheme: CheckboxThemeData(
+          fillColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return AppColors.primaryRed;
+            }
+            return null;
+          }),
+        ),
+        chipTheme: ChipThemeData(
+          selectedColor: AppColors.primaryRed.withOpacity(0.15),
+          labelStyle: const TextStyle(color: AppColors.textPrimary),
+        ),
       ),
-
-      // Initial Route - Splash screen will decide where to go
       home: const SplashScreen(),
-
-      // Named Routes - Both User and Admin routes
       routes: {
-        // User Routes
         '/splash': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
-
-        // Admin Routes
+        '/role-selection': (context) => const RoleSelectionScreen(),
+        '/donor/dashboard': (context) => const DonorDashboardScreen(),
+        '/receiver/dashboard': (context) => const ReceiverDashboardScreen(),
         '/admin/login': (context) => const AdminWebLogin(),
         '/admin/dashboard': (context) => const AdminWebDashboard(),
         '/admin/users': (context) => const AdminWebUsers(),
@@ -90,24 +109,12 @@ class BloodBankApp extends StatelessWidget {
         '/admin/reports': (context) => const AdminWebReports(),
         '/admin/notifications': (context) => const AdminWebNotifications(),
       },
-
-      // Optional: Handle unknown routes gracefully
       onGenerateRoute: (settings) {
-        // If route doesn't exist, redirect to splash
-        if (settings.name != null &&
-            !['/splash', '/login', '/admin/login', '/admin/dashboard',
-              '/admin/users', '/admin/requests', '/admin/analytics',
-              '/admin/donations', '/admin/reports', '/admin/notifications']
-                .contains(settings.name)) {
-          return MaterialPageRoute(
-            builder: (_) => const Scaffold(
-              body: Center(
-                child: Text('Page not found'),
-              ),
-            ),
-          );
-        }
-        return null;
+        return MaterialPageRoute(
+          builder: (_) => const Scaffold(
+            body: Center(child: Text('Page not found')),
+          ),
+        );
       },
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import 'donor_profile_screen.dart';
 import 'donation_history_screen.dart';
+import 'rewards_screen.dart';
 
 class DonorDashboardScreen extends StatefulWidget {
   const DonorDashboardScreen({super.key});
@@ -11,7 +12,7 @@ class DonorDashboardScreen extends StatefulWidget {
 }
 
 class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
-  final dummyUserData = _DummyUser(
+  final _dummyUser = _DummyUser(
     name: 'Usman',
     bloodGroup: 'O+',
     rewardPoints: 20,
@@ -22,8 +23,6 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
-
-      // 🔴 PROFESSIONAL APP BAR WITH BACK ARROW
       appBar: AppBar(
         elevation: 0,
         backgroundColor: AppColors.primaryRed,
@@ -39,13 +38,11 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.of(context).pushReplacementNamed('/login');
-            },
+            onPressed: () =>
+                Navigator.of(context).pushReplacementNamed('/login'),
           ),
         ],
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -53,13 +50,10 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
           children: [
             _buildHeaderCard(),
             const SizedBox(height: 20),
-
             _buildStatsRow(),
             const SizedBox(height: 20),
-
             _buildEligibilityCard(),
             const SizedBox(height: 25),
-
             const Text(
               'Quick Actions',
               style: TextStyle(
@@ -69,20 +63,19 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
               ),
             ),
             const SizedBox(height: 15),
-
             _buildActionTile(
               title: 'My Profile',
               icon: Icons.person,
-              color: AppColors.secondaryBlue,
+              color: AppColors.primaryRed,
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => DonorProfileScreen(
                       userData: DemoUser(
-                        name: dummyUserData.name,
+                        name: _dummyUser.name,
                         email: 'usman4009797@gmail.com',
-                        bloodGroup: dummyUserData.bloodGroup,
+                        bloodGroup: _dummyUser.bloodGroup,
                         phoneNumber: '03044009797',
                         location: 'Vehari',
                       ),
@@ -91,7 +84,6 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                 );
               },
             ),
-
             _buildActionTile(
               title: 'Donation History',
               icon: Icons.history,
@@ -105,7 +97,6 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                 );
               },
             ),
-
             _buildActionTile(
               title: 'Rewards & Certificates',
               icon: Icons.card_giftcard,
@@ -114,7 +105,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const RewardsScreen(),
+                    builder: (_) => const DonorRewardsScreen(),
                   ),
                 );
               },
@@ -125,7 +116,6 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
     );
   }
 
-  // 🔵 HEADER CARD
   Widget _buildHeaderCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -145,7 +135,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                dummyUserData.name,
+                _dummyUser.name,
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -153,7 +143,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                 ),
               ),
               Text(
-                'Blood Group: ${dummyUserData.bloodGroup}',
+                'Blood Group: ${_dummyUser.bloodGroup}',
                 style: const TextStyle(color: Colors.white70),
               ),
             ],
@@ -163,7 +153,6 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
     );
   }
 
-  // 🔵 STATS ROW
   Widget _buildStatsRow() {
     return Row(
       children: [
@@ -176,7 +165,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
         const SizedBox(width: 15),
         _buildStatCard(
           title: 'Points',
-          value: dummyUserData.rewardPoints.toString(),
+          value: '${_dummyUser.rewardPoints}',
           icon: Icons.stars,
           color: AppColors.warning,
         ),
@@ -216,20 +205,15 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                 color: color,
               ),
             ),
-            Text(
-              title,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
+            Text(title, style: const TextStyle(color: AppColors.textSecondary)),
           ],
         ),
       ),
     );
   }
 
-  // 🔵 ELIGIBILITY CARD
   Widget _buildEligibilityCard() {
-    final isEligible = dummyUserData.isEligible;
-
+    final isEligible = _dummyUser.isEligible;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -262,7 +246,6 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
     );
   }
 
-  // 🔵 ACTION TILE
   Widget _buildActionTile({
     required String title,
     required IconData icon,
@@ -272,9 +255,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: color.withOpacity(0.15),
@@ -288,7 +269,6 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
   }
 }
 
-/// DUMMY USER
 class _DummyUser {
   final String name;
   final String bloodGroup;
@@ -301,17 +281,4 @@ class _DummyUser {
     required this.rewardPoints,
     required this.isEligible,
   });
-}
-
-/// DUMMY REWARDS SCREEN
-class RewardsScreen extends StatelessWidget {
-  const RewardsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Rewards')),
-      body: const Center(child: Text('Rewards Screen (Demo)')),
-    );
-  }
 }
