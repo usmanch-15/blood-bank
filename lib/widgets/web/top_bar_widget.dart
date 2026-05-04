@@ -133,7 +133,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               ),
               const SizedBox(width: 16),
               // User Profile
-              PopupMenuButton(
+              PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == 'logout') {
                     widget.onLogout();
@@ -141,8 +141,8 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                     // Navigate to profile
                   }
                 },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
+                itemBuilder: (context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
                     value: 'profile',
                     child: Row(
                       children: [
@@ -152,7 +152,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  const PopupMenuItem<String>(
                     value: 'settings',
                     child: Row(
                       children: [
@@ -162,8 +162,8 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                       ],
                     ),
                   ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(
+                  const PopupMenuDivider<String>(),
+                  const PopupMenuItem<String>(
                     value: 'logout',
                     child: Row(
                       children: [
