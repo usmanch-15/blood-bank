@@ -13,174 +13,123 @@ class ReceiverDashboardScreen extends StatefulWidget {
 }
 
 class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
-  final String userId = 'user123';
-
   final List<BloodRequestModel> dummyRequests = [
-
     BloodRequestModel(
       id: '1',
       requesterId: 'user123',
       requesterName: 'Usman',
       requesterPhone: '03044009797',
-
       patientName: 'Ali',
       patientAge: 25,
       patientGender: 'Male',
-
       bloodGroup: 'O+',
       unitsRequired: 2,
-
       hospitalName: 'City Hospital',
       hospitalAddress: 'Lahore, Main Road',
-
       location: 'Lahore',
       reason: 'Accident emergency',
       requiredBy: DateTime.now().add(const Duration(hours: 3)),
-
       urgency: 'urgent',
       status: 'pending',
-
       notes: 'Please deliver quickly',
-      // or real GPS accuracy if used
-
-      createdAt: DateTime.now(), contactNumber: '',
+      createdAt: DateTime.now(),
+      contactNumber: '',
     ),
   ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
-      body: CustomScrollView(
-        slivers: [
-          /// 🔴 Advanced AppBar with Back Arrow in Title
-          SliverAppBar(
-            pinned: true,
-            floating: true,
-            backgroundColor: Colors.white,
-            elevation: 1,
-            title: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.arrow_back, color: Colors.red),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: AppColors.primaryRed,
+        foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Receiver Dashboard',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () =>
+                Navigator.of(context).pushReplacementNamed('/login'),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildWelcomeCard(),
+            const SizedBox(height: 20),
+            _buildSosButton(context),
+            const SizedBox(height: 16),
+            _buildActionTile(
+              title: 'Create Blood Request',
+              icon: Icons.add_circle_outline,
+              color: AppColors.primaryRed,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const BloodRequestFormScreen(),
                 ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Receiver Dashboard',
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'My Requests',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...dummyRequests.map(_buildRequestCard),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Need Blood?',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
           ),
-
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate(
-                [
-                  /// 🌈 Welcome Card
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 12,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Need Blood?',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Create a request or use SOS for emergencies',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 25),
-
-                  /// 🚨 SOS Button
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.warning, size: 28),
-                    label: const Text(
-                      'SOS EMERGENCY',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SosEmergencyScreen(),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.error,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 6,
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  /// ➕ Create Request
-                  _actionTile(
-                    title: 'Create Blood Request',
-                    icon: Icons.add_circle_outline,
-                    color: AppColors.primaryRed,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                          const BloodRequestFormScreen(),
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  const Text(
-                    'My Requests',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  ...dummyRequests.map(_requestCard).toList(),
-                ],
-              ),
+          SizedBox(height: 10),
+          Text(
+            'Create a request or use SOS for emergencies',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white70,
             ),
           ),
         ],
@@ -188,8 +137,36 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
     );
   }
 
-  /// 📌 Action Tile
-  Widget _actionTile({
+  Widget _buildSosButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        icon: const Icon(Icons.warning, size: 28),
+        label: const Text(
+          'SOS EMERGENCY',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SosEmergencyScreen()),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.error,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 6,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionTile({
     required String title,
     required IconData icon,
     required Color color,
@@ -201,7 +178,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
       child: ListTile(
         onTap: onTap,
         contentPadding:
-        const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         leading: CircleAvatar(
           backgroundColor: color.withOpacity(0.15),
           child: Icon(icon, color: color),
@@ -215,8 +192,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
     );
   }
 
-  /// 🩸 Request Card
-  Widget _requestCard(BloodRequestModel request) {
+  Widget _buildRequestCard(BloodRequestModel request) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 4,
@@ -244,7 +220,8 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.local_hospital, size: 16),
+                const Icon(Icons.local_hospital, size: 16,
+                    color: AppColors.textSecondary),
                 const SizedBox(width: 6),
                 Text(request.hospitalName),
               ],
@@ -252,7 +229,8 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.location_on, size: 16),
+                const Icon(Icons.location_on, size: 16,
+                    color: AppColors.textSecondary),
                 const SizedBox(width: 6),
                 Text(request.location),
               ],
