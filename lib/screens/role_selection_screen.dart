@@ -25,9 +25,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       _selectedRole = role;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(milliseconds: 500));
-
     try {
       User? user = _authService.currentUser;
 
@@ -37,13 +34,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(
+      // ✅ pushAndRemoveUntil — back karne par login nahi aayega
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (_) => role == 'donor'
               ? const DonorDashboardScreen()
               : const ReceiverDashboardScreen(),
         ),
+            (route) => false, // Sab routes hatao
       );
     } catch (e) {
       if (mounted) {
@@ -57,127 +56,98 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             ),
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header - Simple
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // Back Button
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.arrow_back_ios,
-                        color: AppColors.primaryRed,
+    // ✅ WillPopScope — back button press hone par kuch nahi hoga
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    Text(
+                      'Choose Your Role',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Title
-                  Text(
-                    'Choose Your Role',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                    const SizedBox(height: 8),
+                    Text(
+                      'Select how you want to use the app',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Simple Subtitle
-                  Text(
-                    'Select how you want to use the app',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-
-            // Center Content - Just 2 Buttons
-            Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Donor Button
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 30,
-                          vertical: 15,
-                        ),
-                        child: _buildRoleButton(
-                          title: 'Donor',
-                          subtitle: 'I want to donate blood',
-                          icon: Icons.bloodtype,
-                          color: AppColors.primaryRed,
-                          isLoading: _isLoading && _selectedRole == 'donor',
-                          onTap: () => _handleRoleSelection('donor'),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Receiver Button
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 30,
-                          vertical: 15,
-                        ),
-                        child: _buildRoleButton(
-                          title: 'Receiver',
-                          subtitle: 'I need to find blood',
-                          icon: Icons.local_hospital,
-                          color: AppColors.secondaryBlue,
-                          isLoading: _isLoading && _selectedRole == 'receiver',
-                          onTap: () => _handleRoleSelection('receiver'),
-                        ),
-                      ),
-
-                      const SizedBox(height: 40),
-
-                      // Simple Help Text
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
-                        child: Text(
-                          'You can change your role later from settings',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary.withOpacity(0.8),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 30, vertical: 15),
+                          child: _buildRoleButton(
+                            title: 'Donor',
+                            subtitle: 'I want to donate blood',
+                            icon: Icons.bloodtype,
+                            color: AppColors.primaryRed,
+                            isLoading: _isLoading && _selectedRole == 'donor',
+                            onTap: () => _handleRoleSelection('donor'),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 20),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 30, vertical: 15),
+                          child: _buildRoleButton(
+                            title: 'Receiver',
+                            subtitle: 'I need to find blood',
+                            icon: Icons.local_hospital,
+                            color: AppColors.secondaryBlue,
+                            isLoading:
+                            _isLoading && _selectedRole == 'receiver',
+                            onTap: () => _handleRoleSelection('receiver'),
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                        Padding(
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 40),
+                          child: Text(
+                            'You can change your role later from settings',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color:
+                              AppColors.textSecondary.withOpacity(0.8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -202,13 +172,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: color.withOpacity(0.2),
-            ),
+            border: Border.all(color: color.withOpacity(0.2)),
           ),
           child: Row(
             children: [
-              // Icon
               Container(
                 width: 60,
                 height: 60,
@@ -216,16 +183,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 32,
-                ),
+                child: Icon(icon, color: color, size: 32),
               ),
-
               const SizedBox(width: 20),
-
-              // Text Content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,8 +209,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   ],
                 ),
               ),
-
-              // Arrow or Loading
               if (isLoading)
                 SizedBox(
                   width: 24,
@@ -261,11 +219,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   ),
                 )
               else
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: color,
-                  size: 20,
-                ),
+                Icon(Icons.arrow_forward_ios, color: color, size: 20),
             ],
           ),
         ),

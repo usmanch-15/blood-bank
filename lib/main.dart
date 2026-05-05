@@ -5,14 +5,15 @@ import 'firebase_options.dart';
 import 'constants/app_colors.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/role_selection_screen.dart';
+import 'screens/donor/donor_dashboard_screen.dart';
+import 'screens/receiver/receiver_dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
   runApp(const BloodBankApp());
 }
 
@@ -24,7 +25,6 @@ class BloodBankApp extends StatelessWidget {
     return MaterialApp(
       title: 'Blood Bank',
       debugShowCheckedModeBanner: false,
-
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -56,28 +56,14 @@ class BloodBankApp extends StatelessWidget {
             ),
           ),
         ),
-
       ),
-
       home: const SplashScreen(),
-
       routes: {
-        '/splash': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
-      },
-
-      onGenerateRoute: (settings) {
-        if (settings.name != null &&
-            !['/splash', '/login'].contains(settings.name)) {
-          return MaterialPageRoute(
-            builder: (_) => const Scaffold(
-              body: Center(
-                child: Text('Page not found'),
-              ),
-            ),
-          );
-        }
-        return null;
+        '/splash':        (context) => const SplashScreen(),
+        '/login':         (context) => const LoginScreen(),
+        '/role-select':   (context) => const RoleSelectionScreen(),
+        '/donor':         (context) => const DonorDashboardScreen(),
+        '/receiver':      (context) => const ReceiverDashboardScreen(),
       },
     );
   }
