@@ -1,7 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/user_model.dart';
-import '../constants/app_constants.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -10,166 +8,88 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  Future<UserCredential?> signUpWithEmailPassword({
-    required String email,
-    required String password,
-    required String name,
-    required String role,
-    String? phoneNumber,
-    String? bloodGroup,
-  }) async {
-    try {
-      UserCredential userCredential =
-      await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      UserModel userModel = UserModel(
-        uid: userCredential.user!.uid,
-        email: email,
-        phoneNumber: phoneNumber,
-        name: name,
-        role: role,
-        bloodGroup: bloodGroup,
-        createdAt: DateTime.now(),
-        isEligible: true,
-      );
-
-      await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(userCredential.user!.uid)
-          .set(userModel.toFirestore());
-
-      return userCredential;
-    } on FirebaseAuthException catch (e) {
-      throw Exception(_getErrorMessage(e.code)); // ✅ Fix
-    } catch (e) {
-      throw Exception('Sign up failed: $e');
-    }
-  }
-
-  Future<UserCredential?> signInWithEmailPassword({
+  // ✅ Login
+  Future<UserCredential> signInWithEmailPassword({
     required String email,
     required String password,
   }) async {
     try {
       return await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+        email: email.trim(),
+        password: password.trim(),
       );
     } on FirebaseAuthException catch (e) {
-      throw Exception(_getErrorMessage(e.code)); // ✅ Fix
-    } catch (e) {
-      throw Exception('Login failed: $e');
+      throw _handleAuthError(e);
     }
   }
 
-  Future<void> verifyPhoneNumber({
-    required String phoneNumber,
-    required Function(PhoneAuthCredential) verificationCompleted,
-    required Function(FirebaseAuthException) verificationFailed,
-    required Function(String, int?) codeSent,
-    required Function(String) codeAutoRetrievalTimeout,
-  }) async {
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: verificationCompleted,
-      verificationFailed: verificationFailed,
-      codeSent: codeSent,
-      codeAutoRetrievalTimeout: codeAutoRetrievalTimeout,
-      timeout: const Duration(seconds: 60),
-    );
-  }
-
-  Future<UserCredential?> signInWithOTP({
-    required String verificationId,
-    required String smsCode,
+  // ✅ Signup
+  Future<UserCredential> signupWithEmail({
+    required String email,
+    required String password,
   }) async {
     try {
-      PhoneAuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: smsCode,
+      return await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
       );
-      return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
-      throw Exception(_getErrorMessage(e.code)); // ✅ Fix
-    } catch (e) {
-      throw Exception('OTP sign in failed: $e');
+      throw _handleAuthError(e);
     }
   }
 
-  Future<UserModel?> getUserData(String uid) async {
+  // ✅ Firestore se user data lao
+  Future<Map<String, dynamic>?> getUserData(String uid) async {
     try {
-      DocumentSnapshot doc = await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(uid)
-          .get();
-
-      if (doc.exists) {
-        return UserModel.fromFirestore(
-            doc.data() as Map<String, dynamic>, uid);
-      }
-      return null;
+      final doc = await _firestore.collection('users').doc(uid).get();
+      return doc.exists ? doc.data() : null;
     } catch (e) {
-      throw Exception('Error getting user data: $e');
+      throw 'User data load nahi hua: $e';
     }
   }
 
+  // ✅ Firestore mein user data save/update karo
   Future<void> updateUserData(String uid, Map<String, dynamic> data) async {
     try {
       await _firestore
-          .collection(AppConstants.usersCollection)
+          .collection('users')
           .doc(uid)
-          .update(data);
+          .set(data, SetOptions(merge: true));
     } catch (e) {
-      throw Exception('Error updating user data: $e');
+      throw 'Data update nahi hua: $e';
     }
   }
 
-  Future<void> signOut() async {
-    try {
-      await _auth.signOut();
-    } catch (e) {
-      throw Exception('Error signing out: $e');
-    }
-  }
-
+  // ✅ Password reset
   Future<void> resetPassword(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      await _auth.sendPasswordResetEmail(email: email.trim());
     } on FirebaseAuthException catch (e) {
-      throw Exception(_getErrorMessage(e.code)); // ✅ Fix
-    } catch (e) {
-      throw Exception('Error resetting password: $e');
+      throw _handleAuthError(e);
     }
   }
 
-  // ✅ String return — Exception upar throw hoti hai
-  String _getErrorMessage(String code) {
-    switch (code) {
+  // ✅ Logout
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
+
+  String _handleAuthError(FirebaseAuthException e) {
+    switch (e.code) {
       case 'user-not-found':
-        return 'No account found with this email.';
+        return 'Koi account nahi mila is email se.';
       case 'wrong-password':
-        return 'Incorrect password. Please try again.';
-      case 'invalid-credential': // ✅ New Firebase SDK
-        return 'Invalid email or password.';
-      case 'invalid-email':
-        return 'The email address is not valid.';
-      case 'user-disabled':
-        return 'This account has been disabled.';
+        return 'Password galat hai.';
       case 'email-already-in-use':
-        return 'An account already exists with this email.';
+        return 'Yeh email pehle se registered hai.';
+      case 'invalid-email':
+        return 'Email format sahi nahi hai.';
       case 'weak-password':
-        return 'Password must be at least 6 characters.';
-      case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
+        return 'Password kam az kam 6 characters ka hona chahiye.';
       case 'network-request-failed':
-        return 'Network error. Check your internet connection.';
-      case 'operation-not-allowed':
-        return 'This login method is not enabled.';
+        return 'Internet connection check karein.';
       default:
-        return 'Error occurred. (Code: $code)';
+        return e.message ?? 'Kuch masla hua. Dobara try karein.';
     }
   }
 }

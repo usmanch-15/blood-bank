@@ -3,30 +3,99 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
 
-/// Nearby Donors Map Screen - Show donors on Google Maps
-/// Note: Google Maps API key must be configured in:
-/// - android/app/src/main/AndroidManifest.xml
-/// - ios/Runner/AppDelegate.swift (for iOS)
 class NearbyDonorsMapScreen extends StatefulWidget {
   final String? bloodGroup;
 
   const NearbyDonorsMapScreen({super.key, this.bloodGroup});
 
   @override
-  State<NearbyDonorsMapScreen> createState() => _NearbyDonorsMapScreenState();
+  State<NearbyDonorsMapScreen> createState() =>
+      _NearbyDonorsMapScreenState();
 }
 
 class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
   GoogleMapController? _mapController;
+
   final Set<Marker> _markers = {};
-  LatLng _center = const LatLng(0.0, 0.0); // Default location
+
+  LatLng _center = const LatLng(40.7128, -74.0060);
+
+  // 🔥 Dummy donor data (replace later with Firestore)
+  final List<Map<String, dynamic>> _donors = [
+    {
+      "id": "1",
+      "name": "Ahmed",
+      "bloodGroup": "O+",
+      "lat": 40.7130,
+      "lng": -74.0065,
+    },
+    {
+      "id": "2",
+      "name": "Sara",
+      "bloodGroup": "A+",
+      "lat": 40.7140,
+      "lng": -74.0070,
+    },
+    {
+      "id": "3",
+      "name": "Ali",
+      "bloodGroup": "B+",
+      "lat": 40.7150,
+      "lng": -74.0080,
+    },
+  ];
 
   @override
   void initState() {
     super.initState();
-    // TODO: Get user's current location using LocationHelper
-    // For now, using a default location
-    _center = const LatLng(40.7128, -74.0060); // New York as example
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadNearbyDonors();
+    });
+  }
+
+  /// 🔥 MAIN LOGIC: load + filter + show markers
+  void _loadNearbyDonors() {
+    final String? filterGroup = widget.bloodGroup;
+
+    Set<Marker> newMarkers = {};
+
+    for (var donor in _donors) {
+      // blood group filter
+      if (filterGroup != null &&
+          donor['bloodGroup'] != filterGroup) {
+        continue;
+      }
+
+      newMarkers.add(
+        Marker(
+          markerId: MarkerId(donor['id']),
+          position: LatLng(
+            donor['lat'],
+            donor['lng'],
+          ),
+          infoWindow: InfoWindow(
+            title: donor['name'],
+            snippet: "Blood: ${donor['bloodGroup']}",
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueRed,
+          ),
+        ),
+      );
+    }
+
+    setState(() {
+      _markers.clear();
+      _markers.addAll(newMarkers);
+    });
+  }
+
+  /// 📍 Move camera to user/center
+  void _goToCenter() {
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(_center, 14),
+    );
   }
 
   @override
@@ -34,49 +103,37 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nearby Donors'),
-        backgroundColor: AppColors.secondaryBlue,
+        backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.my_location),
+            onPressed: _goToCenter,
+          )
+        ],
       ),
+
       body: GoogleMap(
         initialCameraPosition: CameraPosition(
           target: _center,
-          zoom: AppConstants.defaultZoom,
+          zoom: 13,
         ),
         markers: _markers,
         myLocationEnabled: true,
         myLocationButtonEnabled: true,
         mapType: MapType.normal,
-        onMapCreated: (GoogleMapController controller) {
+        onMapCreated: (controller) {
           _mapController = controller;
           _loadNearbyDonors();
         },
       ),
+
       floatingActionButton: FloatingActionButton(
-        onPressed: _loadNearbyDonors,
         backgroundColor: AppColors.primaryRed,
+        onPressed: _loadNearbyDonors,
         child: const Icon(Icons.refresh, color: Colors.white),
       ),
     );
-  }
-
-  /// Load nearby donors and add markers to map
-  /// TODO: Implement actual donor fetching logic using FirestoreService
-  void _loadNearbyDonors() {
-    // Example markers - Replace with actual donor data
-    setState(() {
-      _markers.addAll([
-        Marker(
-          markerId: const MarkerId('donor1'),
-          position: const LatLng(40.7128, -74.0060),
-          infoWindow: const InfoWindow(
-            title: 'Donor Name',
-            snippet: 'Blood Group: O+',
-          ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        ),
-        // Add more markers from actual donor data
-      ]);
-    });
   }
 
   @override

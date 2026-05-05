@@ -7,7 +7,6 @@ import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 import '../role_selection_screen.dart';
 
-/// Modern Sign Up Screen - Red & White Theme
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -40,57 +39,55 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _handleSignUp() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    // Hide keyboard
     FocusScope.of(context).unfocus();
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    await Future.delayed(const Duration(seconds: 2)); // Simulate API call
+    setState(() => _isLoading = true);
 
     try {
-      // Dummy sign up logic
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Account created successfully!'),
-          backgroundColor: AppColors.primaryRed,
-        ),
+      // ✅ Firebase se account banao
+      final userCredential = await _authService.signupWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
 
+      // ✅ Firestore mein user data save karo
+      await _authService.updateUserData(userCredential.user!.uid, {
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'bloodGroup': _selectedBloodGroup,
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+
       if (mounted) {
-        // Navigate to role selection
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Account successfully ban gaya!'),
+            backgroundColor: AppColors.primaryRed,
+          ),
+        );
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => const RoleSelectionScreen(),
-          ),
+              builder: (context) => const RoleSelectionScreen()),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sign up failed: $e'),
+            content: Text(e.toString()),
             backgroundColor: Colors.red,
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Set status bar style
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
@@ -103,8 +100,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFD32F2F), // Dark Red
-              Color(0xFFF44336), // Red
+              Color(0xFFD32F2F),
+              Color(0xFFF44336),
               Colors.white,
             ],
             stops: [0.0, 0.3, 0.7],
@@ -116,13 +113,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header Section
                 _buildHeaderSection(),
-
-                // Form Section
                 _buildFormSection(),
-
-                // Footer Section
                 _buildFooterSection(),
               ],
             ),
@@ -137,7 +129,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
       child: Column(
         children: [
-          // Back Button
           Row(
             children: [
               IconButton(
@@ -166,12 +157,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ],
           ),
           const SizedBox(height: 10),
-
-          // Logo
           Stack(
             alignment: Alignment.center,
             children: [
-              // Outer Glow
               Container(
                 width: 100,
                 height: 100,
@@ -187,8 +175,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
               ),
-
-              // Heart Container
               Container(
                 width: 80,
                 height: 80,
@@ -213,8 +199,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ],
           ),
           const SizedBox(height: 25),
-
-          // Title
           Text(
             'Join Blood Connect',
             style: TextStyle(
@@ -233,8 +217,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-
-          // Subtitle
           Text(
             'Create your account to start saving lives',
             style: TextStyle(
@@ -263,12 +245,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             spreadRadius: 5,
             offset: const Offset(0, 10),
           ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.9),
-            blurRadius: 20,
-            spreadRadius: -5,
-            offset: const Offset(0, -5),
-          ),
         ],
       ),
       child: Form(
@@ -276,7 +252,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Name Field
             _buildCustomTextField(
               controller: _nameController,
               label: 'Full Name',
@@ -293,8 +268,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               },
             ),
             const SizedBox(height: 20),
-
-            // Email Field
             _buildCustomTextField(
               controller: _emailController,
               label: 'Email Address',
@@ -312,8 +285,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               },
             ),
             const SizedBox(height: 20),
-
-            // Phone Field
             _buildCustomTextField(
               controller: _phoneController,
               label: 'Phone Number',
@@ -331,7 +302,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               },
             ),
             const SizedBox(height: 20),
-
             // Blood Group Dropdown
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,11 +355,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       );
                     }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedBloodGroup = value;
-                      });
-                    },
+                    onChanged: (value) =>
+                        setState(() => _selectedBloodGroup = value),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please select your blood group';
@@ -407,8 +374,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ],
             ),
             const SizedBox(height: 20),
-
-            // Password Field
             _buildCustomTextField(
               controller: _passwordController,
               label: 'Password',
@@ -422,11 +387,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       : Icons.visibility_off_outlined,
                   color: AppColors.primaryRed.withOpacity(0.7),
                 ),
-                onPressed: () {
-                  setState(() {
-                    _obscurePassword = !_obscurePassword;
-                  });
-                },
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -439,8 +401,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               },
             ),
             const SizedBox(height: 20),
-
-            // Confirm Password Field
             _buildCustomTextField(
               controller: _confirmPasswordController,
               label: 'Confirm Password',
@@ -454,11 +414,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       : Icons.visibility_off_outlined,
                   color: AppColors.primaryRed.withOpacity(0.7),
                 ),
-                onPressed: () {
-                  setState(() {
-                    _obscureConfirmPassword = !_obscureConfirmPassword;
-                  });
-                },
+                onPressed: () => setState(
+                        () => _obscureConfirmPassword = !_obscureConfirmPassword),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -471,8 +428,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               },
             ),
             const SizedBox(height: 25),
-
-            // Terms and Conditions
             Row(
               children: [
                 Container(
@@ -481,17 +436,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.primaryRed.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: AppColors.primaryRed,
-                      width: 1,
-                    ),
+                    border: Border.all(color: AppColors.primaryRed, width: 1),
                   ),
                   child: const Center(
-                    child: Icon(
-                      Icons.check,
-                      size: 14,
-                      color: Colors.white,
-                    ),
+                    child: Icon(Icons.check, size: 14, color: Colors.white),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -500,9 +448,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     TextSpan(
                       text: 'I agree to the ',
                       style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                      ),
+                          color: AppColors.textSecondary, fontSize: 13),
                       children: [
                         TextSpan(
                           text: 'Terms & Conditions',
@@ -526,8 +472,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ],
             ),
             const SizedBox(height: 30),
-
-            // Sign Up Button
             SizedBox(
               height: 52,
               child: ElevatedButton(
@@ -597,10 +541,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: Colors.grey[300]!,
-              width: 1.5,
-            ),
+            border: Border.all(color: Colors.grey[300]!, width: 1.5),
           ),
           child: TextFormField(
             controller: controller,
@@ -614,10 +555,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 15,
-              ),
+              hintStyle: TextStyle(color: Colors.grey[500], fontSize: 15),
               border: InputBorder.none,
               prefixIcon: Icon(
                 icon,
@@ -641,9 +579,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
       child: Column(
         children: [
-          // Already have account
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            padding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
@@ -667,9 +605,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: () => Navigator.of(context).pop(),
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
@@ -687,23 +623,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
           const SizedBox(height: 25),
-
-          // Blood Donation Info
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white,
-                  Colors.white.withOpacity(0.9),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.red.withOpacity(0.2),
-              ),
+              border: Border.all(color: Colors.red.withOpacity(0.2)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.red.withOpacity(0.08),
@@ -711,16 +635,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   offset: const Offset(0, 5),
                 ),
               ],
+              color: Colors.white,
             ),
             child: Column(
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.info_outline_rounded,
-                      color: AppColors.primaryRed,
-                      size: 24,
-                    ),
+                    Icon(Icons.info_outline_rounded,
+                        color: AppColors.primaryRed, size: 24),
                     const SizedBox(width: 12),
                     Text(
                       'Why Register?',

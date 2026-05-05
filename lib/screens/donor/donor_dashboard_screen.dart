@@ -14,7 +14,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
   final dummyUserData = _DummyUser(
     name: 'Usman',
     bloodGroup: 'O+',
-    rewardPoints: 20,
+    rewardPoints: 0,
     isEligible: true,
   );
 

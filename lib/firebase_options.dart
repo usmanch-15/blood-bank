@@ -18,20 +18,22 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static final FirebaseOptions web = FirebaseOptions(
-    apiKey: 'XXX',
-    appId: 'XXX',
-    messagingSenderId: 'XXX',
-    projectId: 'XXX',
-    authDomain: 'XXX',
-    storageBucket: 'XXX',
+  // ── Web App (from Firebase Console → Project Settings → Web app) ──────────
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey:            'AIzaSyDcULNyjZU18QFe9wiOmOUMhUw3zSdyFxg',
+    appId:             '1:1081691076539:web:547efc4692cdb66de1769e',
+    messagingSenderId: '1081691076539',
+    projectId:         'blood-bank-98037',
+    authDomain:        'blood-bank-98037.firebaseapp.com',
+    storageBucket:     'blood-bank-98037.firebasestorage.app',
   );
 
+  // ── Android App (from google-services.json) ───────────────────────────────
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'XXX',
-    appId: 'XXX',
-    messagingSenderId: 'XXX',
-    projectId: 'XXX',
-    storageBucket: 'XXX',
+    apiKey:            'AIzaSyAAvCmMqFvSrS0NFQAuLvL5hOWqJZq5kDI',
+    appId:             '1:1081691076539:android:cb46f647e60989eae1769e',
+    messagingSenderId: '1081691076539',
+    projectId:         'blood-bank-98037',
+    storageBucket:     'blood-bank-98037.firebasestorage.app',
   );
 }

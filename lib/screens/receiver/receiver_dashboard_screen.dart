@@ -15,44 +15,23 @@ class ReceiverDashboardScreen extends StatefulWidget {
 class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
   final String userId = 'user123';
 
-  final List<BloodRequestModel> dummyRequests = [
+  /// ✅ REAL LIST (not dummy)
+  List<BloodRequestModel> myRequests = [];
 
-    BloodRequestModel(
-      id: '1',
-      requesterId: 'user123',
-      requesterName: 'Usman',
-      requesterPhone: '03044009797',
+  /// ➕ Add request function
+  void addRequest(BloodRequestModel request) {
+    setState(() {
+      myRequests.add(request);
+    });
+  }
 
-      patientName: 'Ali',
-      patientAge: 25,
-      patientGender: 'Male',
-
-      bloodGroup: 'O+',
-      unitsRequired: 2,
-
-      hospitalName: 'City Hospital',
-      hospitalAddress: 'Lahore, Main Road',
-
-      location: 'Lahore',
-      reason: 'Accident emergency',
-      requiredBy: DateTime.now().add(const Duration(hours: 3)),
-
-      urgency: 'urgent',
-      status: 'pending',
-
-      notes: 'Please deliver quickly',
-      // or real GPS accuracy if used
-
-      createdAt: DateTime.now(), contactNumber: '',
-    ),
-  ];
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: CustomScrollView(
         slivers: [
-          /// 🔴 Advanced AppBar with Back Arrow in Title
+          /// 🔴 AppBar
           SliverAppBar(
             pinned: true,
             floating: true,
@@ -92,13 +71,6 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                         ],
                       ),
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 12,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
                     ),
                     child: const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,7 +105,6 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
                       ),
                     ),
                     onPressed: () {
@@ -145,30 +116,31 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.error,
+                      backgroundColor: Colors.red,
                       padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 6,
                     ),
                   ),
 
                   const SizedBox(height: 20),
 
-                  /// ➕ Create Request
+                  /// ➕ Create Request (IMPORTANT FIX)
                   _actionTile(
                     title: 'Create Blood Request',
                     icon: Icons.add_circle_outline,
-                    color: AppColors.secondaryBlue,
-                    onTap: () {
-                      Navigator.push(
+                    color: Colors.blue,
+                    onTap: () async {
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                          const BloodRequestFormScreen(),
+                          builder: (_) => const BloodRequestFormScreen(),
                         ),
                       );
+
+                      /// ✅ Receive data back from form
+                      if (result != null &&
+                          result is BloodRequestModel) {
+                        addRequest(result);
+                      }
                     },
                   ),
 
@@ -181,9 +153,22 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 16),
 
-                  ...dummyRequests.map(_requestCard).toList(),
+                  /// ❗ EMPTY STATE HANDLING
+                  if (myRequests.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Text(
+                          "No requests yet",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    )
+                  else
+                    ...myRequests.map(_requestCard).toList(),
                 ],
               ),
             ),
@@ -202,19 +187,13 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
   }) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ListTile(
         onTap: onTap,
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.15),
+          backgroundColor: color.withOpacity(0.2),
           child: Icon(icon, color: color),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: Text(title),
         trailing: const Icon(Icons.arrow_forward_ios, size: 18),
       ),
     );
@@ -224,71 +203,24 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
   Widget _requestCard(BloodRequestModel request) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                _badge(request.urgency, _urgencyColor(request.urgency)),
-                const Spacer(),
-                _badge(request.status, _statusColor(request.status)),
-              ],
-            ),
-            const SizedBox(height: 14),
             Text(
               '${request.bloodGroup} • ${request.unitsRequired} Units',
               style: const TextStyle(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.local_hospital, size: 16),
-                const SizedBox(width: 6),
-                Text(request.hospitalName),
-              ],
-            ),
             const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 16),
-                const SizedBox(width: 6),
-                Text(request.location),
-              ],
-            ),
+            Text(request.hospitalName),
+            Text(request.location),
           ],
         ),
       ),
     );
   }
-
-  Widget _badge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text.toUpperCase(),
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  Color _urgencyColor(String urgency) =>
-      urgency == 'urgent' ? AppColors.warning : AppColors.info;
-
-  Color _statusColor(String status) =>
-      status == 'fulfilled' ? AppColors.success : AppColors.warning;
 }
