@@ -1,6 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-
+import 'screens/admin/web/admin_web_requests.dart';
 import 'firebase_options.dart';
 import 'constants/app_colors.dart';
 import 'screens/splash_screen.dart';
@@ -8,6 +8,14 @@ import 'screens/auth/login_screen.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/donor/donor_dashboard_screen.dart';
 import 'screens/receiver/receiver_dashboard_screen.dart';
+import 'screens/admin/web/admin_web_login.dart';
+import 'screens/admin/web/admin_web_dashboard.dart';
+import 'screens/admin/web/admin_web_users.dart';
+import 'screens/admin/web/admin_web_requests.dart';
+import 'screens/admin/web/admin_web_donations.dart';
+import 'screens/admin/web/admin_web_analytics.dart';
+import 'screens/admin/web/admin_web_reports.dart';
+import 'screens/admin/web/admin_web_notifications.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,6 +72,14 @@ class BloodBankApp extends StatelessWidget {
         '/role-select':   (context) => const RoleSelectionScreen(),
         '/donor':         (context) => const DonorDashboardScreen(),
         '/receiver':      (context) => const ReceiverDashboardScreen(),
+        '/admin/login':         (context) => const AdminWebLogin(),
+        '/admin/dashboard':     (context) => const AdminWebDashboard(),
+        '/admin/users':         (context) => const AdminWebUsers(),
+        '/admin/requests':      (context) => const AdminWebRequests(),
+        '/admin/donations':     (context) => const AdminWebDonations(),
+        '/admin/analytics':     (context) => const AdminWebAnalytics(),
+        '/admin/reports':       (context) => const AdminWebReports(),
+        '/admin/notifications': (context) => const AdminWebNotifications(),
       },
     );
   }

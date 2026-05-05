@@ -6,6 +6,8 @@ import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 import 'signup_screen.dart';
 import '../role_selection_screen.dart';
+import '../admin/admin_config.dart';
+import '../admin/web/admin_web_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,7 +24,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _rememberMe = false;
 
   @override
   void dispose() {
@@ -45,16 +46,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      await _authService.getUserData(userCredential.user!.uid);
+      String email = _emailController.text.trim();
 
+      // ✅ ADMIN EMAIL → Admin Dashboard
+      if (AdminConfig.adminEmails.contains(email)) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminWebDashboard()),
+              (route) => false,
+        );
+        return;
+      }
+
+      // 👤 NORMAL USER → Role Selection
+      await _authService.getUserData(userCredential.user!.uid);
       if (!mounted) return;
 
-      // ✅ SIMPLE NAVIGATION (NO ROLE CHECK)
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (_) => const RoleSelectionScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
             (route) => false,
       );
     } catch (e) {
@@ -182,6 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 25),
             SizedBox(
+              width: double.infinity,
               height: 52,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _handleLogin,

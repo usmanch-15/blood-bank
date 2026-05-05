@@ -1,4 +1,4 @@
-part of '../../admin_web_dashboard.dart';
+import 'package:flutter/material.dart';
 
 class AdminWebDonations extends StatelessWidget {
   const AdminWebDonations({Key? key}) : super(key: key);

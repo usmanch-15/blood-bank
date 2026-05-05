@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../admin_config.dart';
 
 class AdminWebLogin extends StatefulWidget {
   const AdminWebLogin({Key? key}) : super(key: key);
@@ -23,33 +24,66 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
   }
 
   Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+    if (!_formKey.currentState!.validate()) return;
 
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+    setState(() => _isLoading = true);
 
-      // Demo authentication
-      if (_emailController.text == 'admin@bloodlink.com' &&
-          _passwordController.text == 'admin123') {
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/admin/dashboard');
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Invalid email or password'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+    try {
+      String email = _emailController.text.trim();
+      String password = _passwordController.text.trim();
 
-      if (mounted) {
+      // ❌ Admin whitelist check
+      if (!AdminConfig.adminEmails.contains(email)) {
+        _showError('❌ Yeh email admin nahi hai.');
         setState(() => _isLoading = false);
+        return;
       }
+
+      // 🔐 Firebase login
+      UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      User? user = userCredential.user;
+      if (user == null) {
+        _showError('Login fail ho gaya. Dobara try karo.');
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // 📧 Email verification check
+      if (!user.emailVerified) {
+        await user.sendEmailVerification();
+        _showError('📧 Verification email bhej di — pehle verify karo.');
+        await FirebaseAuth.instance.signOut();
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // ✅ Admin dashboard open karo
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/admin/dashboard');
+      }
+    } on FirebaseAuthException catch (e) {
+      String msg = 'Login fail ho gaya.';
+      if (e.code == 'user-not-found') msg = 'Yeh email registered nahi hai.';
+      if (e.code == 'wrong-password') msg = 'Password galat hai.';
+      if (e.code == 'invalid-credential') msg = 'Email ya password galat hai.';
+      if (e.code == 'too-many-requests') msg = 'Zyada attempts. Thodi der baad try karo.';
+      _showError(msg);
+    } catch (e) {
+      _showError(e.toString());
     }
+
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -117,8 +151,7 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'admin@bloodlink.com',
+                          labelText: 'Admin Email',
                           prefixIcon: const Icon(Icons.email),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -127,10 +160,10 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
+                            return 'Email daalo';
                           }
                           if (!value.contains('@')) {
-                            return 'Please enter a valid email';
+                            return 'Valid email daalo';
                           }
                           return null;
                         },
@@ -160,10 +193,10 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your password';
+                            return 'Password daalo';
                           }
                           if (value.length < 6) {
-                            return 'Password must be at least 6 characters';
+                            return 'Password kam se kam 6 characters ka ho';
                           }
                           return null;
                         },
@@ -192,24 +225,24 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                       ),
                       const SizedBox(height: 16),
                       TextButton(
-                        onPressed: () {
-                          // Forgot password logic
+                        onPressed: () async {
+                          String email = _emailController.text.trim();
+                          if (email.isEmpty || !email.contains('@')) {
+                            _showError('Pehle email field mein email daalo');
+                            return;
+                          }
+                          await FirebaseAuth.instance
+                              .sendPasswordResetEmail(email: email);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password reset email bhej di ✅'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
                         },
                         child: const Text('Forgot Password?'),
-                      ),
-                      const Divider(height: 32),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text("Demo Credentials: "),
-                          const Text(
-                            "admin@bloodlink.com / admin123",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
