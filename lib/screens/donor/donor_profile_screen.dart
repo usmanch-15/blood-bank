@@ -1,32 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_colors.dart';
-// import '../../models/user_model.dart';        // 🔴 Firebase model commented
-// import '../../services/auth_service.dart';  // 🔴 Firebase service commented
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 
-/// 🔹 Dummy User Model (Firebase OFF mode)
-class DemoUser {
-  final String name;
-  final String email;
-  final String bloodGroup;
-  final String? phoneNumber;
-  final String? location;
-  final String? profileImageUrl;
-
-  DemoUser({
-    required this.name,
-    required this.email,
-    required this.bloodGroup,
-    this.phoneNumber,
-    this.location,
-    this.profileImageUrl,
-  });
-}
-
-/// Donor Profile Screen - View and edit donor profile (Demo)
 class DonorProfileScreen extends StatefulWidget {
-  final DemoUser userData;
+  final Map<String, dynamic> userData;
 
   const DonorProfileScreen({super.key, required this.userData});
 
@@ -46,9 +26,10 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _nameController.text = widget.userData.name;
-    _phoneController.text = widget.userData.phoneNumber ?? '';
-    _locationController.text = widget.userData.location ?? '';
+    // Firebase se aaya real data fields mein daal do
+    _nameController.text = widget.userData['name'] ?? '';
+    _phoneController.text = widget.userData['phoneNumber'] ?? '';
+    _locationController.text = widget.userData['location'] ?? '';
   }
 
   @override
@@ -59,15 +40,22 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
     super.dispose();
   }
 
-  /// 🔹 Demo Save (Firebase removed)
-  void _handleSave() {
-    setState(() {
-      _isLoading = true;
-    });
+  // ✅ Firebase mein save karo
+  Future<void> _handleSave() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
 
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) throw Exception('User not logged in');
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'name': _nameController.text.trim(),
+        'phoneNumber': _phoneController.text.trim(),
+        'location': _locationController.text.trim(),
+      });
+
       if (!mounted) return;
-
       setState(() {
         _isLoading = false;
         _isEditing = false;
@@ -75,15 +63,28 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Profile updated (Demo Mode)'),
+          content: Text('Profile updated successfully!'),
           backgroundColor: AppColors.success,
         ),
       );
-    });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final email = widget.userData['email'] ?? '';
+    final bloodGroup = widget.userData['bloodGroup'] ?? '—';
+    final profileImageUrl = widget.userData['profileImageUrl'];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Profile'),
@@ -94,11 +95,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
           if (!_isEditing)
             IconButton(
               icon: const Icon(Icons.edit_rounded),
-              onPressed: () {
-                setState(() {
-                  _isEditing = true;
-                });
-              },
+              onPressed: () => setState(() => _isEditing = true),
               tooltip: 'Edit Profile',
             ),
         ],
@@ -109,7 +106,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // Profile Picture Section
+              // ── Profile Picture ──
               Stack(
                 alignment: Alignment.center,
                 children: [
@@ -122,26 +119,23 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                         color: AppColors.primaryRed.withOpacity(0.2),
                         width: 3,
                       ),
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primaryRed.withOpacity(0.1),
-                          AppColors.primaryRed.withOpacity(0.05),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
                     ),
                     child: CircleAvatar(
                       radius: 60,
-                      backgroundColor: Colors.transparent,
-                      backgroundImage: widget.userData.profileImageUrl != null
-                          ? NetworkImage(widget.userData.profileImageUrl!)
+                      backgroundColor: AppColors.primaryRed.withOpacity(0.1),
+                      backgroundImage: profileImageUrl != null
+                          ? NetworkImage(profileImageUrl)
                           : null,
-                      child: widget.userData.profileImageUrl == null
-                          ? const Icon(
-                        Icons.person_rounded,
-                        size: 70,
-                        color: AppColors.primaryRed,
+                      child: profileImageUrl == null
+                          ? Text(
+                        _nameController.text.isNotEmpty
+                            ? _nameController.text[0].toUpperCase()
+                            : 'D',
+                        style: const TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryRed,
+                        ),
                       )
                           : null,
                     ),
@@ -152,11 +146,8 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                       right: 0,
                       child: GestureDetector(
                         onTap: () {
-                          // Handle photo upload
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Photo upload (Demo Mode)'),
-                            ),
+                            const SnackBar(content: Text('Photo upload coming soon')),
                           );
                         },
                         child: Container(
@@ -165,23 +156,10 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                           decoration: BoxDecoration(
                             color: AppColors.primaryRed,
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 3,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.red.withOpacity(0.3),
-                                blurRadius: 8,
-                                spreadRadius: 2,
-                              ),
-                            ],
+                            border: Border.all(color: Colors.white, width: 3),
                           ),
-                          child: const Icon(
-                            Icons.camera_alt_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
+                          child: const Icon(Icons.camera_alt_rounded,
+                              color: Colors.white, size: 20),
                         ),
                       ),
                     ),
@@ -189,28 +167,22 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Blood Group Badge
+              // ── Blood Group Badge ──
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppColors.primaryRed.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(25),
-                  border: Border.all(
-                    color: AppColors.primaryRed.withOpacity(0.3),
-                  ),
+                  border: Border.all(color: AppColors.primaryRed.withOpacity(0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.water_drop_rounded,
-                      color: AppColors.primaryRed,
-                      size: 20,
-                    ),
+                    const Icon(Icons.water_drop_rounded,
+                        color: AppColors.primaryRed, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      'Blood Group: ${widget.userData.bloodGroup}',
+                      'Blood Group: $bloodGroup',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -222,7 +194,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
               ),
               const SizedBox(height: 30),
 
-              // Form Fields Container
+              // ── Form Fields ──
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -238,73 +210,35 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    // Name Field
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _isEditing
-                            ? Colors.grey[50]
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: CustomTextField(
-                        controller: _nameController,
-                        label: 'Full Name',
-                        prefixIcon: Icons.person_outline_rounded,
-                        enabled: _isEditing,
-                        validator: (value) =>
-                        value == null || value.isEmpty ? 'Enter name' : null,
-                      ),
+                    CustomTextField(
+                      controller: _nameController,
+                      label: 'Full Name',
+                      prefixIcon: Icons.person_outline_rounded,
+                      enabled: _isEditing,
+                      validator: (v) =>
+                      v == null || v.isEmpty ? 'Enter name' : null,
                     ),
                     const SizedBox(height: 16),
-
-                    // Email Field (Disabled)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: CustomTextField(
-                        controller:
-                        TextEditingController(text: widget.userData.email),
-                        label: 'Email',
-                        prefixIcon: Icons.email_outlined,
-                        enabled: false,
-                      ),
+                    CustomTextField(
+                      controller: TextEditingController(text: email),
+                      label: 'Email',
+                      prefixIcon: Icons.email_outlined,
+                      enabled: false,
                     ),
                     const SizedBox(height: 16),
-
-                    // Phone Field
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _isEditing
-                            ? Colors.grey[50]
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: CustomTextField(
-                        controller: _phoneController,
-                        label: 'Phone Number',
-                        prefixIcon: Icons.phone_outlined,
-                        enabled: _isEditing,
-                        keyboardType: TextInputType.phone,
-                      ),
+                    CustomTextField(
+                      controller: _phoneController,
+                      label: 'Phone Number',
+                      prefixIcon: Icons.phone_outlined,
+                      enabled: _isEditing,
+                      keyboardType: TextInputType.phone,
                     ),
                     const SizedBox(height: 16),
-
-                    // Location Field
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _isEditing
-                            ? Colors.grey[50]
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: CustomTextField(
-                        controller: _locationController,
-                        label: 'Location',
-                        prefixIcon: Icons.location_on_outlined,
-                        enabled: _isEditing,
-                      ),
+                    CustomTextField(
+                      controller: _locationController,
+                      label: 'Location',
+                      prefixIcon: Icons.location_on_outlined,
+                      enabled: _isEditing,
                     ),
                   ],
                 ),
@@ -312,8 +246,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
 
               const SizedBox(height: 30),
 
-              // Save Button (only when editing)
-              if (_isEditing)
+              if (_isEditing) ...[
                 CustomButton(
                   text: 'Save Changes',
                   onPressed: _isLoading ? null : _handleSave,
@@ -324,38 +257,21 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                   textStyle: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
                   ),
                   loadingColor: Colors.white,
                 ),
-
-              // Cancel Button (only when editing)
-              if (_isEditing) ...[
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () {
                     setState(() {
                       _isEditing = false;
-                      // Reset fields to original values
-                      _nameController.text = widget.userData.name;
-                      _phoneController.text = widget.userData.phoneNumber ?? '';
-                      _locationController.text = widget.userData.location ?? '';
+                      _nameController.text = widget.userData['name'] ?? '';
+                      _phoneController.text = widget.userData['phoneNumber'] ?? '';
+                      _locationController.text = widget.userData['location'] ?? '';
                     });
                   },
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.grey[600],
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 12,
-                    ),
-                  ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  child: Text('Cancel',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 15)),
                 ),
               ],
             ],

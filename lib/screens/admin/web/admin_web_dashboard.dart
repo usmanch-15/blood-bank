@@ -54,11 +54,11 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
       appBar: AppBar(
         backgroundColor: Colors.red.shade700,
         foregroundColor: Colors.white,
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.bloodtype, color: Colors.white),
-            const SizedBox(width: 10),
-            const Text(
+            Icon(Icons.bloodtype, color: Colors.white),
+            SizedBox(width: 10),
+            Text(
               'Blood Connect — Admin',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
@@ -112,7 +112,7 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
   }
 }
 
-// ─── Sidebar (wide screen) ───────────────────────────────────────────────────
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
 class _SideBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onTap;
@@ -146,7 +146,8 @@ class _SideBar extends StatelessWidget {
               title: Text(
                 items[i][1] as String,
                 style: TextStyle(
-                  color: selected ? Colors.red.shade700 : Colors.grey.shade700,
+                  color:
+                  selected ? Colors.red.shade700 : Colors.grey.shade700,
                   fontWeight:
                   selected ? FontWeight.bold : FontWeight.normal,
                 ),
@@ -170,11 +171,15 @@ class _DashboardHome extends StatelessWidget {
 
   Future<Map<String, int>> _fetchStats() async {
     final db = FirebaseFirestore.instance;
+
+    // Sab Firebase se real data
     final users = await db.collection('users').get();
     final requests = await db.collection('blood_requests').get();
     final donations = await db.collection('donations').get();
-    final pending = await db
-        .collection('blood_requests')
+
+    // Pending user approvals (naye sign up wale)
+    final pendingUsers = await db
+        .collection('users')
         .where('status', isEqualTo: 'pending')
         .get();
 
@@ -182,7 +187,7 @@ class _DashboardHome extends StatelessWidget {
       'users': users.size,
       'requests': requests.size,
       'donations': donations.size,
-      'pending': pending.size,
+      'pendingUsers': pendingUsers.size, // ← naye users approval awaiting
     };
   }
 
@@ -199,15 +204,19 @@ class _DashboardHome extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // ── Stat Cards ──
+          // ── Stat Cards (real Firebase data) ──
           FutureBuilder<Map<String, int>>(
             future: _fetchStats(),
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final data = snap.data ??
-                  {'users': 0, 'requests': 0, 'donations': 0, 'pending': 0};
+              final data = snap.data ?? {
+                'users': 0,
+                'requests': 0,
+                'donations': 0,
+                'pendingUsers': 0,
+              };
 
               return Wrap(
                 spacing: 16,
@@ -231,10 +240,11 @@ class _DashboardHome extends StatelessWidget {
                     icon: Icons.favorite,
                     color: Colors.green,
                   ),
+                  // ← Pending user approvals ka real card
                   _StatCard(
-                    label: 'Pending Requests',
-                    value: '${data['pending']}',
-                    icon: Icons.pending_actions,
+                    label: 'Pending Approvals',
+                    value: '${data['pendingUsers']}',
+                    icon: Icons.person_add_alt_1,
                     color: Colors.orange,
                   ),
                 ],
@@ -249,7 +259,7 @@ class _DashboardHome extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // ── Recent Requests ──
+          // ── Recent Blood Requests (real Firebase) ──
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('blood_requests')
@@ -262,7 +272,7 @@ class _DashboardHome extends StatelessWidget {
               }
               final docs = snap.data?.docs ?? [];
               if (docs.isEmpty) {
-                return const Text('Koi request nahi abhi tak.',
+                return const Text('Koi blood request nahi abhi tak.',
                     style: TextStyle(color: Colors.grey));
               }
               return Column(
@@ -284,8 +294,7 @@ class _DashboardHome extends StatelessWidget {
                         ),
                       ),
                       title: Text(d['patientName'] ?? 'Unknown',
-                          style:
-                          const TextStyle(fontWeight: FontWeight.w600)),
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text(d['hospital'] ?? ''),
                       trailing: Container(
                         padding: const EdgeInsets.symmetric(
@@ -325,7 +334,7 @@ class _DashboardHome extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // ── Recent Users ──
+          // ── Recent Users (real Firebase) ──
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('users')
@@ -344,35 +353,50 @@ class _DashboardHome extends StatelessWidget {
               return Column(
                 children: docs.map((doc) {
                   final d = doc.data() as Map<String, dynamic>;
+                  final status = d['status'] ?? 'pending';
                   return Card(
                     margin: const EdgeInsets.only(bottom: 10),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Colors.blue.shade50,
+                        backgroundColor: status == 'pending'
+                            ? Colors.orange.shade50
+                            : Colors.blue.shade50,
                         child: Text(
                           (d['name'] ?? 'U')[0].toUpperCase(),
                           style: TextStyle(
-                              color: Colors.blue.shade700,
+                              color: status == 'pending'
+                                  ? Colors.orange.shade700
+                                  : Colors.blue.shade700,
                               fontWeight: FontWeight.bold),
                         ),
                       ),
                       title: Text(d['name'] ?? 'Unknown',
-                          style:
-                          const TextStyle(fontWeight: FontWeight.w600)),
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text(d['email'] ?? ''),
                       trailing: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: status == 'pending'
+                              ? Colors.orange.shade50
+                              : status == 'approved'
+                              ? Colors.green.shade50
+                              : Colors.red.shade50,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          d['role'] ?? 'user',
+                          status,
                           style: TextStyle(
-                              color: Colors.blue.shade700, fontSize: 12),
+                            color: status == 'pending'
+                                ? Colors.orange.shade700
+                                : status == 'approved'
+                                ? Colors.green.shade700
+                                : Colors.red.shade700,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -387,7 +411,7 @@ class _DashboardHome extends StatelessWidget {
   }
 }
 
-// ─── Stat Card Widget ─────────────────────────────────────────────────────────
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;

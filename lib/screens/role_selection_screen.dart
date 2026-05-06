@@ -35,11 +35,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _fadeAnim = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
+    _fadeAnim =
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.12),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    ).animate(
+        CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
 
     Future.delayed(const Duration(milliseconds: 100), () {
       _fadeController.forward();
@@ -88,6 +90,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return PopScope(
       canPop: false,
       child: Scaffold(
@@ -139,28 +143,32 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
               painter: _GridPainter(),
             ),
 
-            // ── Main content ──
+            // ── Main content — SingleChildScrollView se overflow fix ──
             SafeArea(
               child: FadeTransition(
                 opacity: _fadeAnim,
                 child: SlideTransition(
                   position: _slideAnim,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: SingleChildScrollView(         // ← overflow fix
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: screenHeight * 0.04,   // responsive vertical padding
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 48),
-
                         // Badge
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
                             border: Border.all(
-                                color: const Color(0xFFB71C1C).withOpacity(0.6)),
+                                color:
+                                const Color(0xFFB71C1C).withOpacity(0.6)),
                             borderRadius: BorderRadius.circular(30),
-                            color: const Color(0xFFB71C1C).withOpacity(0.08),
+                            color:
+                            const Color(0xFFB71C1C).withOpacity(0.08),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -187,7 +195,46 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                           ),
                         ),
 
-                        const SizedBox(height: 28),
+                        // ── Back to Login button ──
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: GestureDetector(
+                            onTap: () async {
+                              await _authService.signOut();
+                              if (!mounted) return;
+                              Navigator.of(context).pushReplacementNamed('/login');
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 9),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(0.1)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.arrow_back_ios_rounded,
+                                      size: 14,
+                                      color: Colors.white.withOpacity(0.6)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Back to Login',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.6),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(height: screenHeight * 0.03),
 
                         // Heading
                         const Text(
@@ -201,7 +248,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                           ),
                         ),
 
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
 
                         Text(
                           'Choose your role to get started.',
@@ -212,7 +259,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                           ),
                         ),
 
-                        const SizedBox(height: 48),
+                        SizedBox(height: screenHeight * 0.05),
 
                         // Donor Card
                         _RoleCard(
@@ -222,7 +269,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                           icon: Icons.volunteer_activism_rounded,
                           accentColor: const Color(0xFFEF5350),
                           glowColor: const Color(0xFFB71C1C),
-                          isLoading: _isLoading && _selectedRole == 'donor',
+                          isLoading:
+                          _isLoading && _selectedRole == 'donor',
                           onTap: () => _handleRoleSelection('donor'),
                         ),
 
@@ -236,9 +284,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                           icon: Icons.local_hospital_rounded,
                           accentColor: const Color(0xFF42A5F5),
                           glowColor: const Color(0xFF1565C0),
-                          isLoading: _isLoading && _selectedRole == 'receiver',
+                          isLoading:
+                          _isLoading && _selectedRole == 'receiver',
                           onTap: () => _handleRoleSelection('receiver'),
                         ),
+
+                        // Extra bottom padding taake nav bar se overlap na ho
+                        const SizedBox(height: 24),
                       ],
                     ),
                   ),
@@ -307,7 +359,8 @@ class _RoleCardState extends State<_RoleCard> {
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.glowColor.withOpacity(_pressed ? 0.3 : 0.12),
+                color: widget.glowColor
+                    .withOpacity(_pressed ? 0.3 : 0.12),
                 blurRadius: _pressed ? 30 : 16,
                 offset: const Offset(0, 8),
               ),
@@ -333,7 +386,8 @@ class _RoleCardState extends State<_RoleCard> {
                     color: widget.accentColor.withOpacity(0.2),
                   ),
                 ),
-                child: Icon(widget.icon, color: widget.accentColor, size: 32),
+                child: Icon(widget.icon,
+                    color: widget.accentColor, size: 32),
               ),
 
               const SizedBox(width: 20),
@@ -343,7 +397,6 @@ class _RoleCardState extends State<_RoleCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Tag
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
