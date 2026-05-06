@@ -1,13 +1,16 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'screens/admin/web/admin_web_requests.dart';
+
 import 'firebase_options.dart';
-import 'constants/app_colors.dart';
+import 'constants/app_theme.dart'; // ✅ USE THIS
+
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/donor/donor_dashboard_screen.dart';
 import 'screens/receiver/receiver_dashboard_screen.dart';
+
+// Admin Web Screens
 import 'screens/admin/web/admin_web_login.dart';
 import 'screens/admin/web/admin_web_dashboard.dart';
 import 'screens/admin/web/admin_web_users.dart';
@@ -19,9 +22,11 @@ import 'screens/admin/web/admin_web_notifications.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
   runApp(const BloodBankApp());
 }
 
@@ -33,45 +38,22 @@ class BloodBankApp extends StatelessWidget {
     return MaterialApp(
       title: 'Blood Bank',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primaryRed,
-          primary: AppColors.primaryRed,
-          secondary: AppColors.secondaryBlue,
-        ),
-        scaffoldBackgroundColor: AppColors.backgroundLight,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.primaryRed,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          filled: true,
-          fillColor: Colors.grey[50],
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryRed,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-      ),
-      home: const SplashScreen(),
+
+      // ✅ ONLY CHANGE (Theme apply)
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
+
+      home: const SplashScreen(), // 👈 SAME as tumhara code
+
       routes: {
         '/splash':        (context) => const SplashScreen(),
         '/login':         (context) => const LoginScreen(),
         '/role-select':   (context) => const RoleSelectionScreen(),
         '/donor':         (context) => const DonorDashboardScreen(),
         '/receiver':      (context) => const ReceiverDashboardScreen(),
+
+        // Admin Routes
         '/admin/login':         (context) => const AdminWebLogin(),
         '/admin/dashboard':     (context) => const AdminWebDashboard(),
         '/admin/users':         (context) => const AdminWebUsers(),

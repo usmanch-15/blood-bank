@@ -8,31 +8,84 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // ✅ Login
+  // ✅ Login — status check ke saath
   Future<UserCredential> signInWithEmailPassword({
     required String email,
     required String password,
   }) async {
     try {
-      return await _auth.signInWithEmailAndPassword(
+      final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
+
+      // Firestore se status check karo
+      final doc = await _firestore
+          .collection('users')
+          .doc(credential.user!.uid)
+          .get();
+
+      if (doc.exists) {
+        final status = doc.data()?['status'] ?? 'pending';
+
+        if (status == 'pending') {
+          await _auth.signOut();
+          throw 'pending';
+        }
+
+        if (status == 'rejected') {
+          await _auth.signOut();
+          throw 'rejected';
+        }
+      }
+
+      return credential;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthError(e);
     }
   }
 
-  // ✅ Signup
+  // ✅ Signup — status 'pending' ke saath save karo
   Future<UserCredential> signupWithEmail({
     required String email,
     required String password,
+    required String name,
+    required String role,
+    String? phoneNumber,
+    String? bloodGroup,
   }) async {
     try {
-      return await _auth.createUserWithEmailAndPassword(
+      final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
+
+      // Firestore mein user data save karo — status: pending
+      await _firestore
+          .collection('users')
+          .doc(credential.user!.uid)
+          .set({
+        'uid': credential.user!.uid,
+        'email': email.trim(),
+        'name': name.trim(),
+        'role': role,
+        'phoneNumber': phoneNumber,
+        'bloodGroup': bloodGroup,
+        'status': 'pending',   // ← admin approval required
+        'isEligible': true,
+        'rewardPoints': 0,
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastDonationDate': null,
+        'location': null,
+        'latitude': null,
+        'longitude': null,
+        'profileImageUrl': null,
+      });
+
+      // Turant logout — admin approve kare tab tak wait
+      await _auth.signOut();
+
+      return credential;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthError(e);
     }
@@ -80,6 +133,8 @@ class AuthService {
         return 'Koi account nahi mila is email se.';
       case 'wrong-password':
         return 'Password galat hai.';
+      case 'invalid-credential':
+        return 'Email ya password galat hai.';
       case 'email-already-in-use':
         return 'Yeh email pehle se registered hai.';
       case 'invalid-email':

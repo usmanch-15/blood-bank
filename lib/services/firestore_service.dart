@@ -44,6 +44,20 @@ class FirestoreService {
     }
   }
 
+  // ✅ NAYA METHOD — Users by approval status
+  /// 'pending' | 'approved' | 'rejected'
+  Stream<List<UserModel>> getUsersByStatus(String status) {
+    return _firestore
+        .collection(AppConstants.usersCollection)
+        .where('status', isEqualTo: status)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+        .map((d) => UserModel.fromFirestore(
+        d.data() as Map<String, dynamic>, d.id))
+        .toList());
+  }
+
   Future<void> addRewardPoints(String uid, int points) async {
     try {
       await _firestore
@@ -154,8 +168,9 @@ class FirestoreService {
       final donations =
       await _firestore.collection(AppConstants.donationsCollection).get();
 
-      final requests =
-      await _firestore.collection(AppConstants.bloodRequestsCollection).get();
+      final requests = await _firestore
+          .collection(AppConstants.bloodRequestsCollection)
+          .get();
 
       return {
         'totalDonations': donations.size,

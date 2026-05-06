@@ -14,6 +14,7 @@ class UserModel {
   final DateTime createdAt;
   final DateTime? lastDonationDate;
   final bool isEligible;
+  final String status; // 'pending', 'approved', 'rejected'
 
   UserModel({
     required this.uid,
@@ -30,6 +31,7 @@ class UserModel {
     required this.createdAt,
     this.lastDonationDate,
     this.isEligible = true,
+    this.status = 'pending', // ← naya field
   });
 
   /// Create UserModel from Firestore document
@@ -49,6 +51,7 @@ class UserModel {
       createdAt: json['createdAt']?.toDate() ?? DateTime.now(),
       lastDonationDate: json['lastDonationDate']?.toDate(),
       isEligible: json['isEligible'] ?? true,
+      status: json['status'] ?? 'pending', // ← naya field
     );
   }
 
@@ -68,6 +71,7 @@ class UserModel {
       'createdAt': createdAt,
       'lastDonationDate': lastDonationDate,
       'isEligible': isEligible,
+      'status': status, // ← naya field
     };
   }
 
@@ -87,6 +91,7 @@ class UserModel {
     DateTime? createdAt,
     DateTime? lastDonationDate,
     bool? isEligible,
+    String? status, // ← naya field
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -103,6 +108,7 @@ class UserModel {
       createdAt: createdAt ?? this.createdAt,
       lastDonationDate: lastDonationDate ?? this.lastDonationDate,
       isEligible: isEligible ?? this.isEligible,
+      status: status ?? this.status, // ← naya field
     );
   }
 }
