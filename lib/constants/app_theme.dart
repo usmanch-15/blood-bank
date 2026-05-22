@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
+  // ── Color constants ──────────────────────────────────────────────────────
+  static const Color crimsonDark = Color(0xFFB71C1C);
 
   // 🔴 Light Theme
   static ThemeData lightTheme = ThemeData(

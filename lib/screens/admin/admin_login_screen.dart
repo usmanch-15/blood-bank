@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// match your actual filename
 import 'admin_config.dart';
+import 'web/admin_web_dashboard.dart';
 
 
 class AdminLoginScreen extends StatefulWidget {
@@ -57,7 +57,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       // ✅ SUCCESS → DASHBOARD
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const AdminDashboard()),
+        MaterialPageRoute(builder: (_) => const AdminWebDashboard()),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
