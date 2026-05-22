@@ -19,7 +19,7 @@ class DefaultFirebaseOptions {
   }
 
   // ── Web App (from Firebase Console → Project Settings → Web app) ──────────
-  static const FirebaseOptions web = FirebaseOptions(
+  static final FirebaseOptions web = FirebaseOptions(
     apiKey:            'AIzaSyDcULNyjZU18QFe9wiOmOUMhUw3zSdyFxg',
     appId:             '1:1081691076539:web:547efc4692cdb66de1769e',
     messagingSenderId: '1081691076539',
@@ -29,7 +29,7 @@ class DefaultFirebaseOptions {
   );
 
   // ── Android App (from google-services.json) ───────────────────────────────
-  static const FirebaseOptions android = FirebaseOptions(
+  static final FirebaseOptions android = FirebaseOptions(
     apiKey:            'AIzaSyAAvCmMqFvSrS0NFQAuLvL5hOWqJZq5kDI',
     appId:             '1:1081691076539:android:cb46f647e60989eae1769e',
     messagingSenderId: '1081691076539',

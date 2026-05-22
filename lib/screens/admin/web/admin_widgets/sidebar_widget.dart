@@ -1,17 +1,19 @@
-part of '../../admin_web_dashboard.dart';
+// ✅ part of hata diya, material import lagaya
+import 'package:flutter/material.dart';
 
 class SidebarWidget extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onItemSelected;
   final VoidCallback onLogout;
 
-  const SidebarWidget({
+  SidebarWidget({
     Key? key,
     required this.selectedIndex,
     required this.onItemSelected,
     required this.onLogout,
   }) : super(key: key);
 
+  // ✅ const list mein Icons use ho sakta hai — material import hone ke baad
   final List<Map<String, dynamic>> _menuItems = const [
     {'icon': Icons.dashboard, 'title': 'Dashboard', 'index': 0},
     {'icon': Icons.people, 'title': 'Users', 'index': 1},

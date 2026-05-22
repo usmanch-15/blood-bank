@@ -1,11 +1,10 @@
-/// Reward and certificate model
 class RewardModel {
   final String id;
   final String donorId;
   final int totalPoints;
   final List<Certificate> certificates;
   final DateTime lastUpdated;
-  final String tier; // bronze, silver, gold, platinum
+  final String tier;
 
   RewardModel({
     required this.id,
@@ -16,7 +15,6 @@ class RewardModel {
     this.tier = 'bronze',
   });
 
-  /// Determine tier based on points
   static String getTierFromPoints(int points) {
     if (points >= 5000) return 'platinum';
     if (points >= 3000) return 'gold';
@@ -24,22 +22,20 @@ class RewardModel {
     return 'bronze';
   }
 
-  /// Create RewardModel from Firestore document
   factory RewardModel.fromFirestore(Map<String, dynamic> json, String id) {
     return RewardModel(
       id: id,
       donorId: json['donorId'] ?? '',
       totalPoints: json['totalPoints'] ?? 0,
       certificates: (json['certificates'] as List?)
-              ?.map((cert) => Certificate.fromMap(cert))
-              .toList() ??
+          ?.map((cert) => Certificate.fromMap(cert))
+          .toList() ??
           [],
       lastUpdated: json['lastUpdated']?.toDate() ?? DateTime.now(),
       tier: json['tier'] ?? 'bronze',
     );
   }
 
-  /// Convert RewardModel to Firestore document
   Map<String, dynamic> toFirestore() {
     return {
       'donorId': donorId,
@@ -51,14 +47,14 @@ class RewardModel {
   }
 }
 
-/// Certificate model for achievements
 class Certificate {
   final String id;
   final String title;
   final String description;
   final String? imageUrl;
   final DateTime issuedDate;
-  final String criteria; // e.g., "5 donations", "100 points"
+  final String criteria;
+  final int pointsEarned; // ✅ naya field
 
   Certificate({
     required this.id,
@@ -67,9 +63,9 @@ class Certificate {
     this.imageUrl,
     required this.issuedDate,
     required this.criteria,
+    this.pointsEarned = 0, // ✅ default 0
   });
 
-  /// Create Certificate from map
   factory Certificate.fromMap(Map<String, dynamic> map) {
     return Certificate(
       id: map['id'] ?? '',
@@ -78,10 +74,10 @@ class Certificate {
       imageUrl: map['imageUrl'],
       issuedDate: map['issuedDate']?.toDate() ?? DateTime.now(),
       criteria: map['criteria'] ?? '',
+      pointsEarned: map['pointsEarned'] ?? 0, // ✅
     );
   }
 
-  /// Convert Certificate to map
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -90,6 +86,7 @@ class Certificate {
       'imageUrl': imageUrl,
       'issuedDate': issuedDate,
       'criteria': criteria,
+      'pointsEarned': pointsEarned, // ✅
     };
   }
 }

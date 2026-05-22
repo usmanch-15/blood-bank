@@ -1,101 +1,64 @@
+import 'dart:math';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
-/// Utility class for location operations
 class LocationHelper {
-  /// Get current location
+  static const double earthRadiusKm = 6371.0;
+
+  // ── NEW: GPS + Geocoding ─────────────────────────────────────────────────
+
   static Future<Position?> getCurrentLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return null;
 
-    // Check if location services are enabled
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw Exception('Location services are disabled.');
-    }
-
-    // Check location permissions
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        throw Exception('Location permissions are denied');
-      }
+      if (permission == LocationPermission.denied) return null;
     }
+    if (permission == LocationPermission.deniedForever) return null;
 
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception(
-          'Location permissions are permanently denied, we cannot request permissions.');
-    }
-
-    // Get current position
     return await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
   }
 
-  /// Calculate distance between two coordinates (in km)
-  static double calculateDistance(
-    double lat1,
-    double lon1,
-    double lat2,
-    double lon2,
-  ) {
-    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) / 1000;
-  }
-
-  /// Check if location is within radius
-  static bool isWithinRadius(
-    double lat1,
-    double lon1,
-    double lat2,
-    double lon2,
-    double radiusKm,
-  ) {
-    double distance = calculateDistance(lat1, lon1, lat2, lon2);
-    return distance <= radiusKm;
-  }
-
-  /// Get address from coordinates
   static Future<String?> getAddressFromCoordinates(
-    double latitude,
-    double longitude,
-  ) async {
+      double latitude,
+      double longitude,
+      ) async {
     try {
-      List<Placemark> placemarks =
-          await placemarkFromCoordinates(latitude, longitude);
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks[0];
-        return '${place.street}, ${place.locality}, ${place.country}';
-      }
-      return null;
-    } catch (e) {
+      final placemarks = await placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isEmpty) return null;
+      final p = placemarks.first;
+      return [p.street, p.subLocality, p.locality, p.country]
+          .where((s) => s != null && s.isNotEmpty)
+          .join(', ');
+    } catch (_) {
       return null;
     }
   }
 
-  /// Get coordinates from address
-  static Future<Position?> getCoordinatesFromAddress(String address) async {
-    try {
-      List<Location> locations = await locationFromAddress(address);
-      if (locations.isNotEmpty) {
-        Location location = locations[0];
-        return Position(
-          latitude: location.latitude,
-          longitude: location.longitude,
-          timestamp: DateTime.now(),
-          accuracy: 0,
-          altitude: 0,
-          altitudeAccuracy: 0,
-          heading: 0,
-          headingAccuracy: 0,
-          speed: 0,
-          speedAccuracy: 0,
-        );
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
+  // ── Existing distance helpers ────────────────────────────────────────────
+
+  static double calculateDistance(
+      double lat1, double lon1,
+      double lat2, double lon2,
+      ) {
+    final dLat = _toRad(lat2 - lat1);
+    final dLon = _toRad(lon2 - lon1);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_toRad(lat1)) * cos(_toRad(lat2)) *
+            sin(dLon / 2) * sin(dLon / 2);
+    return earthRadiusKm * 2 * asin(sqrt(a));
   }
+
+  static double _toRad(double degree) => degree * pi / 180;
+
+  static bool isWithinRadius(
+      double lat1, double lon1,
+      double lat2, double lon2,
+      double radiusKm,
+      ) =>
+      calculateDistance(lat1, lon1, lat2, lon2) <= radiusKm;
 }
