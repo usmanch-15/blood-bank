@@ -7,7 +7,7 @@ import '../screens/donor/donor_dashboard_screen.dart';
 import '../screens/donor/donor_profile_screen.dart';
 import '../screens/donor/donation_history_screen.dart';
 import '../screens/donor/eligibility_status_screen.dart';
-import '../screens/donor/rewards_screen.dart';
+import '../screens/donor/rewards_screen.dart' hide RewardsScreen;
 import '../screens/receiver/receiver_dashboard_screen.dart';
 import '../screens/receiver/blood_request_form_screen.dart';
 import '../screens/receiver/sos_emergency_screen.dart';

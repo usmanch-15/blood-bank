@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_constants.dart';
 
 class NotificationService {
@@ -7,14 +8,42 @@ class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void> init() async {
-    await _messaging.requestPermission();
-    final token = await _messaging.getToken();
-    if (token != null) await _saveDeviceToken(token);
+    // Request notification permission
+    final settings = await _messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      final token = await _messaging.getToken();
+      if (token != null) await _saveDeviceToken(token);
+
+      // Refresh token automatically when it changes
+      _messaging.onTokenRefresh.listen(_saveDeviceToken);
+    }
   }
 
+  // ✅ FIXED: properly saves FCM token to the logged-in user's Firestore doc
   Future<void> _saveDeviceToken(String token) async {
-    final user = await _messaging.getToken();
-    if (user == null) return;
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    await _firestore
+        .collection(AppConstants.usersCollection)
+        .doc(userId)
+        .update({'fcmToken': token, 'fcmUpdatedAt': FieldValue.serverTimestamp()});
+  }
+
+  // ✅ Call this on logout to remove the token
+  Future<void> clearDeviceToken() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    await _firestore
+        .collection(AppConstants.usersCollection)
+        .doc(userId)
+        .update({'fcmToken': FieldValue.delete()});
   }
 
   Future<void> sendToUser({

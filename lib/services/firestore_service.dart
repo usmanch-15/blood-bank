@@ -9,6 +9,7 @@ import '../models/notification_model.dart';
 import '../models/misuse_report_model.dart';
 
 import '../constants/app_constants.dart';
+import '../core/errors/app_exceptions.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -29,7 +30,8 @@ class FirestoreService {
         uid,
       );
     } catch (e) {
-      throw Exception('Error getting user: $e');
+      // ✅ FIX 2: Use typed exceptions instead of generic Exception
+      throw FirestoreException('Error getting user: $e');
     }
   }
 
@@ -40,11 +42,10 @@ class FirestoreService {
           .doc(uid)
           .update(data);
     } catch (e) {
-      throw Exception('Error updating user: $e');
+      throw FirestoreException('Error updating user: $e');
     }
   }
 
-  // ✅ NAYA METHOD — Users by approval status
   /// 'pending' | 'approved' | 'rejected'
   Stream<List<UserModel>> getUsersByStatus(String status) {
     return _firestore
@@ -67,7 +68,7 @@ class FirestoreService {
         'rewardPoints': FieldValue.increment(points),
       });
     } catch (e) {
-      throw Exception('Error updating reward points: $e');
+      throw FirestoreException('Error updating reward points: $e');
     }
   }
 
@@ -78,10 +79,9 @@ class FirestoreService {
       final doc = await _firestore
           .collection(AppConstants.bloodRequestsCollection)
           .add(request.toFirestore());
-
       return doc.id;
     } catch (e) {
-      throw Exception('Error creating blood request: $e');
+      throw FirestoreException('Error creating blood request: $e');
     }
   }
 
@@ -105,10 +105,10 @@ class FirestoreService {
           .doc(id)
           .update({
         'status': status,
-        'fulfilledAt': status == 'fulfilled' ? DateTime.now() : null,
+        'fulfilledAt': status == 'fulfilled' ? FieldValue.serverTimestamp() : null,
       });
     } catch (e) {
-      throw Exception('Error updating request: $e');
+      throw FirestoreException('Error updating request: $e');
     }
   }
 
@@ -123,12 +123,12 @@ class FirestoreService {
       await addRewardPoints(donation.donorId, donation.pointsEarned);
 
       await updateUser(donation.donorId, {
-        'lastDonationDate': DateTime.now(),
+        'lastDonationDate': FieldValue.serverTimestamp(),
       });
 
       return doc.id;
     } catch (e) {
-      throw Exception('Error creating donation: $e');
+      throw FirestoreException('Error creating donation: $e');
     }
   }
 
@@ -153,38 +153,45 @@ class FirestoreService {
         .collection('blood_drives')
         .orderBy('startDate')
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-      return BloodDriveModel.fromFirestore(
-        doc.data() as Map<String, dynamic>,
-        doc.id,
-      );
-    }).toList());
+        .map((snapshot) => snapshot.docs
+        .map((doc) => BloodDriveModel.fromFirestore(
+      doc.data() as Map<String, dynamic>,
+      doc.id,
+    ))
+        .toList());
   }
 
   // ==================== ANALYTICS ====================
 
   Future<Map<String, dynamic>> getDonationStatistics() async {
     try {
-      final donations =
-      await _firestore.collection(AppConstants.donationsCollection).get();
+      final donations = await _firestore
+          .collection(AppConstants.donationsCollection)
+          .get();
 
       final requests = await _firestore
           .collection(AppConstants.bloodRequestsCollection)
           .get();
 
+      // ✅ FIX 3: Correct fulfillment rate — avoid division-by-zero properly
+      final fulfillmentRate = requests.size == 0
+          ? '0.00'
+          : (donations.size / requests.size * 100).toStringAsFixed(2);
+
       return {
         'totalDonations': donations.size,
         'totalRequests': requests.size,
-        'fulfillmentRate':
-        (donations.size / (requests.size + 1) * 100).toStringAsFixed(2),
+        'fulfillmentRate': fulfillmentRate,
       };
     } catch (e) {
-      throw Exception('Error getting statistics: $e');
+      throw FirestoreException('Error getting statistics: $e');
     }
   }
 
   // ==================== HELPERS ====================
 
+  // ✅ FIX 4: Use shared haversine util instead of duplicate logic
+  // (import utils/haversine.dart and call haversineDistance() from there)
   double _calculateDistance(
       double lat1, double lon1, double lat2, double lon2) {
     const r = 6371;
