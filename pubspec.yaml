@@ -94,11 +94,12 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/animations/
+
   # ✅ fonts section completely removed - using google_fonts package instead
 
 flutter_native_splash:
   color: "#8B0000"
-  image: assets/images/splash_logo.png
+  background_image: assets/images/splash_logo.png
   android: true
   ios: true
   web: true
