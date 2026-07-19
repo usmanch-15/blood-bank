@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/reward_model.dart';
-
+import 'package:url_launcher/url_launcher.dart';
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({super.key});
 
@@ -509,13 +509,17 @@ class _RewardsScreenState extends State<RewardsScreen>
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Certificate download coming soon!'),
-                          backgroundColor: AppColors.primaryRed,
-                        ),
-                      );
+                    onPressed: () async {
+                      final imageUrl = cert.imageUrl;
+                      if (imageUrl == null) return;
+                      final url = Uri.parse(imageUrl);
+                      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Could not open certificate.')),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.download_outlined),
                     label: const Text('Download Certificate'),

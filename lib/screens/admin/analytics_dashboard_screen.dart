@@ -1,4 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:csv/csv.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../constants/app_colors.dart';
 
 
@@ -13,6 +18,7 @@ class AnalyticsDashboardScreen extends StatefulWidget {
 class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   String _selectedPeriod = 'This Month';
   final List<String> _periods = ['This Week', 'This Month', 'This Year'];
+  bool _exporting = false;
 
   // ─── Dummy Analytics Data ───────────────────────────────────────
   final Map<String, Map<String, dynamic>> _periodData = {
@@ -69,6 +75,50 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     return (fulfilled / total) * 100;
   }
 
+  Future<void> _exportAnalytics() async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      final bloodGroupData = _current['bloodGroupData'] as Map<String, int>;
+
+      final rows = <List<dynamic>>[
+        ['Blood Bank Analytics — $_selectedPeriod'],
+        [],
+        ['Metric', 'Value'],
+        ['Total Donations', _current['totalDonations']],
+        ['Blood Requests', _current['totalRequests']],
+        ['Fulfilled Requests', _current['fulfilledRequests']],
+        ['Fulfillment Rate (%)', _fulfillmentRate.toStringAsFixed(1)],
+        ['Active Donors', _current['activedonors']],
+        ['New Users', _current['newUsers']],
+        ['SOS Alerts', _current['sosAlerts']],
+        [],
+        ['Blood Group', 'Count'],
+        ...bloodGroupData.entries.map((e) => [e.key, e.value]),
+      ];
+
+      final csv = const ListToCsvConverter().convert(rows);
+      final dir = await getTemporaryDirectory();
+      final safePeriod = _selectedPeriod.replaceAll(' ', '_');
+      final file = File('${dir.path}/blood_bank_analytics_$safePeriod.csv');
+      await file.writeAsString(csv);
+
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'text/csv')],
+        text: 'Blood Bank Analytics — $_selectedPeriod',
+        subject: 'Blood Bank Analytics Report',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not export analytics: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,16 +136,18 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.ios_share_outlined),
+            icon: _exporting
+                ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+                : const Icon(Icons.ios_share_outlined),
             tooltip: 'Export',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Export feature coming soon!'),
-                  backgroundColor: AppColors.primaryRed,
-                ),
-              );
-            },
+            onPressed: _exporting ? null : _exportAnalytics,
           ),
         ],
       ),

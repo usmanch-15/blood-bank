@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../controllers/reward_controller.dart';
 import '../../models/reward_model.dart';
 import '../../constants/app_colors.dart';
-
+import 'package:url_launcher/url_launcher.dart';
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({super.key});
 
@@ -507,8 +507,15 @@ class _CertificateCard extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.download,
                   color: AppColors.primaryRed, size: 22),
-              onPressed: () {
-                // TODO: open/download certificate URL
+              onPressed: () async {
+                final url = Uri.parse(certificate.imageUrl!);
+                if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Could not open certificate.')),
+                    );
+                  }
+                }
               },
               tooltip: 'Download Certificate',
             ),

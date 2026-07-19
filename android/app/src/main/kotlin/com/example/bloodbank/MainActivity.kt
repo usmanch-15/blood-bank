@@ -1,4 +1,4 @@
-package com.example.bloodbank
+package com.usmanch.bloodbank
 
 import io.flutter.embedding.android.FlutterActivity
 

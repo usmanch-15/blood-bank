@@ -1,31 +1,39 @@
-
 plugins {
-    id("com.android.application") version "8.1.0" apply false
-    id("com.google.gms.google-services") version "4.4.4" apply false
+    id("com.android.application")
+    id("com.google.gms.google-services")
+    id("dev.flutter.flutter-gradle-plugin")
 }
-allprojects {
 
+android {
+    namespace = "com.usmanch.bloodbank"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
 
-    repositories {
-        google()
-        mavenCentral()
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        applicationId = "com.usmanch.bloodbank"
+        minSdk = 23
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+        multiDexEnabled = true
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
 }
 
-val newBuildDir: Directory =
-    rootProject.layout.buildDirectory
-        .dir("../../build")
-        .get()
-rootProject.layout.buildDirectory.value(newBuildDir)
-
-subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
-}
-subprojects {
-    project.evaluationDependsOn(":app")
+flutter {
+    source = "../.."
 }
 
-tasks.register<Delete>("clean") {
-    delete(rootProject.layout.buildDirectory)
+dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
 }

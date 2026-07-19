@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
+import '../../services/storage_service.dart';
 
 class DonorProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -23,6 +26,10 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
   bool _isEditing = false;
   bool _isLoading = false;
 
+  final StorageService _storageService = StorageService();
+  String? _uploadedImageUrl;
+  bool _uploadingPhoto = false;
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +45,42 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
     _phoneController.dispose();
     _locationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null) return;
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    setState(() => _uploadingPhoto = true);
+    try {
+      final url = await _storageService.uploadProfileImage(
+        file: File(picked.path),
+        userId: uid,
+      );
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'profileImageUrl': url,
+      });
+      setState(() {
+        _uploadedImageUrl = url;
+        _uploadingPhoto = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile photo updated!'), backgroundColor: AppColors.success),
+        );
+      }
+    } catch (e) {
+      setState(() => _uploadingPhoto = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not upload photo: $e')),
+        );
+      }
+    }
   }
 
   // ✅ Firebase mein save karo
@@ -83,7 +126,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
   Widget build(BuildContext context) {
     final email = widget.userData['email'] ?? '';
     final bloodGroup = widget.userData['bloodGroup'] ?? '—';
-    final profileImageUrl = widget.userData['profileImageUrl'];
+    final profileImageUrl = _uploadedImageUrl ?? widget.userData['profileImageUrl'];
 
     return Scaffold(
       appBar: AppBar(
@@ -145,11 +188,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                       bottom: 0,
                       right: 0,
                       child: GestureDetector(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Photo upload coming soon')),
-                          );
-                        },
+                        onTap: _uploadingPhoto ? null : _pickAndUploadPhoto,
                         child: Container(
                           width: 40,
                           height: 40,
@@ -158,7 +197,13 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 3),
                           ),
-                          child: const Icon(Icons.camera_alt_rounded,
+                          child: _uploadingPhoto
+                              ? const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                              : const Icon(Icons.camera_alt_rounded,
                               color: Colors.white, size: 20),
                         ),
                       ),
