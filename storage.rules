@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// ============================================================================
+// Smart Blood Bank — Storage Security Rules
+// Deploy: firebase deploy --only storage
+// ============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Donation certificates (PDF) — sirf apna certificate upload kar sakta
+    // hai, sab log-in users read kar saktay hain (verification ke liye).
+    match /certificates/{donorId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == donorId
+          && request.resource.size < 5 * 1024 * 1024
+          && request.resource.contentType == 'application/pdf';
+    }
+
+    // Profile pictures — sirf apni photo upload kar sakta hai
+    match /profile_images/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId
+          && request.resource.size < 3 * 1024 * 1024
+          && request.resource.contentType.matches('image/.*');
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

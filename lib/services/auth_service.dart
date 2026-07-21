@@ -73,9 +73,14 @@ class AuthService {
         'bloodGroup': bloodGroup,
         'status': 'pending',   // ← admin approval required
         'isEligible': true,
+        'isDonor': role == 'donor',
+        'isReceiver': role == 'receiver',
+        'isAvailable': true,
+        'phoneVerified': false,
         'rewardPoints': 0,
         'createdAt': FieldValue.serverTimestamp(),
         'lastDonationDate': null,
+        'nextEligibleDate': null,
         'location': null,
         'latitude': null,
         'longitude': null,
@@ -111,6 +116,68 @@ class AuthService {
     } catch (e) {
       throw 'Data update nahi hua: $e';
     }
+  }
+
+  // ✅ NEW: Phone OTP verification
+  // ----------------------------------------------------------------------
+  // README pehle "OTP Phone Verification: Complete" claim karta tha lekin
+  // is se related koi bhi code app mein nahi tha. Ye Firebase Phone Auth
+  // ka standard verifyPhoneNumber() flow hai.
+  //
+  // NOTE: Iske chalne ke liye Firebase Console mein Authentication ->
+  // Sign-in method -> Phone provider enable karna zaroori hai, aur Android
+  // ke liye SHA-1/SHA-256 fingerprint Firebase project mein add karni
+  // hogi (Play Integrity / SafetyNet automatic verification ke liye).
+  Future<void> sendOtp({
+    required String phoneNumber, // format: +923001234567
+    required void Function(String verificationId) onCodeSent,
+    required void Function(String error) onError,
+    void Function(PhoneAuthCredential credential)? onAutoVerified,
+  }) async {
+    await _auth.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (PhoneAuthCredential credential) {
+        // Kuch Android devices par SMS auto-detect ho jata hai
+        onAutoVerified?.call(credential);
+      },
+      verificationFailed: (FirebaseAuthException e) {
+        onError(_handleAuthError(e));
+      },
+      codeSent: (String verificationId, int? resendToken) {
+        onCodeSent(verificationId);
+      },
+      codeAutoRetrievalTimeout: (String verificationId) {},
+    );
+  }
+
+  /// User ke daale huay 6-digit code se OTP verify karke phone ko current
+  /// logged-in account se link karta hai (`phoneVerified: true` set hota hai).
+  Future<void> verifyOtpAndLink({
+    required String verificationId,
+    required String smsCode,
+  }) async {
+    final credential = PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
+    final user = _auth.currentUser;
+    if (user == null) throw 'Pehle login karein.';
+
+    try {
+      await user.linkWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'provider-already-linked' ||
+          e.code == 'credential-already-in-use') {
+        // Phone pehle se hi verified/linked hai — ignore, sirf flag set karo
+      } else {
+        throw _handleAuthError(e);
+      }
+    }
+
+    await _firestore.collection('users').doc(user.uid).update({
+      'phoneVerified': true,
+    });
   }
 
   // ✅ Password reset

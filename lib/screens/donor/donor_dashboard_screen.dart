@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_colors.dart';
+import '../../modules/donor/widgets/availability_toggle.dart';
 import 'donor_profile_screen.dart';
 import 'donation_history_screen.dart';
 import 'blood_request_detail_screen.dart';
@@ -20,6 +21,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
   Map<String, dynamic>? _userData;
   int _donationCount = 0;
   bool _isLoading = true;
+  bool _isAvailable = true; // ✅ NEW: persisted donor availability
 
   @override
   void initState() {
@@ -45,11 +47,36 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
         setState(() {
           _userData = userDoc.data();
           _donationCount = donations.size;
+          _isAvailable = userDoc.data()?['isAvailable'] ?? true;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ✅ NEW: pehle AvailabilityToggle widget kahin bhi use nahi hota tha aur
+  // koi bhi jagah is state ko Firestore mein save nahi karti thi. Ab
+  // toggle karne par 'isAvailable' field seedha user doc mein update hota
+  // hai — geo_location_service ki nearby-donor query isi field ko dekhti hai.
+  Future<void> _handleAvailabilityToggle() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    final newValue = !_isAvailable;
+    setState(() => _isAvailable = newValue);
+    try {
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .update({'isAvailable': newValue});
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isAvailable = !newValue); // rollback
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Status update failed: $e')),
+        );
+      }
     }
   }
 
@@ -194,6 +221,15 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 25),
+
+              // ── Availability Toggle ── ✅ NEW: ab wired + persisted
+              Center(
+                child: AvailabilityToggle(
+                  isAvailable: _isAvailable,
+                  onToggle: _handleAvailabilityToggle,
                 ),
               ),
               const SizedBox(height: 25),

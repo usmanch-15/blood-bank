@@ -26,9 +26,9 @@ class AdminController extends ChangeNotifier {
           .collection(AppConstants.usersCollection)
           .get();
       _totalDonors =
-          snapshot.docs.where((d) => d.data()['role'] == 'donor').length;
+          snapshot.docs.where((d) => d.data()['isDonor'] == true).length;
       _totalReceivers =
-          snapshot.docs.where((d) => d.data()['role'] == 'receiver').length;
+          snapshot.docs.where((d) => d.data()['isReceiver'] == true).length;
 
       final requests = await FirebaseFirestore.instance
           .collection(AppConstants.bloodRequestsCollection)

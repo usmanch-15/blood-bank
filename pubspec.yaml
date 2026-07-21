@@ -27,6 +27,11 @@ dependencies:
   cloud_firestore: ^5.4.4
   firebase_messaging: ^15.1.3
   firebase_storage: ^12.3.4
+  cloud_functions: ^5.1.3        # ← NEW: confirmDonation Cloud Function call karne ke liye
+
+  # Networking (maps_service.dart use karta hai — pehle sirf transitive
+  # dependency ki wajah se chal raha tha, ab explicitly declare kiya)
+  http: ^1.2.2                   # ← NEW
 
   # Google Maps & Location
   google_maps_flutter: ^2.9.0

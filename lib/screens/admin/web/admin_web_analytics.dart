@@ -57,8 +57,8 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
       int donors = 0, receivers = 0, pending = 0;
       for (final doc in usersSnap.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        if (data['role'] == 'donor') donors++;
-        if (data['role'] == 'receiver') receivers++;
+        if (data['isDonor'] == true) donors++;
+        if (data['isReceiver'] == true) receivers++;
         if (data['status'] == 'pending') pending++;
       }
 

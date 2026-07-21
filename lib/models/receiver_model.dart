@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_model.dart';
 
 class ReceiverModel extends UserModel {
@@ -17,6 +18,11 @@ class ReceiverModel extends UserModel {
     super.lastDonationDate,
     super.isEligible,
     super.status,
+    super.isDonor,
+    super.isReceiver,
+    super.isAvailable,
+    super.nextEligibleDate,
+    super.phoneVerified,
   });
 
   factory ReceiverModel.fromFirestore(Map<String, dynamic> json, String uid) {
@@ -36,6 +42,11 @@ class ReceiverModel extends UserModel {
       lastDonationDate: json['lastDonationDate']?.toDate(),
       isEligible: json['isEligible'] ?? true,
       status: json['status'] ?? 'pending',
+      isDonor: json['isDonor'] ?? false,
+      isReceiver: json['isReceiver'] ?? (json['role'] == 'receiver'),
+      isAvailable: json['isAvailable'] ?? true,
+      nextEligibleDate: (json['nextEligibleDate'] as Timestamp?)?.toDate(),
+      phoneVerified: json['phoneVerified'] ?? false,
     );
   }
 }

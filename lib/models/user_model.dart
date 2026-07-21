@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// User model for the application
 class UserModel {
   final String uid;
@@ -16,6 +18,24 @@ class UserModel {
   final bool isEligible;
   final String status; // 'pending', 'approved', 'rejected'
 
+  // ── Dual-role support ──────────────────────────────────────────────
+  // `role` field ab sirf "abhi kis mode mein hai" (active/UI mode) batata hai.
+  // isDonor / isReceiver capability flags hain jo ek dafa true hone ke
+  // baad wapis false nahi hote — is se user donor + receiver dono ban
+  // sakta hai aur role switch karne par donor search se gayab nahi hota.
+  final bool isDonor;
+  final bool isReceiver;
+
+  // Donor availability toggle — ab Firestore mein persist hota hai.
+  final bool isAvailable;
+
+  // Query-time eligibility ke liye stored timestamp (90-day rule).
+  // Client ke app kholne ka intezar nahi karna padta — seedha
+  // `where('nextEligibleDate', isLessThanOrEqualTo: now)` query chalti hai.
+  final DateTime? nextEligibleDate;
+
+  final bool phoneVerified;
+
   UserModel({
     required this.uid,
     required this.email,
@@ -32,6 +52,11 @@ class UserModel {
     this.lastDonationDate,
     this.isEligible = true,
     this.status = 'pending', // ← naya field
+    this.isDonor = false,
+    this.isReceiver = false,
+    this.isAvailable = true,
+    this.nextEligibleDate,
+    this.phoneVerified = false,
   });
 
   /// Create UserModel from Firestore document
@@ -52,6 +77,11 @@ class UserModel {
       lastDonationDate: json['lastDonationDate']?.toDate(),
       isEligible: json['isEligible'] ?? true,
       status: json['status'] ?? 'pending', // ← naya field
+      isDonor: json['isDonor'] ?? (json['role'] == 'donor'),
+      isReceiver: json['isReceiver'] ?? (json['role'] == 'receiver'),
+      isAvailable: json['isAvailable'] ?? true,
+      nextEligibleDate: (json['nextEligibleDate'] as Timestamp?)?.toDate(),
+      phoneVerified: json['phoneVerified'] ?? false,
     );
   }
 
@@ -72,6 +102,11 @@ class UserModel {
       'lastDonationDate': lastDonationDate,
       'isEligible': isEligible,
       'status': status, // ← naya field
+      'isDonor': isDonor,
+      'isReceiver': isReceiver,
+      'isAvailable': isAvailable,
+      'nextEligibleDate': nextEligibleDate,
+      'phoneVerified': phoneVerified,
     };
   }
 
@@ -92,6 +127,11 @@ class UserModel {
     DateTime? lastDonationDate,
     bool? isEligible,
     String? status, // ← naya field
+    bool? isDonor,
+    bool? isReceiver,
+    bool? isAvailable,
+    DateTime? nextEligibleDate,
+    bool? phoneVerified,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -109,6 +149,11 @@ class UserModel {
       lastDonationDate: lastDonationDate ?? this.lastDonationDate,
       isEligible: isEligible ?? this.isEligible,
       status: status ?? this.status, // ← naya field
+      isDonor: isDonor ?? this.isDonor,
+      isReceiver: isReceiver ?? this.isReceiver,
+      isAvailable: isAvailable ?? this.isAvailable,
+      nextEligibleDate: nextEligibleDate ?? this.nextEligibleDate,
+      phoneVerified: phoneVerified ?? this.phoneVerified,
     );
   }
 }

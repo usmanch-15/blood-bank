@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../models/donor_model.dart';
 import '../../utils/eligibility_checker.dart';
+import '../../controllers/donor_controller.dart';
 
 class DonorMatchingScreen extends StatefulWidget {
   final String? initialBloodGroup;
@@ -48,11 +49,15 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
   Future<void> _fetchDonors() async {
     setState(() => _isLoading = true);
     try {
+      // ✅ FIX: 'role' session ke hisaab se badalta hai — 'isDonor' permanent
+      // capability flag use karo. 'isEligible' stored field stale ho sakta
+      // hai (sirf donor ke app kholne par update hota hai) is liye query
+      // se hata diya — asli eligibility neeche lastDonationDate se
+      // real-time compute hoti hai (_filteredDonors mein).
       Query query = FirebaseFirestore.instance
           .collection('users')
-          .where('role', isEqualTo: 'donor')
-          .where('status', isEqualTo: 'approved')
-          .where('isEligible', isEqualTo: true);
+          .where('isDonor', isEqualTo: true)
+          .where('status', isEqualTo: 'approved');
 
       final snap = await query.get();
       final donors = snap.docs
@@ -114,6 +119,58 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
     final uri = Uri.parse('tel:$phone');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
+    }
+  }
+
+  // ✅ NEW: pehle app mein donation "complete" mark karne ka koi zariya
+  // hi nahi tha — donation record, reward points, certificate, eligibility
+  // sab backend mein maujood thay lekin kabhi trigger hi nahi hotay thay.
+  Future<void> _confirmDonation(DonorModel donorModel) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Donation'),
+        content: Text(
+          'Kya ${donorModel.name} ne aapko ${donorModel.bloodGroup} blood diya hai? '
+              'Confirm karne par unko reward points aur donation certificate mil jayega.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryRed),
+            child: const Text('Yes, Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Confirming donation...')),
+      );
+      await DonorController().confirmDonation(
+        donorId: donorModel.uid,
+        bloodGroup: donorModel.bloodGroup ?? _selectedBloodGroup ?? '',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Donation confirmed! Donor has been rewarded. 🎉'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      _fetchDonors();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Failed to confirm donation: $e'),
+            backgroundColor: AppColors.error),
+      );
     }
   }
 
@@ -278,6 +335,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                   donor: filtered[i],
                   onCall: () =>
                       _callDonor(filtered[i].phoneNumber),
+                  onMarkDonated: () => _confirmDonation(filtered[i]),
                 ),
               ),
             ),
@@ -292,8 +350,13 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
 class _DonorCard extends StatelessWidget {
   final DonorModel donor;
   final VoidCallback onCall;
+  final VoidCallback onMarkDonated;
 
-  const _DonorCard({required this.donor, required this.onCall});
+  const _DonorCard({
+    required this.donor,
+    required this.onCall,
+    required this.onMarkDonated,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -406,18 +469,36 @@ class _DonorCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Call button
+            // Call + Mark Donated buttons
             if (eligible)
-              IconButton(
-                onPressed: onCall,
-                icon: const Icon(Icons.phone, color: AppColors.success),
-                tooltip: 'Call Donor',
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColors.success.withOpacity(0.08),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    onPressed: onCall,
+                    icon: const Icon(Icons.phone, color: AppColors.success),
+                    tooltip: 'Call Donor',
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.success.withOpacity(0.08),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  IconButton(
+                    onPressed: onMarkDonated,
+                    icon: const Icon(Icons.check_circle_outline,
+                        color: AppColors.primaryRed),
+                    tooltip: 'Mark Donation Complete',
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.primaryRed.withOpacity(0.08),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
               ),
           ],
         ),

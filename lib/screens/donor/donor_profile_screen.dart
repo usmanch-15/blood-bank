@@ -7,6 +7,7 @@ import '../../constants/app_colors.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/storage_service.dart';
+import '../auth/otp_verification_screen.dart';
 
 class DonorProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -278,7 +279,60 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                       enabled: _isEditing,
                       keyboardType: TextInputType.phone,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
+                    // ✅ NEW: Phone verification badge — pehle ye feature
+                    // README mein claim ki gayi thi lekin kahin implement
+                    // nahi thi.
+                    Row(
+                      children: [
+                        Icon(
+                          (widget.userData['phoneVerified'] ?? false)
+                              ? Icons.verified
+                              : Icons.error_outline,
+                          size: 16,
+                          color: (widget.userData['phoneVerified'] ?? false)
+                              ? AppColors.success
+                              : AppColors.warning,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          (widget.userData['phoneVerified'] ?? false)
+                              ? 'Phone Verified'
+                              : 'Phone Not Verified',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: (widget.userData['phoneVerified'] ?? false)
+                                ? AppColors.success
+                                : AppColors.warning,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (!(widget.userData['phoneVerified'] ?? false) &&
+                            _phoneController.text.trim().isNotEmpty)
+                          TextButton(
+                            onPressed: () async {
+                              final phone = _phoneController.text.trim();
+                              final formatted = phone.startsWith('+')
+                                  ? phone
+                                  : '+92${phone.replaceFirst(RegExp(r'^0'), '')}';
+                              final verified = await Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => OtpVerificationScreen(
+                                      phoneNumber: formatted),
+                                ),
+                              );
+                              if (verified == true && mounted) {
+                                setState(() {
+                                  widget.userData['phoneVerified'] = true;
+                                });
+                              }
+                            },
+                            child: const Text('Verify Now'),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     CustomTextField(
                       controller: _locationController,
                       label: 'Location',

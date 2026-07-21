@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../constants/app_colors.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import 'donor/donor_dashboard_screen.dart';
 import 'receiver/receiver_dashboard_screen.dart';
 
@@ -66,7 +67,21 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
     try {
       User? user = _authService.currentUser;
       if (user != null) {
-        await _authService.updateUserData(user.uid, {'role': role});
+        // ✅ FIX: 'role' sirf current UI mode set karta hai (kaunsa dashboard
+        // khulega). isDonor / isReceiver capability flags additive hain —
+        // ek dafa true hone ke baad reset nahi hotay, is liye same account
+        // donor aur receiver dono ban sakta hai, aur role switch karne se
+        // donor search results se gayab nahi hota.
+        await _authService.updateUserData(user.uid, {
+          'role': role,
+          if (role == 'donor') 'isDonor': true,
+          if (role == 'receiver') 'isReceiver': true,
+        });
+
+        // ✅ FIX: pehle NotificationService.init() kahin bhi call hi nahi
+        // hota tha — is liye fcmToken kabhi save hi nahi hota tha aur push
+        // notifications kabhi device par pohanch hi nahi sakti thi.
+        await NotificationService().init();
       }
       if (!mounted) return;
       Navigator.push(

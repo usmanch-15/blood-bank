@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../models/user_model.dart';
 
 class AuthController extends ChangeNotifier {
@@ -69,6 +70,7 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await NotificationService().clearDeviceToken(); // ✅ FIX: token cleanup
     await _authService.signOut();
     _currentUser = null;
     notifyListeners();

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_model.dart';
 
 class DonorModel extends UserModel {
@@ -17,6 +18,11 @@ class DonorModel extends UserModel {
     super.lastDonationDate,
     super.isEligible,
     super.status,
+    super.isDonor,
+    super.isReceiver,
+    super.isAvailable,
+    super.nextEligibleDate,
+    super.phoneVerified,
   });
 
   factory DonorModel.fromFirestore(Map<String, dynamic> json, String uid) {
@@ -36,6 +42,11 @@ class DonorModel extends UserModel {
       lastDonationDate: json['lastDonationDate']?.toDate(),
       isEligible: json['isEligible'] ?? true,
       status: json['status'] ?? 'pending',
+      isDonor: json['isDonor'] ?? (json['role'] == 'donor'),
+      isReceiver: json['isReceiver'] ?? false,
+      isAvailable: json['isAvailable'] ?? true,
+      nextEligibleDate: (json['nextEligibleDate'] as Timestamp?)?.toDate(),
+      phoneVerified: json['phoneVerified'] ?? false,
     );
   }
 
@@ -56,6 +67,11 @@ class DonorModel extends UserModel {
     DateTime? lastDonationDate,
     bool? isEligible,
     String? status,
+    bool? isDonor,
+    bool? isReceiver,
+    bool? isAvailable,
+    DateTime? nextEligibleDate,
+    bool? phoneVerified,
   }) {
     return DonorModel(
       uid: uid ?? this.uid,
@@ -73,6 +89,11 @@ class DonorModel extends UserModel {
       lastDonationDate: lastDonationDate ?? this.lastDonationDate,
       isEligible: isEligible ?? this.isEligible,
       status: status ?? this.status,
+      isDonor: isDonor ?? this.isDonor,
+      isReceiver: isReceiver ?? this.isReceiver,
+      isAvailable: isAvailable ?? this.isAvailable,
+      nextEligibleDate: nextEligibleDate ?? this.nextEligibleDate,
+      phoneVerified: phoneVerified ?? this.phoneVerified,
     );
   }
 }

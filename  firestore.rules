@@ -1,0 +1,130 @@
+rules_version = '2';
+
+// ============================================================================
+// Smart Blood Bank — Firestore Security Rules
+//
+// PURANI rules sirf "request.auth != null" check karti thi — matlab koi
+// bhi logged-in user kisi ka bhi data padh/badal/mita sakta tha, khud ko
+// admin bana sakta tha, doosron ke reward points badha sakta tha, waghera.
+// Ye rules ab role-based aur owner-based hain.
+//
+// Deploy: firebase deploy --only firestore:rules
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Admin sirf Firestore mein role=='admin' AND status=='approved' user hai.
+    // (Client-side AdminGuard sirf UI ke liye hai, real enforcement yahan hai)
+    function isAdmin() {
+      return isSignedIn() &&
+                          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
+                          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    // ─────────────────────────── USERS ───────────────────────────
+    match /users/{userId} {
+      // Sab logged-in users profiles dekh saktay hain (donor matching ke
+      // liye zaroori hai), lekin sirf apna ya admin update kar sakta hai.
+      allow read: if isSignedIn();
+
+      allow create: if isOwner(userId)
+          && request.resource.data.status == 'pending'
+          && request.resource.data.role in ['donor', 'receiver'];
+
+      // ✅ CRITICAL FIX: normal user apna 'role', 'status', 'rewardPoints'
+      // khud change nahi kar sakta (pehle wale rules mein kar sakta tha —
+      // koi bhi khud ko admin bana sakta tha). Sirf admin ye fields badal
+      // sakta hai. User apni profile info (naam, phone, location, blood
+      // group, availability) khud update kar sakta hai.
+      allow update: if isAdmin()
+          || (
+                              isOwner(userId) &&
+                                          request.resource.data.role == resource.data.role &&
+                                      request.resource.data.status == resource.data.status &&
+                                  request.resource.data.rewardPoints == resource.data.rewardPoints
+          );
+
+      allow delete: if isAdmin();
+    }
+
+    // ─────────────────────── BLOOD REQUESTS ───────────────────────
+    match /blood_requests/{requestId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+          && request.resource.data.requesterId == request.auth.uid;
+      allow update: if isAdmin()
+          || (isSignedIn() && resource.data.requesterId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ───────────────────────── DONATIONS ─────────────────────────
+    match /donations/{donationId} {
+      allow read: if isSignedIn();
+      // Donation record sirf khud donor ke naam par banaya ja sakta hai
+      allow create: if isSignedIn()
+          && request.resource.data.donorId == request.auth.uid;
+      // Donor apne hi donation doc mein sirf certificateUrl field add kar
+      // sakta hai (certificate PDF generate hone ke baad) — baaki sab
+      // sirf Cloud Function (admin SDK, rules bypass) ya admin se hota hai.
+      allow update: if isAdmin()
+          || (
+                          isSignedIn() &&
+                                  resource.data.donorId == request.auth.uid &&
+                                                  request.resource.data.diff(resource.data).affectedKeys().hasOnly(['certificateUrl'])
+          );
+      allow delete: if isAdmin();
+    }
+
+    // ──────────────────────── NOTIFICATIONS ────────────────────────
+    match /notifications/{notifId} {
+      // Har user sirf apni notifications padh sakta hai
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+      // Sirf 'isRead' field khud update kar sakta hai, baaki kuch nahi
+      allow update: if isSignedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow delete: if isAdmin()
+          || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    // ─────────────────────────── REWARDS ───────────────────────────
+    match /rewards/{rewardId} {
+      allow read: if isSignedIn();
+      // Reward points/certificates sirf backend logic (Cloud Function ya
+      // is app ke apne trusted flow) se update hone chahiye — client se
+      // seedha koi bhi apne points na badha sake.
+      allow write: if isAdmin();
+    }
+
+    // ──────────────────────── SOS REQUESTS ────────────────────────
+    match /sosRequests/{sosId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+          && request.resource.data.receiverId == request.auth.uid;
+      allow update: if isAdmin()
+          || (isSignedIn() && resource.data.receiverId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ──────────────────────── BLOOD DRIVES ────────────────────────
+    match /blood_drives/{driveId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Default deny — koi bhi aur collection explicitly allow nahi hai
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

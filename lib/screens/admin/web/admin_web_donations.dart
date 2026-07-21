@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/donation_model.dart';
 import '../../../constants/app_colors.dart';
-
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../models/donation_model.dart';
+import '../../../constants/app_colors.dart';
+import '../../../utils/paginated_query.dart';   // ← NEW
 class AdminWebDonations extends StatefulWidget {
   const AdminWebDonations({Key? key}) : super(key: key);
 
@@ -16,6 +20,8 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
   String _bloodGroupFilter = 'All';
   String _sortBy = 'Newest First';
 
+  static const int _pageSize = 25;
+
   final List<String> _bloodGroups = [
     'All', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'
   ];
@@ -23,11 +29,44 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
     'Newest First', 'Oldest First', 'Most Points'
   ];
 
+  late var _pager = _buildPager();
+
+  // The sort dropdown changes which field Firestore orders by, so the
+  // pager itself has to be rebuilt (a new .orderBy() means a fresh query,
+  // not something you can patch onto an already-paginated one).
+  PaginatedQuery<DonationModel> _buildPager() {
+    final String orderField =
+    _sortBy == 'Most Points' ? 'pointsEarned' : 'donationDate';
+    final bool descending = _sortBy != 'Oldest First';
+
+    return PaginatedQuery<DonationModel>(
+      pageSize: _pageSize,
+      queryBuilder: () => FirebaseFirestore.instance
+          .collection('donations')
+          .orderBy(orderField, descending: descending),
+      fromDoc: (d) => DonationModel.fromFirestore(d.data(), d.id),
+    );
+  }
+
+  void _onSortChanged(String? value) {
+    if (value == null) return;
+    setState(() {
+      _sortBy = value;
+      _pager = _buildPager();
+    });
+    _pager.loadNextPage().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _searchController.addListener(() {
       setState(() => _searchQuery = _searchController.text.toLowerCase());
+    });
+    _pager.loadNextPage().then((_) {
+      if (mounted) setState(() {});
     });
   }
 
@@ -35,17 +74,6 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Stream<List<DonationModel>> _getDonations() {
-    return FirebaseFirestore.instance
-        .collection('donations')
-        .orderBy('donationDate', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs
-        .map((d) => DonationModel.fromFirestore(
-        d.data() as Map<String, dynamic>, d.id))
-        .toList());
   }
 
   @override
@@ -90,12 +118,10 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Row(
             children: [
-              // Search
               Expanded(
                 child: _searchField(),
               ),
               const SizedBox(width: 12),
-              // Blood group filter
               _dropdownFilter(
                 value: _bloodGroupFilter,
                 items: _bloodGroups,
@@ -103,12 +129,11 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                 onChanged: (v) => setState(() => _bloodGroupFilter = v!),
               ),
               const SizedBox(width: 12),
-              // Sort
               _dropdownFilter(
                 value: _sortBy,
                 items: _sortOptions,
                 label: 'Sort',
-                onChanged: (v) => setState(() => _sortBy = v!),
+                onChanged: _onSortChanged,
               ),
             ],
           ),
@@ -120,22 +145,23 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: StreamBuilder<List<DonationModel>>(
-              stream: _getDonations(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: Builder(
+              builder: (context) {
+                if (_pager.items.isEmpty && _pager.isLoading) {
                   return const Center(
                     child: CircularProgressIndicator(
                         color: AppColors.primaryRed),
                   );
                 }
-                if (snapshot.hasError) {
-                  return _errorWidget(snapshot.error.toString());
+                if (_pager.items.isEmpty && _pager.error != null) {
+                  return _errorWidget(_pager.error.toString());
                 }
 
-                var donations = snapshot.data ?? [];
+                // Search/blood-group filters apply on top of the pages
+                // already loaded. Sort order is now handled server-side
+                // by the query itself (see _buildPager), not client-side.
+                var donations = _pager.items;
 
-                // Search filter
                 if (_searchQuery.isNotEmpty) {
                   donations = donations.where((d) {
                     return d.donorName
@@ -150,26 +176,10 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                   }).toList();
                 }
 
-                // Blood group filter
                 if (_bloodGroupFilter != 'All') {
                   donations = donations
                       .where((d) => d.bloodGroup == _bloodGroupFilter)
                       .toList();
-                }
-
-                // Sort
-                switch (_sortBy) {
-                  case 'Oldest First':
-                    donations.sort(
-                            (a, b) => a.donationDate.compareTo(b.donationDate));
-                    break;
-                  case 'Most Points':
-                    donations.sort(
-                            (a, b) => b.pointsEarned.compareTo(a.pointsEarned));
-                    break;
-                  default:
-                    donations.sort(
-                            (a, b) => b.donationDate.compareTo(a.donationDate));
                 }
 
                 if (donations.isEmpty) {
@@ -182,7 +192,8 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Text(
-                        '${donations.length} donation${donations.length == 1 ? '' : 's'} found',
+                        '${donations.length} donation${donations.length == 1 ? '' : 's'} loaded'
+                            '${_pager.hasMore ? ' (more available)' : ''}',
                         style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey.shade600,
@@ -207,28 +218,48 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: SingleChildScrollView(
-                            child: DataTable(
-                              headingRowColor:
-                              MaterialStateProperty.all(
-                                  Colors.grey.shade50),
-                              headingTextStyle: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                color: Colors.grey.shade700,
-                              ),
-                              columnSpacing: 24,
-                              horizontalMargin: 20,
-                              columns: const [
-                                DataColumn(label: Text('Donor')),
-                                DataColumn(label: Text('Blood Group')),
-                                DataColumn(label: Text('Location')),
-                                DataColumn(label: Text('Date')),
-                                DataColumn(label: Text('Points Earned')),
-                                DataColumn(label: Text('Health Data')),
+                            child: Column(
+                              children: [
+                                DataTable(
+                                  headingRowColor:
+                                  MaterialStateProperty.all(
+                                      Colors.grey.shade50),
+                                  headingTextStyle: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                  columnSpacing: 24,
+                                  horizontalMargin: 20,
+                                  columns: const [
+                                    DataColumn(label: Text('Donor')),
+                                    DataColumn(label: Text('Blood Group')),
+                                    DataColumn(label: Text('Location')),
+                                    DataColumn(label: Text('Date')),
+                                    DataColumn(label: Text('Points Earned')),
+                                    DataColumn(label: Text('Health Data')),
+                                  ],
+                                  rows: donations
+                                      .map((d) => _buildRow(d))
+                                      .toList(),
+                                ),
+                                if (_pager.hasMore)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16),
+                                    child: _pager.isLoading
+                                        ? const CircularProgressIndicator(
+                                        color: AppColors.primaryRed)
+                                        : OutlinedButton.icon(
+                                      onPressed: () async {
+                                        await _pager.loadNextPage();
+                                        if (mounted) setState(() {});
+                                      },
+                                      icon: const Icon(Icons.expand_more),
+                                      label: const Text('Load More'),
+                                    ),
+                                  ),
                               ],
-                              rows: donations
-                                  .map((d) => _buildRow(d))
-                                  .toList(),
                             ),
                           ),
                         ),
@@ -246,7 +277,6 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
 
   DataRow _buildRow(DonationModel d) {
     return DataRow(cells: [
-      // Donor
       DataCell(
         Row(
           children: [
@@ -268,8 +298,6 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
           ],
         ),
       ),
-
-      // Blood group
       DataCell(
         Container(
           padding:
@@ -289,8 +317,6 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
           ),
         ),
       ),
-
-      // Location
       DataCell(
         Row(
           children: [
@@ -308,15 +334,11 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
           ],
         ),
       ),
-
-      // Date
       DataCell(Text(
         _formatDate(d.donationDate),
         style:
         TextStyle(color: Colors.grey.shade600, fontSize: 12),
       )),
-
-      // Points
       DataCell(
         Container(
           padding:
@@ -343,8 +365,6 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
           ),
         ),
       ),
-
-      // Health data
       DataCell(
         d.healthCheckData != null && d.healthCheckData!.isNotEmpty
             ? TextButton.icon(
@@ -405,23 +425,41 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
     );
   }
 
-  // ── Summary cards (total donations + unique donors) ──────────
+  // ── Summary cards (total donations + points) ──────────────────
   Widget _buildSummaryCards() {
-    return StreamBuilder<List<DonationModel>>(
-      stream: _getDonations(),
+    // ✅ These read only aggregated numbers from Firestore's servers —
+    // not the documents themselves — so they stay cheap no matter how
+    // many thousands of donations/users exist.
+    // Note: Firestore has no native "distinct count" aggregation, so
+    // "unique donors who ever donated" can't be computed this way without
+    // downloading every donation. We show total *registered* donors
+    // instead (a different but honestly-computed, cheap metric).
+    return FutureBuilder<List<AggregateQuerySnapshot>>(
+      future: Future.wait([
+        FirebaseFirestore.instance.collection('donations').count().get(),
+        FirebaseFirestore.instance
+            .collection('donations')
+            .aggregate(sum('pointsEarned'))
+            .get(),
+        FirebaseFirestore.instance
+            .collection('users')
+            .where('role', isEqualTo: 'donor')
+            .count()
+            .get(),
+      ]),
       builder: (context, snapshot) {
-        final donations = snapshot.data ?? [];
-        final uniqueDonors =
-            donations.map((d) => d.donorId).toSet().length;
-        final totalPoints = donations.fold<int>(
-            0, (sum, d) => sum + d.pointsEarned);
+        final totalDonations = snapshot.data?[0].count ?? 0;
+        final totalPoints =
+        (snapshot.data?[1].getSum('pointsEarned') ?? 0).toInt();
+        final registeredDonors = snapshot.data?[2].count ?? 0;
+
         return Row(
           children: [
-            _miniCard('Total', '${donations.length}', Icons.favorite,
+            _miniCard('Total', '$totalDonations', Icons.favorite,
                 Colors.red),
             const SizedBox(width: 12),
-            _miniCard('Donors', '$uniqueDonors', Icons.people,
-                Colors.blue),
+            _miniCard('Registered Donors', '$registeredDonors',
+                Icons.people, Colors.blue),
             const SizedBox(width: 12),
             _miniCard(
                 'Points Given', '$totalPoints', Icons.stars, Colors.amber),
