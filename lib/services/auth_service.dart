@@ -19,6 +19,14 @@ class AuthService {
         password: password.trim(),
       );
 
+      // ✅ Email verification check — before this fix, unverified emails
+      // (typos, fake addresses) could log in and use the app normally.
+      await credential.user!.reload();
+      if (!credential.user!.emailVerified) {
+        await _auth.signOut();
+        throw 'email-not-verified';
+      }
+
       // Firestore se status check karo
       final doc = await _firestore
           .collection('users')
@@ -73,24 +81,46 @@ class AuthService {
         'bloodGroup': bloodGroup,
         'status': 'pending',   // ← admin approval required
         'isEligible': true,
-        'isDonor': role == 'donor',
-        'isReceiver': role == 'receiver',
-        'isAvailable': true,
-        'phoneVerified': false,
         'rewardPoints': 0,
         'createdAt': FieldValue.serverTimestamp(),
         'lastDonationDate': null,
-        'nextEligibleDate': null,
         'location': null,
         'latitude': null,
         'longitude': null,
         'profileImageUrl': null,
       });
 
-      // Turant logout — admin approve kare tab tak wait
+      // ✅ Send verification email — user must click the link before they
+      // can log in (enforced in signInWithEmailPassword above).
+      await credential.user!.sendEmailVerification();
+
+      // Turant logout — pehle email verify, phir admin approve kare tab tak wait
       await _auth.signOut();
 
       return credential;
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthError(e);
+    }
+  }
+
+  // ✅ Resend the verification email (used from the "verify your email"
+  // screen if the user didn't receive it or it expired).
+  // Requires the user to sign in again first since Firebase signs them out
+  // right after signup.
+  Future<void> resendVerificationEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+      await credential.user!.reload();
+      if (!credential.user!.emailVerified) {
+        await credential.user!.sendEmailVerification();
+      }
+      await _auth.signOut();
     } on FirebaseAuthException catch (e) {
       throw _handleAuthError(e);
     }
@@ -118,66 +148,70 @@ class AuthService {
     }
   }
 
-  // ✅ NEW: Phone OTP verification
-  // ----------------------------------------------------------------------
-  // README pehle "OTP Phone Verification: Complete" claim karta tha lekin
-  // is se related koi bhi code app mein nahi tha. Ye Firebase Phone Auth
-  // ka standard verifyPhoneNumber() flow hai.
-  //
-  // NOTE: Iske chalne ke liye Firebase Console mein Authentication ->
-  // Sign-in method -> Phone provider enable karna zaroori hai, aur Android
-  // ke liye SHA-1/SHA-256 fingerprint Firebase project mein add karni
-  // hogi (Play Integrity / SafetyNet automatic verification ke liye).
+  // ✅ Send a phone-number OTP via Firebase Phone Auth.
+  // Requires the "Phone" sign-in provider to be enabled in
+  // Firebase Console -> Authentication -> Sign-in method.
   Future<void> sendOtp({
-    required String phoneNumber, // format: +923001234567
+    required String phoneNumber,
     required void Function(String verificationId) onCodeSent,
     required void Function(String error) onError,
-    void Function(PhoneAuthCredential credential)? onAutoVerified,
+    required void Function(PhoneAuthCredential credential) onAutoVerified,
   }) async {
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      timeout: const Duration(seconds: 60),
-      verificationCompleted: (PhoneAuthCredential credential) {
-        // Kuch Android devices par SMS auto-detect ho jata hai
-        onAutoVerified?.call(credential);
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        onError(_handleAuthError(e));
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        onCodeSent(verificationId);
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {},
-    );
+    try {
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (PhoneAuthCredential credential) {
+          // Android par kabhi kabhi SMS khud-ba-khud verify ho jata hai
+          onAutoVerified(credential);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          onError(_handleAuthError(e));
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          onCodeSent(verificationId);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          // Timeout ho gaya, verificationId already onCodeSent se mil chuka hai
+        },
+      );
+    } on FirebaseAuthException catch (e) {
+      onError(_handleAuthError(e));
+    } catch (e) {
+      onError('OTP bhejne mein masla hua: $e');
+    }
   }
 
-  /// User ke daale huay 6-digit code se OTP verify karke phone ko current
-  /// logged-in account se link karta hai (`phoneVerified: true` set hota hai).
+  // ✅ Verify the entered OTP code and link the phone number to the
+  // currently signed-in user (does NOT sign in a new user by itself —
+  // it links phone verification to the existing email/password account).
   Future<void> verifyOtpAndLink({
     required String verificationId,
     required String smsCode,
   }) async {
     final credential = PhoneAuthProvider.credential(
       verificationId: verificationId,
-      smsCode: smsCode,
+      smsCode: smsCode.trim(),
     );
+
     final user = _auth.currentUser;
-    if (user == null) throw 'Pehle login karein.';
+    if (user == null) {
+      throw Exception('Pehle login karein, phir phone verify karein.');
+    }
 
     try {
       await user.linkWithCredential(credential);
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'provider-already-linked' ||
-          e.code == 'credential-already-in-use') {
-        // Phone pehle se hi verified/linked hai — ignore, sirf flag set karo
-      } else {
-        throw _handleAuthError(e);
+      if (e.code == 'credential-already-in-use' ||
+          e.code == 'provider-already-linked') {
+        // Number pehle se hi is account se linked hai — treat as success
+        return;
       }
+      if (e.code == 'invalid-verification-code') {
+        throw Exception('Code galat hai. Dobara check karein.');
+      }
+      throw Exception(_handleAuthError(e));
     }
-
-    await _firestore.collection('users').doc(user.uid).update({
-      'phoneVerified': true,
-    });
   }
 
   // ✅ Password reset

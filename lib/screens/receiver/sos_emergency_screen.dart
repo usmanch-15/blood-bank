@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../constants/app_colors.dart';
+import '../../controllers/receiver_controller.dart';
 
 class SosEmergencyScreen extends StatefulWidget {
   const SosEmergencyScreen({super.key});
@@ -63,6 +66,15 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
     });
   }
 
+  // ✅ FIX (Issue #2 / #19 / #20): previously this just did a fake
+  // Future.delayed(2 seconds) and showed a success message — no donor
+  // search, no Firestore write, no notification was ever sent. Now it
+  // calls ReceiverController.sendSosAlert(), which:
+  //   1. Gets the receiver's current GPS location
+  //   2. Searches for eligible donors within 15km (auto-expands to 30km
+  //      if none found — see geo_location_service.dart)
+  //   3. Writes a sosRequests document
+  //   4. Sends a push notification to every matched donor
   void _sendSosAlert() async {
     if (_isSending) return;
 
@@ -70,33 +82,69 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
       _isSending = true;
     });
 
-    // Simulate sending process
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Show success message
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
-            SizedBox(width: 8),
-            Text('SOS Alert sent successfully!'),
-          ],
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      if (!mounted) return;
+      setState(() {
+        _isSending = false;
+        _isSosActive = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be logged in to send an SOS alert.'),
+          backgroundColor: Colors.red,
         ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      );
+      return;
+    }
 
-    // Navigate back after delay
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.pop(context);
-      }
-    });
+    try {
+      final controller = context.read<ReceiverController>();
+      await controller.sendSosAlert(
+        receiverId: uid,
+        bloodGroup: _selectedBloodGroup,
+      );
+
+      if (!mounted) return;
+
+      final matchedCount = controller.nearbyDonors.length;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  matchedCount > 0
+                      ? 'SOS Alert sent to $matchedCount nearby donor(s)!'
+                      : 'SOS Alert saved, but no eligible donors were found nearby yet. We will keep trying.',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) Navigator.pop(context);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSending = false;
+        _isSosActive = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not send SOS alert: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildBloodGroupSelector() {

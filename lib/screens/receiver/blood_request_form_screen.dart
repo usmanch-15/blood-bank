@@ -3,7 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../models/blood_request_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/geo_location_service.dart';
+import '../../services/notification_service.dart';
 import '../../utils/location_helper.dart';
+import '../../utils/validators.dart';
 
 class BloodRequestFormScreen extends StatefulWidget {
   const BloodRequestFormScreen({super.key});
@@ -16,6 +19,8 @@ class BloodRequestFormScreen extends StatefulWidget {
 class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final FirestoreService _firestoreService = FirestoreService();
+  final GeoLocationService _geoLocationService = GeoLocationService();
+  final NotificationService _notificationService = NotificationService();
 
   final _patientNameController = TextEditingController();
   final _patientAgeController = TextEditingController();
@@ -32,6 +37,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
 
   bool _isLoading = false;
   String? _currentLocation;
+  double? _currentLat;
+  double? _currentLng;
 
   final List<String> _bloodGroups = [
     'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'
@@ -59,6 +66,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         );
         setState(() {
           _currentLocation = address;
+          _currentLat = location.latitude;
+          _currentLng = location.longitude;
         });
       }
     } catch (_) {}
@@ -128,10 +137,45 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         status: 'pending',
         createdAt: DateTime.now(),
         location: _currentLocation ?? '',
+        latitude: _currentLat,
+        longitude: _currentLng,
       );
 
       /// 🔥 SAVE TO FIRESTORE
-      await _firestoreService.createBloodRequest(request);
+      final requestId = await _firestoreService.createBloodRequest(request);
+
+      // ✅ FIX (Issue #2 / #19 / #20): previously nothing happened after
+      // saving — no donor search, no notification. Now, if we have the
+      // receiver's coordinates, we search for nearby eligible donors
+      // (auto-expanding 15km → 30km → 50km) and notify them immediately,
+      // the same way the dedicated SOS screen does.
+      if (_currentLat != null && _currentLng != null) {
+        try {
+          final donors = await _geoLocationService.findNearbyDonorsWithExpand(
+            receiverLat: _currentLat!,
+            receiverLng: _currentLng!,
+            bloodGroup: _selectedBloodGroup,
+          );
+
+          if (donors.isNotEmpty) {
+            await _notificationService.sendToUsers(
+              userIds: donors.map((d) => d.uid).toList(),
+              title: 'Blood Needed: $_selectedBloodGroup',
+              body:
+              'A patient at ${_hospitalNameController.text.trim()} needs $_selectedBloodGroup blood ($_selectedUrgency).',
+              type: 'blood_request',
+              relatedId: requestId,
+            );
+            await _firestoreService.updateNotifiedDonors(
+              requestId,
+              donors.map((d) => d.uid).toList(),
+            );
+          }
+        } catch (_) {
+          // Don't block request submission if donor search/notify fails —
+          // the request is already saved; admin can still see & act on it.
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -174,7 +218,12 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
             children: [
 
               _buildField(_patientNameController, "Patient Name"),
-              _buildField(_patientAgeController, "Age", number: true),
+              _buildField(
+                _patientAgeController,
+                "Age",
+                number: true,
+                validator: AppValidators.validateAge,
+              ),
 
               _buildDropdown("Blood Group", _selectedBloodGroup,
                       (val) => setState(() => _selectedBloodGroup = val!),
@@ -184,8 +233,17 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                       (val) => setState(() => _selectedUrgency = val!),
                   _urgencyLevels),
 
-              _buildField(_unitsRequiredController, "Units Required", number: true),
-              _buildField(_hospitalNameController, "Hospital Name"),
+              _buildField(
+                _unitsRequiredController,
+                "Units Required",
+                number: true,
+                validator: AppValidators.validateUnitsRequired,
+              ),
+              _buildField(
+                _hospitalNameController,
+                "Hospital Name",
+                validator: AppValidators.validateHospitalName,
+              ),
               _buildField(_hospitalAddressController, "Hospital Address"),
 
               const SizedBox(height: 10),
@@ -228,15 +286,18 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   }
 
   Widget _buildField(TextEditingController c, String label,
-      {bool number = false}) {
+      {bool number = false, String? Function(String?)? validator}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: c,
         keyboardType:
         number ? TextInputType.number : TextInputType.text,
-        validator: (v) =>
-        v == null || v.isEmpty ? "$label required" : null,
+        // ✅ FIX (Issue #17): allow a real bounds-checked validator to be
+        // passed in (age 1-120, units 1-50, hospital name format/length)
+        // instead of every field only checking "not empty".
+        validator: validator ??
+                (v) => v == null || v.isEmpty ? "$label required" : null,
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'admin_config.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'web/admin_web_dashboard.dart';
 
 
@@ -24,12 +24,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       String email = emailController.text.trim();
       String pass = passwordController.text.trim();
 
-      // ❌ BLOCK NON ADMIN EMAILS
-      if (!AdminConfig.adminEmails.contains(email)) {
-        throw Exception("❌ Not authorized admin");
-      }
-
-      // 🔐 FIREBASE LOGIN
+      // 🔐 FIREBASE LOGIN FIRST — we can't check Firestore role before we
+      // know who the user is.
       UserCredential userCredential =
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
@@ -52,6 +48,22 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
         await FirebaseAuth.instance.signOut();
         return;
+      }
+
+      // ✅ FIX (Issue #8): admin access is no longer granted by a hardcoded
+      // email list — it's checked against this user's actual role +
+      // approval status stored in Firestore. Only an existing admin can
+      // set another user's role to "admin".
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final role = userDoc.data()?['role'];
+      final status = userDoc.data()?['status'];
+
+      if (role != 'admin' || status != 'approved') {
+        await FirebaseAuth.instance.signOut();
+        throw Exception("❌ Not authorized admin");
       }
 
       // ✅ SUCCESS → DASHBOARD

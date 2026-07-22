@@ -26,19 +26,12 @@ class GeoLocationService {
     required double receiverLng,
     required String bloodGroup,
     double radiusKm = 15.0,
-    bool wholeCountry = false, // ✅ NEW: "puri Pakistan" filter option
   }) async {
-    // ✅ FIX: 'role' field ab session ke hisaab se badal sakta hai (jab
-    // user donor <-> receiver switch karta hai), is liye ye query 'isDonor'
-    // (permanent capability flag) aur 'isAvailable' (persisted toggle) use
-    // karti hai. Eligibility bhi query-time par 'nextEligibleDate' se check
-    // hoti hai — client ke app kholne ka intezar nahi karna padta.
-    final now = Timestamp.now();
     final snapshot = await FirebaseFirestore.instance
         .collection(AppConstants.usersCollection)
-        .where('isDonor', isEqualTo: true)
+        .where('role', isEqualTo: 'donor')
         .where('bloodGroup', isEqualTo: bloodGroup)
-        .where('isAvailable', isEqualTo: true)
+        .where('isEligible', isEqualTo: true)
         .where('status', isEqualTo: 'approved')
         .get();
 
@@ -46,22 +39,13 @@ class GeoLocationService {
 
     for (final doc in snapshot.docs) {
       final data = doc.data();
-
-      // Eligibility check: agar nextEligibleDate set hai to wo guzar chuki
-      // honi chahiye. Purane data (nextEligibleDate na ho) ke liye
-      // backward-compatible fallback: lastDonationDate na ho to eligible.
-      final nextEligible = data['nextEligibleDate'] as Timestamp?;
-      if (nextEligible != null && nextEligible.compareTo(now) > 0) {
-        continue; // abhi 90 din poore nahi huay
-      }
-
       final lat = data['latitude']?.toDouble();
       final lng = data['longitude']?.toDouble();
       if (lat == null || lng == null) continue;
 
       final distance = LocationHelper.calculateDistance(
           receiverLat, receiverLng, lat, lng);
-      if (wholeCountry || distance <= radiusKm) {
+      if (distance <= radiusKm) {
         withinRadius.add({'doc': doc, 'distance': distance});
       }
     }
@@ -75,6 +59,29 @@ class GeoLocationService {
       return DonorModel.fromFirestore(doc.data(), doc.id);
     })
         .toList();
+  }
+
+  /// ✅ FIX (Issue #20): auto-expanding donor search. Previously
+  /// findNearbyDonors() used a single fixed radius and returned an empty
+  /// list if nothing matched, even if donors existed slightly further
+  /// away. This tries 15km, then 30km, then 50km before giving up, so a
+  /// receiver isn't told "no donors" when donors do exist nearby.
+  Future<List<DonorModel>> findNearbyDonorsWithExpand({
+    required double receiverLat,
+    required double receiverLng,
+    required String bloodGroup,
+    List<double> radiiKm = const [15.0, 30.0, 50.0],
+  }) async {
+    for (final radius in radiiKm) {
+      final donors = await findNearbyDonors(
+        receiverLat: receiverLat,
+        receiverLng: receiverLng,
+        bloodGroup: bloodGroup,
+        radiusKm: radius,
+      );
+      if (donors.isNotEmpty) return donors;
+    }
+    return [];
   }
 
   double distanceBetween(

@@ -66,9 +66,19 @@ class _LoginScreenState extends State<LoginScreen>
         password: _passwordController.text,
       );
       if (!mounted) return;
-      final email = _emailController.text.trim();
 
-      if (AdminConfig.adminEmails.contains(email)) {
+      // ✅ FIX (Issue #8): admin access used to be granted purely by
+      // matching a hardcoded email list (AdminConfig.adminEmails). If that
+      // list ever leaked, anyone using one of those emails became admin.
+      // Now we check the user's actual role + approval status stored in
+      // Firestore, which only an existing admin can set.
+      final userData = await _authService.getUserData(userCredential.user!.uid);
+      if (!mounted) return;
+
+      final role = userData?['role'];
+      final status = userData?['status'];
+
+      if (role == 'admin' && status == 'approved') {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const AdminWebDashboard()),
@@ -77,8 +87,6 @@ class _LoginScreenState extends State<LoginScreen>
         return;
       }
 
-      await _authService.getUserData(userCredential.user!.uid);
-      if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
         context,
@@ -89,7 +97,15 @@ class _LoginScreenState extends State<LoginScreen>
       final message = e.toString().replaceFirst('Exception: ', '');
       if (!mounted) return;
 
-      if (message == 'pending') {
+      if (message == 'email-not-verified') {
+        _showStatusDialog(
+          icon: Icons.mark_email_unread_rounded,
+          iconColor: const Color(0xFF42A5F5),
+          title: 'Verify Your Email',
+          message:
+          'Please verify your email address before logging in. Check your inbox for the verification link we sent when you signed up.',
+        );
+      } else if (message == 'pending') {
         _showStatusDialog(
           icon: Icons.hourglass_top_rounded,
           iconColor: const Color(0xFFFFB300),

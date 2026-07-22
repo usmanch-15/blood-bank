@@ -2,30 +2,49 @@ import '../constants/app_constants.dart';
 
 /// Utility class for checking donor eligibility
 class EligibilityChecker {
-  /// Check if donor is eligible based on last donation date
+  /// Returns the exact UTC instant at which the donor becomes eligible again.
+  static DateTime? nextEligibleDate(DateTime? lastDonationDate) {
+    if (lastDonationDate == null) return null;
+    final lastUtc = lastDonationDate.toUtc();
+    return lastUtc.add(
+      Duration(days: AppConstants.minDaysBetweenDonations),
+    );
+  }
+
+  /// Check if donor is eligible based on last donation date.
+  /// FIX: previously used DateTime.now() in the device's local timezone
+  /// combined with Duration.inDays, which truncates the time-of-day
+  /// component. That caused donors to be marked eligible/ineligible up to
+  /// ~24 hours early or late depending on the device timezone and the time
+  /// of day the last donation was recorded. We now compare UTC instants
+  /// directly, so the 90-day window is exact down to the second.
   static bool isEligibleForDonation(DateTime? lastDonationDate) {
     if (lastDonationDate == null) {
       return true; // First-time donor
     }
 
-    DateTime now = DateTime.now();
-    int daysSinceLastDonation = now.difference(lastDonationDate).inDays;
+    final nowUtc = DateTime.now().toUtc();
+    final eligibleFrom = nextEligibleDate(lastDonationDate)!;
 
-    return daysSinceLastDonation >= AppConstants.minDaysBetweenDonations;
+    return !nowUtc.isBefore(eligibleFrom);
   }
 
-  /// Get days until eligible
+  /// Get days until eligible (rounded up, so "less than a day left" still
+  /// shows as 1 day rather than 0, which would incorrectly read as eligible).
   static int? daysUntilEligible(DateTime? lastDonationDate) {
     if (lastDonationDate == null) {
       return 0; // Already eligible
     }
 
-    DateTime now = DateTime.now();
-    int daysSinceLastDonation = now.difference(lastDonationDate).inDays;
-    int daysUntilEligible =
-        AppConstants.minDaysBetweenDonations - daysSinceLastDonation;
+    final nowUtc = DateTime.now().toUtc();
+    final eligibleFrom = nextEligibleDate(lastDonationDate)!;
 
-    return daysUntilEligible > 0 ? daysUntilEligible : 0;
+    if (!nowUtc.isBefore(eligibleFrom)) return 0;
+
+    final remaining = eligibleFrom.difference(nowUtc);
+    final daysLeft = (remaining.inHours / 24).ceil();
+
+    return daysLeft > 0 ? daysLeft : 0;
   }
 
   /// Get eligibility message

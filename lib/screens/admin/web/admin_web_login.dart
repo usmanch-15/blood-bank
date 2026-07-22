@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../admin_config.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminWebLogin extends StatefulWidget {
   const AdminWebLogin({Key? key}) : super(key: key);
@@ -32,13 +32,6 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
       String email = _emailController.text.trim();
       String password = _passwordController.text.trim();
 
-      // ❌ Admin whitelist check
-      if (!AdminConfig.adminEmails.contains(email)) {
-        _showError('❌ Yeh email admin nahi hai.');
-        setState(() => _isLoading = false);
-        return;
-      }
-
       // 🔐 Firebase login
       UserCredential userCredential =
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -58,6 +51,23 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
         await user.sendEmailVerification();
         _showError('📧 Verification email bhej di — pehle verify karo.');
         await FirebaseAuth.instance.signOut();
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // ✅ FIX (Issue #8): check role + status in Firestore instead of a
+      // hardcoded email list. Only an existing admin can set someone's
+      // role to "admin", so this can't be spoofed by editing client code.
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final role = userDoc.data()?['role'];
+      final status = userDoc.data()?['status'];
+
+      if (role != 'admin' || status != 'approved') {
+        await FirebaseAuth.instance.signOut();
+        _showError('❌ Yeh account admin ke liye authorized nahi hai.');
         setState(() => _isLoading = false);
         return;
       }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
-// import '../../services/firestore_service.dart'; // 🔴 Firebase commented
+import '../../services/firestore_service.dart'; // ✅ FIX (Issue #14): re-enabled
 import '../../models/blood_request_model.dart';
 
 /// Admin Requests Screen - View all blood requests
@@ -10,7 +10,7 @@ class AdminRequestsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // final _firestoreService = FirestoreService(); // 🔴 Firebase commented
+    final firestoreService = FirestoreService(); // ✅ FIX (Issue #14): re-enabled
 
     return Scaffold(
       appBar: AppBar(
@@ -19,21 +19,10 @@ class AdminRequestsScreen extends StatelessWidget {
         foregroundColor: Colors.white,
       ),
 
-      // 🔴 Firebase StreamBuilder commented
-      body: const Center(
-        child: Text(
-          'Firebase disabled\nNo requests to show',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ),
-
-      /*
+      // ✅ FIX (Issue #14): StreamBuilder restored so admin can actually
+      // see live blood requests instead of the "Firebase disabled" stub.
       body: StreamBuilder<List<BloodRequestModel>>(
-        stream: _firestoreService.getAllBloodRequests(),
+        stream: firestoreService.getAllBloodRequests(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -56,19 +45,18 @@ class AdminRequestsScreen extends StatelessWidget {
             itemCount: requests.length,
             itemBuilder: (context, index) {
               final request = requests[index];
-              return _buildRequestCard(context, request, _firestoreService);
+              return _buildRequestCard(context, request, firestoreService);
             },
           );
         },
       ),
-      */
     );
   }
 
   Widget _buildRequestCard(
       BuildContext context,
       BloodRequestModel request,
-      // FirestoreService firestoreService, // 🔴 Firebase commented
+      FirestoreService firestoreService, // ✅ FIX (Issue #14): re-enabled
       ) {
     final dateFormat = DateFormat('MMM dd, yyyy HH:mm');
 
@@ -165,8 +153,11 @@ class AdminRequestsScreen extends StatelessWidget {
               ],
             ),
 
-            // 🔴 Firebase action buttons commented
-            /*
+            // ✅ FIX (Issue #14): restored. Only admins can reach this
+            // screen, so this is the one place allowed to change a
+            // request's status directly (see Issue #7 fix in
+            // firestore.rules — regular requesters can no longer do this
+            // themselves).
             if (request.status == 'pending') ...[
               const SizedBox(height: 15),
               Row(
@@ -185,7 +176,6 @@ class AdminRequestsScreen extends StatelessWidget {
                 ],
               ),
             ],
-            */
           ],
         ),
       ),

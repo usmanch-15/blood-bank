@@ -6,9 +6,48 @@ class AppValidators {
     return null;
   }
 
+  // ✅ FIX (Issue #9): previously only checked length >= 8, so passwords
+  // like "aaaaaaaa" were accepted. Now requires a mix of character types.
   static String? validatePassword(String? value) {
     if (value == null || value.isEmpty) return 'Password required';
-    if (value.length < 8) return 'Password must be at least 8 characters';
+    if (value.length < 10) return 'Password must be at least 10 characters';
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      return 'Password must contain at least 1 uppercase letter';
+    }
+    if (!RegExp(r'[a-z]').hasMatch(value)) {
+      return 'Password must contain at least 1 lowercase letter';
+    }
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return 'Password must contain at least 1 number';
+    }
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=]').hasMatch(value)) {
+      return 'Password must contain at least 1 special character (!@#\$%^&* etc.)';
+    }
+    return null;
+  }
+
+  // Also add bounds checks used by the blood request form (Issue #17).
+  static String? validateAge(String? value) {
+    if (value == null || value.isEmpty) return 'Age required';
+    final age = int.tryParse(value);
+    if (age == null) return 'Enter a valid age';
+    if (age < 1 || age > 120) return 'Age must be between 1 and 120';
+    return null;
+  }
+
+  static String? validateUnitsRequired(String? value) {
+    if (value == null || value.isEmpty) return 'Units required';
+    final units = int.tryParse(value);
+    if (units == null) return 'Enter a valid number';
+    if (units < 1 || units > 50) return 'Units must be between 1 and 50';
+    return null;
+  }
+
+  static String? validateHospitalName(String? value) {
+    if (value == null || value.isEmpty) return 'Hospital name required';
+    if (value.length > 100) return 'Hospital name is too long (max 100 chars)';
+    final regex = RegExp(r'^[a-zA-Z0-9\s\.,\-&]+$');
+    if (!regex.hasMatch(value)) return 'Hospital name has invalid characters';
     return null;
   }
 

@@ -85,6 +85,20 @@ class FirestoreService {
     }
   }
 
+  // ✅ Records which donors were notified for a given request, so admins
+  // (and the donor themselves) can see who was alerted and when.
+  Future<void> updateNotifiedDonors(
+      String requestId, List<String> donorIds) async {
+    try {
+      await _firestore
+          .collection(AppConstants.bloodRequestsCollection)
+          .doc(requestId)
+          .update({'notifiedDonors': donorIds});
+    } catch (e) {
+      throw FirestoreException('Error updating notified donors: $e');
+    }
+  }
+
   Stream<List<BloodRequestModel>> getAllBloodRequests() {
     return _firestore
         .collection(AppConstants.bloodRequestsCollection)
