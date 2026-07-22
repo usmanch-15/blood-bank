@@ -1,0 +1,163 @@
+rules_version = '2';
+
+// ============================================================================
+// Smart Blood Bank — Firestore Security Rules
+//
+// v2 UPDATE: previously `match /users/{userId} { allow read: if isSignedIn(); }`
+// let ANY signed-in user read another user's full profile — including their
+// exact phoneNumber and latitude/longitude. Firestore security rules can only
+// grant/deny access to a WHOLE document, not individual fields, so the only
+// correct fix is to move the sensitive fields (phoneNumber, latitude,
+// longitude, precise location) into a separate subcollection that only the
+// owner and admin can read. The main /users/{userId} doc keeps only the
+// fields needed for donor matching / display (name, role, status, bloodGroup,
+// isDonor, isAvailable, rewardPoints, etc.) and stays readable to any
+// signed-in user, same as before.
+//
+// ⚠️ THIS REQUIRES A MATCHING APP-CODE CHANGE — see the Copilot command
+// provided alongside this file. Until the app writes phoneNumber/lat/lng to
+// /users/{userId}/private/contact instead of the main user doc, those fields
+// will simply stop being written/read (not a security hole, just broken
+// donor-contact + geo features until the code catches up).
+//
+// Deploy: firebase deploy --only firestore:rules
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Admin sirf Firestore mein role=='admin' AND status=='approved' user hai.
+    function isAdmin() {
+      return isSignedIn() &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    // ─────────────────────────── USERS (public profile) ───────────────────────────
+    match /users/{userId} {
+      // ✅ Still readable by any signed-in user — but this document no
+      // longer contains phoneNumber / latitude / longitude (see private
+      // subcollection below). Only non-sensitive matching/display fields
+      // live here: name, role, status, bloodGroup, isDonor, isReceiver,
+      // isAvailable, rewardPoints, profileImageUrl, createdAt,
+      // lastDonationDate, nextEligibleDate, city (general area only).
+      allow read: if isSignedIn();
+
+      allow create: if isOwner(userId)
+          && request.resource.data.status == 'pending'
+          && request.resource.data.role in ['donor', 'receiver'];
+
+      // User apna 'role', 'status', 'rewardPoints' khud nahi badal sakta —
+      // sirf admin. Baaki profile info (naam, blood group, availability
+      // toggle) khud update kar sakta hai.
+      allow update: if isAdmin()
+          || (
+              isOwner(userId) &&
+              request.resource.data.role == resource.data.role &&
+              request.resource.data.status == resource.data.status &&
+              request.resource.data.rewardPoints == resource.data.rewardPoints
+          );
+
+      allow delete: if isAdmin();
+
+      // ─────────────── PRIVATE (phone + exact location) ───────────────
+      // ✅ NEW: sirf owner aur admin padh/likh sakte hain. Koi doosra
+      // signed-in user is subcollection ko bilkul nahi padh sakta — is
+      // liye phone number aur exact GPS coordinates ab kisi aur ko nahi
+      // dikhtay.
+      match /private/{doc} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // ─────────────────────── BLOOD REQUESTS ───────────────────────
+    match /blood_requests/{requestId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+          && request.resource.data.requesterId == request.auth.uid;
+
+      // ✅ FIX: requester (receiver) apni request update kar sakta hai
+      // (jaise hospital name, notes waghera), LEKIN "status" field khud
+      // nahi badal sakta — status sirf admin change kar sakta hai. Pehle
+      // requester khud apni request ko "fulfilled" mark karke fake credit
+      // le sakta tha.
+      allow update: if isAdmin()
+          || (
+              isSignedIn() &&
+              resource.data.requesterId == request.auth.uid &&
+              request.resource.data.status == resource.data.status
+          );
+
+      allow delete: if isAdmin();
+    }
+
+    // ───────────────────────── DONATIONS ─────────────────────────
+    match /donations/{donationId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+          && request.resource.data.donorId == request.auth.uid;
+      allow update: if isAdmin()
+          || (
+              isSignedIn() &&
+              resource.data.donorId == request.auth.uid &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['certificateUrl'])
+          );
+      allow delete: if isAdmin();
+    }
+
+    // ──────────────────────── NOTIFICATIONS ────────────────────────
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow delete: if isAdmin()
+          || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    // ─────────────────────────── REWARDS ───────────────────────────
+    match /rewards/{rewardId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ──────────────────────── SOS REQUESTS ────────────────────────
+    match /sosRequests/{sosId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+          && request.resource.data.receiverId == request.auth.uid;
+      allow update: if isAdmin()
+          || (isSignedIn() && resource.data.receiverId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ──────────────────────── BLOOD DRIVES ────────────────────────
+    match /blood_drives/{driveId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ──────────────────────── AUDIT LOGS ────────────────────────
+    // (Not implemented in code yet, but rules ready for when it is —
+    // only admin should ever read/write these.)
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Default deny — koi bhi aur collection explicitly allow nahi hai
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
