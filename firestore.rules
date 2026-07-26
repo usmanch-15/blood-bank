@@ -20,6 +20,19 @@ rules_version = '2';
 // will simply stop being written/read (not a security hole, just broken
 // donor-contact + geo features until the code catches up).
 //
+// ⚠️ STILL OUTSTANDING (found during Phase 3 wiring, not fixed here): the
+// app code (auth_service.dart, donor_profile_screen.dart) currently still
+// writes `phoneNumber` directly onto the top-level users/{userId} doc, so
+// it IS still exposed to any signed-in user via `allow read: if isSignedIn()`
+// below, despite this comment's original intent. That migration to the
+// private subcollection was never actually done in app code — flagging so
+// it isn't missed. Not addressed in this pass since it's a frontend change
+// across several files.
+//
+// v3 UPDATE (Phase 3): added rules for 3 collections that Phase-3 frontend
+// code already reads/writes but had no rules for: rate_limits, reports /
+// misuse_reports, broadcasts.
+//
 // Deploy: firebase deploy --only firestore:rules
 // ============================================================================
 
@@ -136,6 +149,10 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
           && request.resource.data.receiverId == request.auth.uid;
+      // ✅ UPDATED: notifyNearbyDonorsOnSOS (Cloud Function, Admin SDK —
+      // bypasses these rules entirely) now also updates `status` to
+      // 'rate_limited'. Client-side update rule is unchanged: owner/admin
+      // can still update their own SOS (e.g. mark resolved).
       allow update: if isAdmin()
           || (isSignedIn() && resource.data.receiverId == request.auth.uid);
       allow delete: if isAdmin();
@@ -148,11 +165,68 @@ service cloud.firestore {
     }
 
     // ──────────────────────── AUDIT LOGS ────────────────────────
-    // (Not implemented in code yet, but rules ready for when it is —
-    // only admin should ever read/write these.)
     match /audit_logs/{logId} {
       allow read: if isAdmin();
       allow write: if isAdmin();
+    }
+
+    // ──────────────────────── RATE LIMITS ──────────────────────── [NEW]
+    // Written/read ONLY by rateLimiter.js via the Admin SDK, which bypasses
+    // these rules entirely — so this collection should never need a client
+    // write path. Admin can read for debugging/support; nobody else can
+    // read or write it directly (a user could otherwise clear their own
+    // rate-limit doc to bypass SOS spam prevention).
+    match /rate_limits/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ──────────────────────── REPORTS (misuse) ──────────────────── [NEW]
+    // ⚠️ Two different collections exist in the app code right now:
+    //   - `reports`         — written by report_service.dart (ReportService),
+    //                          which is what report_misuse_button.dart
+    //                          actually calls. Field: reportedBy.
+    //   - `misuse_reports`  — read by admin_web_reports.dart (the admin
+    //                          queue). Field: reporterId.
+    // These are NOT the same collection, so reports submitted by users
+    // via the report button currently never reach the admin queue — a
+    // real bug, flagged separately, not fixed in this pass (frontend fix
+    // needed: point ReportService at `misuse_reports` with matching field
+    // names). Rules for both are added here so neither is left insecure
+    // in the meantime.
+    match /reports/{reportId} {
+      allow read: if isAdmin()
+          || (isSignedIn() && resource.data.reportedBy == request.auth.uid);
+      allow create: if isSignedIn()
+          && request.resource.data.reportedBy == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /misuse_reports/{reportId} {
+      allow read: if isAdmin()
+          || (isSignedIn() && resource.data.reporterId == request.auth.uid);
+      allow create: if isSignedIn()
+          && request.resource.data.reporterId == request.auth.uid;
+      // Admin reviews/updates status, adminNotes, adminReviewedBy, resolvedAt
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ──────────────────────── BROADCASTS ──────────────────────────── [NEW]
+    // Only admin creates broadcasts (AdminBroadcastScreen). The
+    // onBroadcastCreated Cloud Function (Admin SDK, bypasses rules) is the
+    // only thing that ever updates status/sentAt/sentCount afterwards, so
+    // client-side update is intentionally not allowed to anyone, including
+    // admin — this keeps the "status: sent" + counts trustworthy as a
+    // server-computed record rather than something an admin client could
+    // fake.
+    match /broadcasts/{broadcastId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin()
+          && request.resource.data.status == 'pending';
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     // Default deny — koi bhi aur collection explicitly allow nahi hai

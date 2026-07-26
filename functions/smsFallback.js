@@ -1,41 +1,73 @@
 /**
  * ✅ PHASE 3 — SMS Fallback for SOS
  * If a donor's push notification can't be delivered (no token, or push
- * failed), send them an SMS instead so they don't miss an emergency.
+ * failed after retries), send them an SMS instead so they don't miss an
+ * emergency.
  *
- * SETUP REQUIRED:
- *   1. Create a free/paid Twilio account: https://www.twilio.com
- *   2. Get your Account SID, Auth Token, and a Twilio phone number
- *   3. Set them as Cloud Function config (from your terminal):
- *        firebase functions:config:set twilio.sid="ACxxxx" twilio.token="xxxx" twilio.phone="+1xxxxxxxxxx"
- *   4. npm install twilio --save   (inside your functions/ folder)
+ * ⚠️ UPDATED: `functions.config()` is deprecated/shut down by Google, so
+ * this now uses `firebase-functions/params` instead — the modern way to
+ * pass config into 2nd-gen (v2) Cloud Functions.
+ *   - TWILIO_SID / TWILIO_PHONE  → non-secret, stored in a .env file
+ *   - TWILIO_AUTH_TOKEN          → secret, stored in Secret Manager
  *
- * Usage — call this AFTER sendPushToUser() fails or returns no-token:
+ * SETUP REQUIRED (run once from inside the functions/ folder):
+ *   1. Create a Twilio account: https://www.twilio.com — get your
+ *      Account SID, Auth Token, and a Twilio phone number.
+ *   2. npm install twilio --save
+ *   3. Create functions/.env.<your-project-id> with:
+ *        TWILIO_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ *        TWILIO_PHONE=+1xxxxxxxxxx
+ *      (find your project id: firebase use  → shows current project)
+ *   4. Store the secret (this prompts you to paste the token — it is
+ *      never written to disk or committed to git):
+ *        firebase functions:secrets:set TWILIO_AUTH_TOKEN
+ *
+ * Usage — call this AFTER sendPushToUser()/sendPushToUsers() fails or
+ * returns no-token / max-retries-exceeded for a given uid:
  *
  *   const { sendSmsFallback } = require('./smsFallback');
- *   const pushResult = await sendPushToUser(uid, {...});
- *   if (!pushResult.sent && (pushResult.reason === 'no-token' || pushResult.reason === 'max-retries-exceeded')) {
- *     await sendSmsFallback(uid, 'Blood needed urgently nearby! Open the app to respond.');
- *   }
+ *   await sendSmsFallback(uid, 'Blood needed urgently nearby! Open the app to respond.');
+ *
+ * Any exported Cloud Function that (directly or indirectly, via another
+ * required module) calls sendSmsFallback() MUST declare the secret in its
+ * options, e.g.:
+ *   const { twilioAuthToken } = require('./smsFallback');
+ *   exports.myTrigger = onDocumentCreated(
+ *     { document: '...', secrets: [twilioAuthToken] },
+ *     handler
+ *   );
+ * Without this, twilioAuthToken.value() will be empty at runtime even if
+ * the secret was set, because gen2 functions only get access to secrets
+ * they explicitly list.
  */
 
 const admin = require('firebase-admin');
-const functions = require('firebase-functions');
 if (!admin.apps.length) {
   admin.initializeApp();
 }
 const db = admin.firestore();
+const { defineString, defineSecret } = require('firebase-functions/params');
+
+const twilioSid = defineString('TWILIO_SID');
+const twilioPhone = defineString('TWILIO_PHONE');
+const twilioAuthToken = defineSecret('TWILIO_AUTH_TOKEN');
 
 let twilioClient = null;
 function getTwilioClient() {
-  if (twilioClient) return twilioClient;
-  const twilio = require('twilio');
-  const config = functions.config().twilio || {};
-  if (!config.sid || !config.token) {
-    console.error('Twilio config missing — run firebase functions:config:set twilio.sid=... twilio.token=... twilio.phone=...');
+  const sid = twilioSid.value();
+  const token = twilioAuthToken.value();
+
+  if (!sid || !token) {
+    console.error(
+      'Twilio not configured — set TWILIO_SID in functions/.env.<project-id> ' +
+        'and run: firebase functions:secrets:set TWILIO_AUTH_TOKEN'
+    );
     return null;
   }
-  twilioClient = twilio(config.sid, config.token);
+
+  if (twilioClient) return twilioClient;
+  const twilio = require('twilio');
+  twilioClient = twilio(sid, token);
   return twilioClient;
 }
 
@@ -43,6 +75,13 @@ function getTwilioClient() {
  * Sends a short SMS to the given user's registered phone number.
  * Silently no-ops (with a log) if Twilio isn't configured or the user
  * has no phone number on file.
+ *
+ * NOTE: phoneNumber currently lives on the TOP-LEVEL users/{uid} doc
+ * (written by auth_service.dart / donor_profile_screen.dart), not in the
+ * users/{uid}/private subcollection the firestore.rules comments describe
+ * as the intended long-term home for it. Reading it from here matches
+ * how the app actually writes it today — see the note I've flagged
+ * separately about migrating phoneNumber into the private subcollection.
  */
 async function sendSmsFallback(uid, message) {
   const client = getTwilioClient();
@@ -54,12 +93,10 @@ async function sendSmsFallback(uid, message) {
   const phoneNumber = userSnap.data().phoneNumber;
   if (!phoneNumber) return { sent: false, reason: 'no-phone-number' };
 
-  const config = functions.config().twilio;
-
   try {
     await client.messages.create({
       body: message,
-      from: config.phone,
+      from: twilioPhone.value(),
       to: phoneNumber, // must be in E.164 format e.g. +923001234567
     });
     console.log(`SMS fallback sent to ${uid}`);
@@ -70,4 +107,4 @@ async function sendSmsFallback(uid, message) {
   }
 }
 
-module.exports = { sendSmsFallback };
+module.exports = { sendSmsFallback, twilioAuthToken };

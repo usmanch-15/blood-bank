@@ -3,7 +3,7 @@ import '../screens/splash_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
-import '../screens/donor/donor_dashboard_screen.dart';
+import '../screens/donor/donor_dashboard_screen.dart' hide RewardsScreen;
 import '../screens/donor/donor_profile_screen.dart';
 import '../screens/donor/donation_history_screen.dart';
 import '../screens/donor/eligibility_status_screen.dart';

@@ -9,16 +9,22 @@
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
 const db = admin.firestore();
 const messaging = admin.messaging();
 
+const { sendPushToUsers } = require("./notificationService");
+const { checkSosRateLimit } = require("./rateLimiter");
+const { sendSmsFallback, twilioAuthToken } = require("./smsFallback");
+const { checkEligibilityReminders } = require("./eligibilityReminder");
+
 const MIN_DAYS_BETWEEN_DONATIONS = 90;
 
 /**
- * ✅ confirmDonation (callable)
+ * ✅ confirmDonation (callable) — UNCHANGED
  * ----------------------------------------------------------------------
  * Pehle donation-confirmation ka koi wired flow hi nahi tha (createDonation
  * aur addRewardForDonation dono methods app mein kahin se call hi nahi
@@ -115,19 +121,25 @@ exports.confirmDonation = onCall(async (request) => {
 });
 
 /**
- * ✅ sendPushNotification (Firestore trigger)
+ * ✅ sendPushNotification (Firestore trigger) — UPDATED
  * ----------------------------------------------------------------------
- * Pehle notification_service.dart sirf Firestore mein ek document banata
- * tha — device par kabhi push notification aati hi nahi thi (sirf app
- * kholne par in-app list mein dikhta tha). Ab jab bhi `notifications`
- * collection mein naya doc bane, ye function us user ke saved FCM token
- * par asli push bhejti hai.
+ * Ye trigger kisi bhi `notifications/{id}` doc create par FCM push bhejta
+ * hai. Ab jo naya code sendPushToUser()/sendPushToUsers() (notificationService.js)
+ * use karta hai, wo khud apna push bhej chuka hota hai AUR notification doc
+ * bhi banata hai — is liye us doc par `pushSentDirectly: true` flag lagaya
+ * jata hai. Ye trigger us flag ko check karke aisi docs ko skip karta hai,
+ * warna device par HAR push 2 dafa jaata (duplicate).
+ *
+ * Jo purana code seedha `notifications` collection mein `.add()` karta hai
+ * (jaise confirmDonation upar), us par ye flag nahi hoga, so ye trigger
+ * unke liye pehle jaisa hi normal kaam karega.
  */
 exports.sendPushNotification = onDocumentCreated(
   "notifications/{notificationId}",
   async (event) => {
     const data = event.data?.data();
     if (!data || !data.userId) return;
+    if (data.pushSentDirectly) return; // already sent by notificationService — avoid duplicate push
 
     const userSnap = await db.collection("users").doc(data.userId).get();
     const token = userSnap.data()?.fcmToken;
@@ -153,17 +165,35 @@ exports.sendPushNotification = onDocumentCreated(
 );
 
 /**
- * ✅ notifyNearbyDonorsOnSOS (Firestore trigger)
+ * ✅ notifyNearbyDonorsOnSOS (Firestore trigger) — REWRITTEN (Phase 3)
  * ----------------------------------------------------------------------
- * SOS request banate hi matching blood-group ke eligible+available donors
- * ko automatically notification bhej deta hai (README mein SOS ka wada
- * kiya gaya tha, lekin donors ko koi automatic alert nahi jaata tha).
+ * Naya flow:
+ *   1. checkSosRateLimit() — agar receiver ne last 60 min mein 3+ SOS
+ *      bheji hain, request ko 'rate_limited' mark karke donors ko notify
+ *      hi nahi karta (spam prevention).
+ *   2. Matching blood-group ke eligible+available donors dhoondta hai
+ *      (query same as before).
+ *   3. sendPushToUsers() call karta hai — reliable push (retry + dead
+ *      token cleanup + notification-preference check), notificationService.js se.
+ *   4. Jin donors tak push nahi pahunch payi (no-token ya sab retries fail),
+ *      unhe SMS fallback try karta hai (agar Twilio configured hai aur
+ *      unka phone number hai).
  */
 exports.notifyNearbyDonorsOnSOS = onDocumentCreated(
-  "sosRequests/{sosId}",
+  { document: "sosRequests/{sosId}", secrets: [twilioAuthToken] },
   async (event) => {
+    const sosRef = event.data?.ref;
     const sos = event.data?.data();
-    if (!sos || !sos.bloodGroup) return;
+    if (!sos || !sos.bloodGroup || !sos.receiverId || !sosRef) return;
+
+    const allowed = await checkSosRateLimit(sos.receiverId);
+    if (!allowed) {
+      await sosRef.update({
+        status: "rate_limited",
+        rateLimitedAt: admin.firestore.Timestamp.now(),
+      });
+      return; // spam request — donors ko notify nahi karna
+    }
 
     const donorsSnap = await db
       .collection("users")
@@ -173,20 +203,90 @@ exports.notifyNearbyDonorsOnSOS = onDocumentCreated(
       .where("status", "==", "approved")
       .get();
 
-    const now = admin.firestore.Timestamp.now();
-    const batch = db.batch();
-    donorsSnap.forEach((doc) => {
-      const notifRef = db.collection("notifications").doc();
-      batch.set(notifRef, {
-        userId: doc.id,
-        title: "🚨 SOS Blood Request",
-        body: `Urgent: ${sos.bloodGroup} blood needed nearby. Tap to view.`,
-        type: "sos",
-        relatedId: event.params.sosId,
-        createdAt: now,
-        isRead: false,
-      });
+    if (donorsSnap.empty) return;
+
+    const donorIds = donorsSnap.docs.map((d) => d.id);
+
+    const result = await sendPushToUsers(donorIds, {
+      title: "🚨 SOS Blood Request",
+      body: `Urgent: ${sos.bloodGroup} blood needed nearby. Tap to view.`,
+      data: { type: "sosAlerts", relatedId: event.params.sosId },
     });
-    await batch.commit();
+
+    // Push fail hui un donors ke liye SMS fallback try karo
+    const smsCandidates = result.results.filter(
+      (r) => !r.sent && (r.reason === "no-token" || r.reason === "max-retries-exceeded")
+    );
+    if (smsCandidates.length > 0) {
+      await Promise.all(
+        smsCandidates.map((r) =>
+          sendSmsFallback(
+            r.uid,
+            `Urgent: ${sos.bloodGroup} blood needed nearby. Open the Smart Blood Bank app to respond.`
+          )
+        )
+      );
+    }
+  }
+);
+
+/**
+ * ✅ onBroadcastCreated (Firestore trigger) — NEW (Phase 3)
+ * ----------------------------------------------------------------------
+ * AdminBroadcastScreen ek `broadcasts/{id}` doc banati hai (status: 'pending')
+ * — pehle ise koi function pick hi nahi karta tha. Ab ye trigger:
+ *   1. `audience` field ke hisaab se target users dhoondta hai
+ *      (all / donors / receivers / specific bloodGroup)
+ *   2. sendPushToUsers() se sabko push bhejta hai
+ *   3. broadcast doc ko status: 'sent' + sentCount/totalRecipients ke
+ *      saath update karta hai (AdminBroadcastScreen isi ka wada karta hai)
+ */
+exports.onBroadcastCreated = onDocumentCreated(
+  "broadcasts/{broadcastId}",
+  async (event) => {
+    const broadcastRef = event.data?.ref;
+    const broadcast = event.data?.data();
+    if (!broadcast || !broadcastRef) return;
+
+    let query = db.collection("users").where("status", "==", "approved");
+
+    if (broadcast.audience === "donors") {
+      query = query.where("isDonor", "==", true);
+    } else if (broadcast.audience === "receivers") {
+      query = query.where("isReceiver", "==", true);
+    } else if (broadcast.audience === "bloodGroup" && broadcast.bloodGroup) {
+      query = query.where("bloodGroup", "==", broadcast.bloodGroup);
+    }
+    // audience === "all" → no extra filter, sirf approved users
+
+    const usersSnap = await query.get();
+    const uids = usersSnap.docs.map((d) => d.id);
+
+    const result = await sendPushToUsers(uids, {
+      title: broadcast.title || "Smart Blood Bank",
+      body: broadcast.body || "",
+      data: { type: "adminAnnouncements", relatedId: event.params.broadcastId },
+    });
+
+    await broadcastRef.update({
+      status: "sent",
+      sentAt: admin.firestore.Timestamp.now(),
+      totalRecipients: result.total,
+      sentCount: result.sent,
+    });
+  }
+);
+
+/**
+ * ✅ dailyEligibilityCheck (Scheduled function) — NEW (Phase 3)
+ * ----------------------------------------------------------------------
+ * Har roz 09:00 Asia/Karachi par chalta hai. Jin donors ka 90-din
+ * eligibility window aaj khula hai, unhe "You're eligible to donate
+ * again!" push bhejta hai (logic eligibilityReminder.js mein hai).
+ */
+exports.dailyEligibilityCheck = onSchedule(
+  { schedule: "every day 09:00", timeZone: "Asia/Karachi" },
+  async () => {
+    await checkEligibilityReminders();
   }
 );

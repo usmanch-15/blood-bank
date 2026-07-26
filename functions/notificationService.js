@@ -15,20 +15,13 @@
  *   - Writes a notification doc to the `notifications` collection so
  *     users see it in their in-app notification history
  *
- * To use from your existing functions/index.js:
- *
- *   const { sendPushToUser, sendPushToUsers } = require('./notificationService');
- *
- *   exports.notifyNearbyDonorsOnSOS = functions.firestore
- *     .document('sosRequests/{sosId}')
- *     .onCreate(async (snap, context) => {
- *       const donorIds = snap.data().notifiedDonors || [];
- *       await sendPushToUsers(donorIds, {
- *         title: 'Blood Needed: ' + snap.data().bloodGroup,
- *         body: 'An emergency request needs your help nearby.',
- *         data: { type: 'sosAlerts', requestId: context.params.sosId },
- *       });
- *     });
+ * ⚠️ IMPORTANT — pushSentDirectly flag:
+ *   index.js also has an older `sendPushNotification` trigger that fires
+ *   on ANY `notifications/{id}` doc creation and sends its own FCM push.
+ *   Since this function ALSO writes a notification doc, without a guard
+ *   every push sent through sendPushToUser() would go out to the device
+ *   TWICE (once here, once via that trigger). We stamp `pushSentDirectly:
+ *   true` on the doc we create so the old trigger knows to skip it.
  */
 
 const admin = require('firebase-admin');
@@ -83,6 +76,8 @@ async function sendPushToUser(uid, { title, body, data = {} }) {
 
   // Always record the notification in-app, even if push is disabled —
   // the in-app notification history should still show it.
+  // pushSentDirectly=true tells the legacy sendPushNotification trigger
+  // (in index.js) to NOT send a second push for this same doc.
   await db.collection('notifications').add({
     userId: uid,
     title,
@@ -91,6 +86,7 @@ async function sendPushToUser(uid, { title, body, data = {} }) {
     relatedId: data.requestId || data.relatedId || null,
     isRead: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    pushSentDirectly: true,
   });
 
   if (!isNotificationAllowed(userData, category)) {
