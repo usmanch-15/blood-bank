@@ -5,6 +5,7 @@ import '../../constants/app_colors.dart';
 import '../../models/blood_request_model.dart';
 import 'blood_request_form_screen.dart';
 import 'sos_emergency_screen.dart';
+import '../maps/nearby_donors_map_screen.dart'; // ✅ NEW — Nearby Donors map
 
 class ReceiverDashboardScreen extends StatefulWidget {
   const ReceiverDashboardScreen({super.key});
@@ -139,6 +140,25 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                           builder: (_) => const BloodRequestFormScreen()),
                     );
                     // Form submit hone ke baad list auto-refresh hogi (StreamBuilder)
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                // ── Find Nearby Donors on Map ──
+                // ✅ NEW: NearbyDonorsMapScreen existed in the codebase but
+                // had no button/route anywhere pointing to it — completely
+                // unreachable. This wires it in.
+                _actionTile(
+                  title: 'Find Nearby Donors',
+                  icon: Icons.map_outlined,
+                  color: Colors.teal,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const NearbyDonorsMapScreen()),
+                    );
                   },
                 ),
 

@@ -24,16 +24,20 @@ class GeoLocationService {
   Future<List<DonorModel>> findNearbyDonors({
     required double receiverLat,
     required double receiverLng,
-    required String bloodGroup,
+    String? bloodGroup, // ✅ CHANGED: nullable — null means "any blood group"
     double radiusKm = 15.0,
   }) async {
-    final snapshot = await FirebaseFirestore.instance
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
         .collection(AppConstants.usersCollection)
         .where('role', isEqualTo: 'donor')
-        .where('bloodGroup', isEqualTo: bloodGroup)
         .where('isEligible', isEqualTo: true)
-        .where('status', isEqualTo: 'approved')
-        .get();
+        .where('status', isEqualTo: 'approved');
+
+    if (bloodGroup != null) {
+      query = query.where('bloodGroup', isEqualTo: bloodGroup);
+    }
+
+    final snapshot = await query.get();
 
     final List<Map<String, dynamic>> withinRadius = [];
 
@@ -69,7 +73,7 @@ class GeoLocationService {
   Future<List<DonorModel>> findNearbyDonorsWithExpand({
     required double receiverLat,
     required double receiverLng,
-    required String bloodGroup,
+    String? bloodGroup, // ✅ CHANGED: nullable — null means "any blood group"
     List<double> radiiKm = const [15.0, 30.0, 50.0],
   }) async {
     for (final radius in radiiKm) {

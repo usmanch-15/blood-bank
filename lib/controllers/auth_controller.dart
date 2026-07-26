@@ -19,6 +19,38 @@ class AuthController extends ChangeNotifier {
   bool get isReceiver => _currentUser?.role == 'receiver';
   bool get isAdmin => _currentUser?.role == 'admin';
 
+  /// ✅ NEW — keeps this controller in sync automatically.
+  /// ----------------------------------------------------------------------
+  /// login_screen.dart / signup_screen.dart / role_selection_screen.dart
+  /// all sign the user in via AuthService directly, WITHOUT calling
+  /// AuthController.login() — so without this listener, currentUser would
+  /// stay null forever even after a successful login, and anything reading
+  /// this controller (e.g. AppDrawer's auth.isDonor/isReceiver) would be
+  /// silently wrong. Listening to FirebaseAuth.authStateChanges() means
+  /// this stays correct no matter which screen performed the sign-in.
+  AuthController() {
+    FirebaseAuth.instance.authStateChanges().listen(_onAuthStateChanged);
+  }
+
+  Future<void> _onAuthStateChanged(User? firebaseUser) async {
+    if (firebaseUser == null) {
+      _currentUser = null;
+      notifyListeners();
+      return;
+    }
+    try {
+      final data = await _authService.getUserData(firebaseUser.uid);
+      if (data != null) {
+        _currentUser = UserModel.fromFirestore(data, firebaseUser.uid);
+        notifyListeners();
+      }
+    } catch (e) {
+      // Network hiccup etc. — don't clear a possibly-valid currentUser
+      // over a transient read failure; just log it.
+      debugPrint('AuthController: failed to sync user data — $e');
+    }
+  }
+
   void _setLoading(bool val) { _isLoading = val; notifyListeners(); }
   void _setError(String? msg) { _errorMessage = msg; notifyListeners(); }
 
