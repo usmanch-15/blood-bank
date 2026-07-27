@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../models/donor_model.dart';
 import '../../services/geo_location_service.dart';
 
-/// ✅ REWRITTEN — was showing 3 hardcoded fake donors ("Ahmed", "Sara",
-/// "Ali") at fixed New York coordinates regardless of who opened it or
-/// where they were. Now uses the receiver's real GPS location + a real
-/// Firestore query (GeoLocationService.findNearbyDonorsWithExpand, which
-/// already existed but was never actually called from a screen) to show
-/// real nearby donors, auto-expanding the search radius if none are found
-/// close by.
+/// ✅ REWRITTEN (2nd pass) — switched from google_maps_flutter to
+/// flutter_map (OpenStreetMap tiles). Google Maps requires a Google Cloud
+/// Platform project with a BILLING ACCOUNT linked (a card on file) just to
+/// enable the Maps SDK, even to stay within the free tier — Usman doesn't
+/// have a card, so that path was a hard blocker. flutter_map + OpenStreetMap
+/// needs NO API key, NO billing account, ever — it's genuinely free.
+///
+/// Also still uses real Firestore data (GeoLocationService.findNearbyDonorsWithExpand)
+/// instead of the original hardcoded dummy donors — that part is unchanged
+/// from the previous fix.
 class NearbyDonorsMapScreen extends StatefulWidget {
   final String? bloodGroup; // null = show donors of any blood group
 
@@ -23,11 +27,9 @@ class NearbyDonorsMapScreen extends StatefulWidget {
 
 class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
   final GeoLocationService _geoService = GeoLocationService();
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
 
-  final Set<Marker> _markers = {};
   List<DonorModel> _donors = [];
-
   LatLng? _center;
   bool _isLoading = true;
   String? _errorMessage;
@@ -35,9 +37,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadNearbyDonors();
-    });
+    _loadNearbyDonors();
   }
 
   Future<void> _loadNearbyDonors() async {
@@ -56,39 +56,18 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
         bloodGroup: widget.bloodGroup,
       );
 
-      final markers = <Marker>{
-        // Receiver's own position, so they have a frame of reference.
-        Marker(
-          markerId: const MarkerId('me'),
-          position: center,
-          infoWindow: const InfoWindow(title: 'Your location'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-        ),
-        for (final donor in _donorsWithLocation(donors))
-          Marker(
-            markerId: MarkerId(donor.uid),
-            position: LatLng(donor.latitude!, donor.longitude!),
-            infoWindow: InfoWindow(
-              title: donor.name.isNotEmpty ? donor.name : 'Donor',
-              snippet: 'Blood: ${donor.bloodGroup ?? '—'}'
-                  '${donor.phoneNumber != null ? ' • Tap for details' : ''}',
-              onTap: () => _showDonorSheet(donor),
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-          ),
-      };
-
       if (!mounted) return;
       setState(() {
         _center = center;
         _donors = donors;
-        _markers
-          ..clear()
-          ..addAll(markers);
         _isLoading = false;
       });
 
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(center, 13));
+      // Map might not be mounted yet on first load — guard with a
+      // post-frame callback so `move` doesn't run before FlutterMap exists.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController.move(center, 13);
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -98,8 +77,8 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
     }
   }
 
-  List<DonorModel> _donorsWithLocation(List<DonorModel> donors) =>
-      donors.where((d) => d.latitude != null && d.longitude != null).toList();
+  List<DonorModel> get _donorsWithLocation =>
+      _donors.where((d) => d.latitude != null && d.longitude != null).toList();
 
   void _showDonorSheet(DonorModel donor) {
     showModalBottomSheet(
@@ -133,10 +112,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
     );
   }
 
-  /// 📍 Move camera back to receiver's own location.
   void _goToCenter() {
     if (_center != null) {
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_center!, 14));
+      _mapController.move(_center!, 14);
     }
   }
 
@@ -190,20 +168,57 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
       );
     }
 
+    final center = _center ?? const LatLng(0, 0);
+    final donors = _donorsWithLocation;
+
     return Stack(
       children: [
-        GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: _center ?? const LatLng(0, 0),
-            zoom: 13,
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: center,
+            initialZoom: 13,
           ),
-          markers: _markers,
-          myLocationEnabled: true,
-          myLocationButtonEnabled: false, // we have our own button in the AppBar
-          mapType: MapType.normal,
-          onMapCreated: (controller) => _mapController = controller,
+          children: [
+            // OpenStreetMap tiles — free, no API key required. The
+            // userAgentPackageName is required by OSM's tile usage policy
+            // (identifies the app making requests, not a secret).
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.usmanch.bloodbank',
+            ),
+            MarkerLayer(
+              markers: [
+                // Receiver's own position, so they have a frame of reference.
+                Marker(
+                  point: center,
+                  width: 40,
+                  height: 40,
+                  child: const Icon(Icons.person_pin_circle,
+                      color: Colors.blue, size: 40),
+                ),
+                for (final donor in donors)
+                  Marker(
+                    point: LatLng(donor.latitude!, donor.longitude!),
+                    width: 44,
+                    height: 44,
+                    child: GestureDetector(
+                      onTap: () => _showDonorSheet(donor),
+                      child: const Icon(Icons.location_on,
+                          color: AppColors.primaryRed, size: 44),
+                    ),
+                  ),
+              ],
+            ),
+            // OSM requires attribution to be visible on the map.
+            const RichAttributionWidget(
+              attributions: [
+                TextSourceAttribution('OpenStreetMap contributors'),
+              ],
+            ),
+          ],
         ),
-        if (_donorsWithLocation(_donors).isEmpty)
+        if (donors.isEmpty)
           Positioned(
             top: 16,
             left: 16,
@@ -227,7 +242,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
 
   @override
   void dispose() {
-    _mapController?.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 }

@@ -34,7 +34,8 @@ dependencies:
   http: ^1.2.2                   # ← NEW
 
   # Google Maps & Location
-  google_maps_flutter: ^2.9.0
+  flutter_map: ^7.0.2       # ✅ CHANGED: was google_maps_flutter — OpenStreetMap, no API key/billing needed
+  latlong2: ^0.9.1          # ✅ NEW — LatLng type used by flutter_map
   geolocator: ^13.0.1
   geocoding: ^3.0.0
 
