@@ -2,11 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_colors.dart';
+import '../../constants/app_spacing.dart';
 import '../../models/blood_request_model.dart';
+import '../../utils/app_animations.dart';
+import '../../widgets/status_badge.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/loading_shimmer.dart';
 import 'blood_request_form_screen.dart';
 import 'sos_emergency_screen.dart';
-import '../maps/nearby_donors_map_screen.dart'; // ✅ NEW — Nearby Donors map
+import '../maps/nearby_donors_map_screen.dart'; // Nearby Donors map
+import 'donor_matching_screen.dart'; // Find Donors for a specific request
 
+/// ✅ UI POLISH ONLY — all 3 features added earlier this session (SOS
+/// button → SosEmergencyScreen, "Find Nearby Donors" → NearbyDonorsMapScreen,
+/// per-request "Find Donors" → DonorMatchingScreen with requestId) are
+/// untouched: same destinations, same params, same imports. Only the
+/// visual layer changed (badges, spacing, entrance animation, empty state).
 class ReceiverDashboardScreen extends StatefulWidget {
   const ReceiverDashboardScreen({super.key});
 
@@ -53,13 +64,13 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.arrow_back, color: Colors.red),
+                  child: const Icon(Icons.arrow_back, color: AppColors.primaryRed),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 const Text(
                   'Receiver Dashboard',
                   style: TextStyle(
-                    color: Colors.red,
+                    color: AppColors.primaryRed,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -68,71 +79,88 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
           ),
 
           SliverPadding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // ── Welcome Card ──
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.secondaryBlue,
-                        AppColors.primaryRed.withOpacity(0.8),
+                FadeInAnimation(
+                  child: Container(
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.secondaryBlue,
+                          AppColors.primaryRed.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.shadowMedium,
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome, $name',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome, $name',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Create a request or use SOS for emergencies',
-                        style: TextStyle(fontSize: 14, color: Colors.white70),
-                      ),
-                    ],
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Create a request or use SOS for emergencies',
+                          style: TextStyle(fontSize: 14, color: Colors.white70),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 25),
+                const SizedBox(height: AppSpacing.xxl + 1),
 
-                // ── SOS Button ──
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.warning, size: 28),
-                  label: const Text(
-                    'SOS EMERGENCY',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const SosEmergencyScreen()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
+                // ── SOS Button (unchanged destination: SosEmergencyScreen) ──
+                SlideInAnimation(
+                  delay: const Duration(milliseconds: 80),
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.warning, size: 28),
+                    label: const Text(
+                      'SOS EMERGENCY',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SosEmergencyScreen()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryRed,
+                      foregroundColor: Colors.white,
+                      elevation: AppSpacing.elevationMedium,
+                      shadowColor: AppColors.shadowRed,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      ),
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
 
-                // ── Create Request ──
+                // ── Create Request (unchanged destination: BloodRequestFormScreen) ──
                 _actionTile(
                   title: 'Create Blood Request',
                   icon: Icons.add_circle_outline,
-                  color: Colors.blue,
+                  color: AppColors.secondaryBlue,
                   onTap: () async {
                     await Navigator.push(
                       context,
@@ -143,12 +171,9 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                   },
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
 
-                // ── Find Nearby Donors on Map ──
-                // ✅ NEW: NearbyDonorsMapScreen existed in the codebase but
-                // had no button/route anywhere pointing to it — completely
-                // unreachable. This wires it in.
+                // ── Find Nearby Donors on Map (unchanged destination: NearbyDonorsMapScreen) ──
                 _actionTile(
                   title: 'Find Nearby Donors',
                   icon: Icons.map_outlined,
@@ -162,15 +187,15 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                   },
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: AppSpacing.xxl + 6),
 
                 const Text(
                   'My Requests',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
 
-                // ── Real Firebase Requests (StreamBuilder) ──
+                // ── Real Firebase Requests (StreamBuilder) — unchanged query ──
                 uid.isEmpty
                     ? const Center(child: Text('Not logged in'))
                     : StreamBuilder<QuerySnapshot>(
@@ -179,26 +204,17 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       .where('requesterId', isEqualTo: uid)
                       .snapshots(),
                   builder: (context, snap) {
-                    if (snap.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Center(
-                          child: CircularProgressIndicator(
-                              color: Colors.red));
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const LoadingShimmerList(itemCount: 2);
                     }
 
                     final docs = snap.data?.docs ?? [];
 
                     if (docs.isEmpty) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text(
-                            'No requests yet.\nTap "Create Blood Request" to add one.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: Colors.grey, fontSize: 15),
-                          ),
-                        ),
+                      return const EmptyState(
+                        icon: Icons.assignment_outlined,
+                        title: 'No requests yet',
+                        message: 'Tap "Create Blood Request" to add one.',
                       );
                     }
 
@@ -214,7 +230,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                   },
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
               ]),
             ),
           ),
@@ -230,12 +246,12 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
     required VoidCallback onTap,
   }) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: AppSpacing.elevationLow,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
+          backgroundColor: color.withOpacity(0.15),
           child: Icon(icon, color: color),
         ),
         title: Text(title),
@@ -244,83 +260,103 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
     );
   }
 
-  Widget _requestCard(BloodRequestModel request) {
-    Color statusColor;
-    switch (request.status) {
+  BadgeStatus _badgeStatusFor(String status) {
+    switch (status) {
       case 'fulfilled':
-        statusColor = Colors.green;
-        break;
+        return BadgeStatus.verified;
       case 'rejected':
-        statusColor = Colors.red;
-        break;
+        return BadgeStatus.rejected;
       default:
-        statusColor = Colors.orange;
+        return BadgeStatus.pending;
     }
+  }
 
+  Widget _requestCard(BloodRequestModel request) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      elevation: 2,
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
+      elevation: AppSpacing.elevationLow,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${request.bloodGroup}  •  ${request.unitsRequired ?? request.quantity} Units',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    BloodTypeBadge(bloodGroup: request.bloodGroup),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      '${request.unitsRequired ?? request.quantity} Units',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                  ],
                 ),
-                Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: statusColor.withOpacity(0.4)),
-                  ),
-                  child: Text(
-                    request.status,
-                    style: TextStyle(
-                        color: statusColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600),
-                  ),
+                StatusBadge(
+                  status: _badgeStatusFor(request.status),
+                  customLabel: request.status,
+                  customColor: null,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm + 2),
             Row(
               children: [
                 const Icon(Icons.local_hospital_outlined,
-                    size: 16, color: Colors.grey),
+                    size: AppSpacing.iconSm, color: Colors.grey),
                 const SizedBox(width: 6),
-                Text(request.hospitalName,
-                    style: const TextStyle(color: Colors.grey)),
+                Expanded(
+                  child: Text(request.hospitalName,
+                      style: const TextStyle(color: Colors.grey)),
+                ),
               ],
             ),
             const SizedBox(height: 4),
             Row(
               children: [
                 const Icon(Icons.location_on_outlined,
-                    size: 16, color: Colors.grey),
+                    size: AppSpacing.iconSm, color: Colors.grey),
                 const SizedBox(width: 6),
-                Text(request.location,
-                    style: const TextStyle(color: Colors.grey)),
+                Expanded(
+                  child: Text(request.location,
+                      style: const TextStyle(color: Colors.grey)),
+                ),
               ],
             ),
             if (request.urgency.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(Icons.priority_high, size: 16, color: Colors.grey),
-                  const SizedBox(width: 6),
-                  Text('Urgency: ${request.urgency}',
-                      style: const TextStyle(color: Colors.grey)),
-                ],
+              const SizedBox(height: AppSpacing.sm),
+              UrgencyBadge(urgency: request.urgency),
+            ],
+            // ── Find Donors (unchanged: DonorMatchingScreen with requestId,
+            // needed for confirmDonation Cloud Function authorization) ──
+            if (request.status != 'fulfilled') ...[
+              const SizedBox(height: AppSpacing.sm + 2),
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DonorMatchingScreen(
+                          initialBloodGroup: request.bloodGroup,
+                          requestId: request.id,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.search, size: 16),
+                  label: const Text('Find Donors'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryRed,
+                    side: const BorderSide(color: AppColors.primaryRed),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm + 2),
+                    ),
+                  ),
+                ),
               ),
             ],
           ],

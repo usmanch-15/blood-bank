@@ -10,7 +10,19 @@ import '../../controllers/donor_controller.dart';
 class DonorMatchingScreen extends StatefulWidget {
   final String? initialBloodGroup;
 
-  const DonorMatchingScreen({super.key, this.initialBloodGroup});
+  /// ✅ NEW — when this screen is opened from a specific blood request
+  /// (recommended), pass that request's id here. The confirmDonation
+  /// Cloud Function requires the caller to be either the donor
+  /// themselves or the requester of THIS request, so donations can only
+  /// be confirmed here when this is set (or when the donor confirms
+  /// their own donation from a different flow).
+  final String? requestId;
+
+  const DonorMatchingScreen({
+    super.key,
+    this.initialBloodGroup,
+    this.requestId,
+  });
 
   @override
   State<DonorMatchingScreen> createState() => _DonorMatchingScreenState();
@@ -155,6 +167,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
       await DonorController().confirmDonation(
         donorId: donorModel.uid,
         bloodGroup: donorModel.bloodGroup ?? _selectedBloodGroup ?? '',
+        requestId: widget.requestId,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -335,7 +348,14 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                   donor: filtered[i],
                   onCall: () =>
                       _callDonor(filtered[i].phoneNumber),
-                  onMarkDonated: () => _confirmDonation(filtered[i]),
+                  // ✅ Only offer "Mark Donation Complete" when opened
+                  // with a requestId — confirmDonation (Cloud Function)
+                  // requires the caller to be the requester of that
+                  // specific request, so without one this would always
+                  // fail with permission-denied.
+                  onMarkDonated: widget.requestId != null
+                      ? () => _confirmDonation(filtered[i])
+                      : null,
                 ),
               ),
             ),
@@ -350,12 +370,12 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
 class _DonorCard extends StatelessWidget {
   final DonorModel donor;
   final VoidCallback onCall;
-  final VoidCallback onMarkDonated;
+  final VoidCallback? onMarkDonated; // ✅ nullable — hidden when no requestId
 
   const _DonorCard({
     required this.donor,
     required this.onCall,
-    required this.onMarkDonated,
+    this.onMarkDonated,
   });
 
   @override
@@ -486,18 +506,19 @@ class _DonorCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  IconButton(
-                    onPressed: onMarkDonated,
-                    icon: const Icon(Icons.check_circle_outline,
-                        color: AppColors.primaryRed),
-                    tooltip: 'Mark Donation Complete',
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.primaryRed.withOpacity(0.08),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  if (onMarkDonated != null)
+                    IconButton(
+                      onPressed: onMarkDonated,
+                      icon: const Icon(Icons.check_circle_outline,
+                          color: AppColors.primaryRed),
+                      tooltip: 'Mark Donation Complete',
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.primaryRed.withOpacity(0.08),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
           ],

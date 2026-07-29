@@ -36,4 +36,48 @@ class AppColors {
 
   // Additional Colors for Onboarding
   static const Color onboardingRed = Color(0xFFD32F2F); // Added for onboarding
+
+  // ── ✅ NEW additions below — purely additive, nothing above this line
+  // was changed, so every existing AppColors.xyz reference across the
+  // app keeps working exactly as before. ──────────────────────────────
+
+  // Text hint color (form field placeholders etc.)
+  static const Color textHint = Color(0xFFBDBDBD);
+
+  // Shadow colors — for card/button elevation effects
+  static const Color shadowLight = Color(0x14000000); // 8% black
+  static const Color shadowMedium = Color(0x29000000); // 16% black
+  static const Color shadowRed = Color(0x33DC143C); // 20% primaryRed — for red-tinted button/card shadows
+
+  // Additional gradients
+  static const LinearGradient redToOrangeGradient = LinearGradient(
+    colors: [primaryRed, warning],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient blueGradient = LinearGradient(
+    colors: [secondaryBlue, Color(0xFF1565C0)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient greenGradient = LinearGradient(
+    colors: [secondaryGreen, Color(0xFF2E7D32)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  // Background gradient — for gradient-header screens (login, SOS card, etc.)
+  static const LinearGradient backgroundGradient = LinearGradient(
+    colors: [backgroundLight, backgroundWhite],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+
+  static const LinearGradient darkBackgroundGradient = LinearGradient(
+    colors: [primaryDarkRed, Color(0xFF1A1A1A)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
 }

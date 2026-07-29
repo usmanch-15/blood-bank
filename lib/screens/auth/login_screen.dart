@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/auth_service.dart';
 import '../../constants/app_colors.dart';
+import '../../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../../constants/app_theme.dart';
 import '../role_selection_screen.dart';
 import '../admin/admin_config.dart';
@@ -139,9 +140,9 @@ class _LoginScreenState extends State<LoginScreen>
         ]),
         backgroundColor: const Color(0xFFC62828),
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
+        margin: const EdgeInsets.all(AppSpacing.lg),
         shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
       ),
     );
   }

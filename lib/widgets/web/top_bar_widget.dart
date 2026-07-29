@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/app_spacing.dart';
 
+/// ⚠️ NOT CURRENTLY WIRED — no admin screen imports this yet.
+/// ⚠️ DUPLICATE CLASS NAME with lib/screens/admin/web/admin_widgets/top_bar_widget.dart
+/// — see the note there. This is the more feature-complete of the two
+/// (supports avatarUrl, inline user name/email, clear-search button), so
+/// treat THIS as the canonical one going forward.
 class TopBarWidget extends StatefulWidget {
   final String userName;
   final String userEmail;
@@ -10,14 +17,14 @@ class TopBarWidget extends StatefulWidget {
   final String? avatarUrl;
 
   const TopBarWidget({
-    Key? key,
+    super.key,
     required this.userName,
     required this.userEmail,
     required this.onLogout,
     required this.onSearch,
     required this.onNotification,
     this.avatarUrl,
-  }) : super(key: key);
+  });
 
   @override
   State<TopBarWidget> createState() => _TopBarWidgetState();
@@ -37,13 +44,13 @@ class _TopBarWidgetState extends State<TopBarWidget> {
   Widget build(BuildContext context) {
     return Container(
       height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 5,
+            color: AppColors.shadowLight,
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -51,17 +58,16 @@ class _TopBarWidgetState extends State<TopBarWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Search Bar
           Expanded(
             child: Container(
-              height: 45,
+              height: 46,
               constraints: const BoxConstraints(maxWidth: 500),
               child: TextField(
                 controller: _searchController,
                 onSubmitted: widget.onSearch,
                 decoration: InputDecoration(
                   hintText: 'Search anything...',
-                  prefixIcon: const Icon(Icons.search, size: 20),
+                  prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
                     icon: const Icon(Icons.clear, size: 18),
@@ -73,12 +79,12 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                   )
                       : null,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  fillColor: AppColors.backgroundLight,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 ),
                 onChanged: (value) {
                   setState(() {});
@@ -87,11 +93,9 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               ),
             ),
           ),
-          const SizedBox(width: 24),
-          // Action Buttons
+          const SizedBox(width: AppSpacing.xxl),
           Row(
             children: [
-              // Notification Button
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -108,30 +112,24 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                         width: 8,
                         height: 8,
                         decoration: const BoxDecoration(
-                          color: Colors.red,
+                          color: AppColors.error,
                           shape: BoxShape.circle,
                         ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(width: 8),
-              // Settings Button
+              const SizedBox(width: AppSpacing.sm),
               IconButton(
                 onPressed: () {},
                 icon: const Icon(Icons.settings_outlined),
                 tooltip: 'Settings',
               ),
-              const SizedBox(width: 8),
-              // Divider
-              Container(
-                width: 1,
-                height: 30,
-                color: Colors.grey.shade300,
-              ),
-              const SizedBox(width: 16),
-              // User Profile
+              const SizedBox(width: AppSpacing.sm),
+              Container(width: 1, height: 30, color: Colors.grey.shade300),
+              const SizedBox(width: AppSpacing.md),
               PopupMenuButton<String>(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
                 onSelected: (value) {
                   if (value == 'logout') {
                     widget.onLogout();
@@ -139,81 +137,56 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                     // Navigate to profile
                   }
                 },
-                itemBuilder: (context) => <PopupMenuEntry<String>>[  // ✅ Fixed
+                itemBuilder: (context) => <PopupMenuEntry<String>>[
                   const PopupMenuItem(
                     value: 'profile',
-                    child: Row(
-                      children: [
-                        Icon(Icons.person, size: 18),
-                        SizedBox(width: 12),
-                        Text('My Profile'),
-                      ],
-                    ),
+                    child: Row(children: [
+                      Icon(Icons.person, size: 18),
+                      SizedBox(width: 12),
+                      Text('My Profile'),
+                    ]),
                   ),
                   const PopupMenuItem(
                     value: 'settings',
-                    child: Row(
-                      children: [
-                        Icon(Icons.settings, size: 18),
-                        SizedBox(width: 12),
-                        Text('Account Settings'),
-                      ],
-                    ),
+                    child: Row(children: [
+                      Icon(Icons.settings, size: 18),
+                      SizedBox(width: 12),
+                      Text('Account Settings'),
+                    ]),
                   ),
                   const PopupMenuDivider(),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout, size: 18, color: Colors.red),
-                        SizedBox(width: 12),
-                        Text('Logout', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
+                    child: Row(children: [
+                      const Icon(Icons.logout, size: 18, color: AppColors.error),
+                      const SizedBox(width: 12),
+                      Text('Logout', style: TextStyle(color: AppColors.error)),
+                    ]),
                   ),
                 ],
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 20,
-                      backgroundImage: widget.avatarUrl != null
-                          ? NetworkImage(widget.avatarUrl!)
-                          : null,
-                      backgroundColor: Colors.red.shade100,
+                      backgroundImage: widget.avatarUrl != null ? NetworkImage(widget.avatarUrl!) : null,
+                      backgroundColor: AppColors.primaryRed.withOpacity(0.12),
                       child: widget.avatarUrl == null
                           ? Text(
-                        widget.userName[0].toUpperCase(),
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red.shade700,
-                        ),
+                        widget.userName.isNotEmpty ? widget.userName[0].toUpperCase() : '?',
+                        style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryRed),
                       )
                           : null,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.userName,
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-                        Text(
-                          widget.userEmail,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
+                        Text(widget.userName, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        Text(widget.userEmail, style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textSecondary)),
                       ],
                     ),
-                    const Icon(Icons.arrow_drop_down),
+                    const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
                   ],
                 ),
               ),

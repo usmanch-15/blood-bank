@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../constants/app_colors.dart';
+import '../../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/storage_service.dart';
@@ -145,7 +146,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Form(
           key: _formKey,
           child: Column(
@@ -211,11 +212,11 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
 
               // ── Blood Group Badge ──
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl, vertical: AppSpacing.md),
                 decoration: BoxDecoration(
                   color: AppColors.primaryRed.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(25),
@@ -226,7 +227,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                   children: [
                     const Icon(Icons.water_drop_rounded,
                         color: AppColors.primaryRed, size: 20),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Text(
                       'Blood Group: $bloodGroup',
                       style: const TextStyle(
@@ -253,7 +254,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(AppSpacing.xl),
                 child: Column(
                   children: [
                     CustomTextField(
@@ -264,14 +265,14 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                       validator: (v) =>
                       v == null || v.isEmpty ? 'Enter name' : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     CustomTextField(
                       controller: TextEditingController(text: email),
                       label: 'Email',
                       prefixIcon: Icons.email_outlined,
                       enabled: false,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     CustomTextField(
                       controller: _phoneController,
                       label: 'Phone Number',
@@ -279,7 +280,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                       enabled: _isEditing,
                       keyboardType: TextInputType.phone,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     // ✅ NEW: Phone verification badge — pehle ye feature
                     // README mein claim ki gayi thi lekin kahin implement
                     // nahi thi.
@@ -294,7 +295,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                               ? AppColors.success
                               : AppColors.warning,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppSpacing.sm - 2),
                         Text(
                           (widget.userData['phoneVerified'] ?? false)
                               ? 'Phone Verified'
@@ -332,7 +333,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     CustomTextField(
                       controller: _locationController,
                       label: 'Location',

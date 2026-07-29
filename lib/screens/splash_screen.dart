@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants/app_colors.dart';
+import '../constants/app_spacing.dart'; // ✅ light-touch polish
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -495,7 +496,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.lg),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -658,7 +659,7 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           title,
           style: TextStyle(

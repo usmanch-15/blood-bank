@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../constants/app_colors.dart';
+import '../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import 'donor/donor_dashboard_screen.dart';
@@ -362,7 +363,7 @@ class _RoleCardState extends State<_RoleCard> {
         duration: const Duration(milliseconds: 120),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.xxl),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
             color: const Color(0xFF13131A),

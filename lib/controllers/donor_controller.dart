@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart'; // ✅ NEW — confirmDonation Cloud Function
 import '../models/donor_model.dart';
 import '../models/donation_model.dart';
 import '../utils/date_utils.dart';
@@ -104,74 +104,36 @@ class DonorController extends ChangeNotifier {
     return AppDateUtils.daysRemaining(_donor!.lastDonationDate!);
   }
 
-  /// ✅ NEW: Confirms a donation from the recipient side.
-  /// - Updates donor's lastDonationDate to NOW
-  /// - Marks them as ineligible for the next 56 days
-  /// - Adds reward points to their account
-  /// - Creates a donation record in the donations collection
-  /// - Generates a certificate record for the donor
+  /// ✅ REWRITTEN — this used to write directly to Firestore from the
+  /// client (update rewardPoints/lastDonationDate on the DONOR's doc,
+  /// while the caller is the RECEIVER) — exactly what our Firestore
+  /// security rules are designed to block (isOwner-only updates on
+  /// rewardPoints), so this call would have failed with
+  /// permission-denied the moment it was ever wired into a reachable
+  /// screen. It also duplicated logic that already exists correctly,
+  /// server-side, in the `confirmDonation` Cloud Function (functions/index.js).
+  ///
+  /// Now this just calls that Cloud Function via `cloud_functions`
+  /// (already in pubspec.yaml, previously unused). The function requires
+  /// EITHER the donor themself, or the requester of `requestId`, to be
+  /// the one calling it — so `requestId` must be passed whenever this is
+  /// called from a specific blood request's "Find Donors" flow.
   Future<void> confirmDonation({
     required String donorId,
     required String bloodGroup,
+    String? requestId,
   }) async {
-    final recipientId = FirebaseAuth.instance.currentUser?.uid;
-    if (recipientId == null) {
-      throw Exception('Recipient not logged in');
-    }
-
-    final now = DateTime.now();
-    final rewardPoints = 50; // Fixed reward per donation
-
     try {
-      // 1. Update donor's lastDonationDate and mark ineligible
-      await FirebaseFirestore.instance
-          .collection(AppConstants.usersCollection)
-          .doc(donorId)
-          .update({
-            'lastDonationDate': Timestamp.fromDate(now),
-            'isEligible': false,
-          });
-
-      // 2. Increment reward points
-      await FirebaseFirestore.instance
-          .collection(AppConstants.usersCollection)
-          .doc(donorId)
-          .update({
-            'rewardPoints': FieldValue.increment(rewardPoints),
-          });
-
-      // 3. Create a donation record
-      final donationId =
-          FirebaseFirestore.instance.collection('donations').doc().id;
-      await FirebaseFirestore.instance
-          .collection(AppConstants.donationsCollection)
-          .doc(donationId)
-          .set({
-            'donorId': donorId,
-            'recipientId': recipientId,
-            'bloodGroup': bloodGroup,
-            'donationDate': Timestamp.fromDate(now),
-            'status': 'completed',
-            'rewardPoints': rewardPoints,
-          });
-
-      // 4. Create a certificate record
-      final certificateId = FirebaseFirestore.instance
-          .collection('certificates')
-          .doc()
-          .id;
-      await FirebaseFirestore.instance
-          .collection('certificates')
-          .doc(certificateId)
-          .set({
-            'donorId': donorId,
-            'donationId': donationId,
-            'bloodGroup': bloodGroup,
-            'donationDate': Timestamp.fromDate(now),
-            'certificateUrl': '', // Will be generated server-side or on demand
-          });
-
+      final callable =
+      FirebaseFunctions.instance.httpsCallable('confirmDonation');
+      await callable.call({
+        'donorId': donorId,
+        'bloodGroup': bloodGroup,
+        if (requestId != null) 'requestId': requestId,
+      });
       notifyListeners();
+    } on FirebaseFunctionsException catch (e) {
+      throw Exception(e.message ?? 'Failed to confirm donation');
     } catch (e) {
       throw Exception('Failed to confirm donation: $e');
     }

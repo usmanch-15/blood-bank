@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../constants/app_colors.dart';
+import '../../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../../constants/app_constants.dart';
 import '../../services/auth_service.dart';
 
@@ -89,9 +90,9 @@ class _SignUpScreenState extends State<SignUpScreen>
             ]),
             backgroundColor: const Color(0xFFC62828),
             behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
+            margin: const EdgeInsets.all(AppSpacing.lg),
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
           ),
         );
       }
