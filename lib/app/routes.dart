@@ -11,8 +11,7 @@ import '../screens/donor/rewards_screen.dart';
 import '../screens/receiver/receiver_dashboard_screen.dart';
 import '../screens/receiver/blood_request_form_screen.dart';
 import '../screens/receiver/sos_emergency_screen.dart';
-import '../screens/notification/notification_list_screen.dart';
-import '../screens/admin/admin_login_screen.dart';
+
 import '../screens/maps/nearby_donors_map_screen.dart';
 
 class AppRoutes {
@@ -45,8 +44,7 @@ class AppRoutes {
     receiverDashboard: (_) => const ReceiverDashboardScreen(),
     bloodRequest: (_) => const BloodRequestFormScreen(),
     sosAlert: (_) => const SosEmergencyScreen(),
-    notifications: (_) => const NotificationListScreen(),
-    adminLogin: (_) => const AdminLoginScreen(),
+
     nearbyDonors: (_) => const NearbyDonorsMapScreen(),
   };
 }

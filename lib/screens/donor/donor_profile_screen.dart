@@ -37,8 +37,34 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
     super.initState();
     // Firebase se aaya real data fields mein daal do
     _nameController.text = widget.userData['name'] ?? '';
-    _phoneController.text = widget.userData['phoneNumber'] ?? '';
     _locationController.text = widget.userData['location'] ?? '';
+    // ✅ phoneNumber ab widget.userData (top-level users/{uid} doc) mein
+    // nahi hota — private/contact subcollection se alag se load karna
+    // padta hai. Ye owner apna khud ka number hai, is liye direct
+    // Firestore read allowed hai (Cloud Function ki zaroorat nahi —
+    // wo sirf kisi AUR user ka number dekhne ke liye chahiye hoti hai).
+    _loadOwnPhoneNumber();
+  }
+
+  Future<void> _loadOwnPhoneNumber() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('private')
+          .doc('contact')
+          .get();
+      if (mounted && doc.exists) {
+        setState(() {
+          _phoneController.text = doc.data()?['phoneNumber'] ?? '';
+        });
+      }
+    } catch (_) {
+      // No private/contact doc yet (e.g. account created before this
+      // migration, or phone never set) — leave the field blank.
+    }
   }
 
   @override
@@ -94,11 +120,19 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) throw Exception('User not logged in');
 
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+      await userRef.update({
         'name': _nameController.text.trim(),
-        'phoneNumber': _phoneController.text.trim(),
         'location': _locationController.text.trim(),
       });
+
+      // ✅ SECURITY FIX: phoneNumber no longer goes on the top-level doc
+      // (readable by any signed-in user) — it goes in private/contact
+      // (readable only by the owner and admin).
+      await userRef.collection('private').doc('contact').set({
+        'phoneNumber': _phoneController.text.trim(),
+      }, SetOptions(merge: true));
 
       if (!mounted) return;
       setState(() {
@@ -366,9 +400,9 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                     setState(() {
                       _isEditing = false;
                       _nameController.text = widget.userData['name'] ?? '';
-                      _phoneController.text = widget.userData['phoneNumber'] ?? '';
                       _locationController.text = widget.userData['location'] ?? '';
                     });
+                    _loadOwnPhoneNumber(); // reset phone field to last-saved value
                   },
                   child: Text('Cancel',
                       style: TextStyle(color: Colors.grey[600], fontSize: 15)),

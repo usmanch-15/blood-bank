@@ -68,16 +68,21 @@ class AuthService {
         password: password.trim(),
       );
 
+      final userRef =
+      _firestore.collection('users').doc(credential.user!.uid);
+
       // Firestore mein user data save karo — status: pending
-      await _firestore
-          .collection('users')
-          .doc(credential.user!.uid)
-          .set({
+      // ⚠️ SECURITY FIX: phoneNumber ab is top-level doc mein NAHI jata —
+      // ye doc `allow read: if isSignedIn()` hai, matlab koi bhi signed-in
+      // user kisi ka bhi phone number parh sakta tha. Phone number ab
+      // sirf users/{uid}/private/contact mein likha jata hai, jo sirf
+      // owner ya admin parh sakte hain (firestore.rules mein pehle se
+      // maujood).
+      await userRef.set({
         'uid': credential.user!.uid,
         'email': email.trim(),
         'name': name.trim(),
         'role': role,
-        'phoneNumber': phoneNumber,
         'bloodGroup': bloodGroup,
         'status': 'pending',   // ← admin approval required
         'isEligible': true,
@@ -89,6 +94,12 @@ class AuthService {
         'longitude': null,
         'profileImageUrl': null,
       });
+
+      if (phoneNumber != null && phoneNumber.trim().isNotEmpty) {
+        await userRef.collection('private').doc('contact').set({
+          'phoneNumber': phoneNumber.trim(),
+        }, SetOptions(merge: true));
+      }
 
       // ✅ Send verification email — user must click the link before they
       // can log in (enforced in signInWithEmailPassword above).

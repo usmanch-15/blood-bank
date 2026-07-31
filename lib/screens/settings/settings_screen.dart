@@ -149,10 +149,19 @@ class _ProfileTile extends StatelessWidget {
               onPressed: () => _openEditProfileSheet(context),
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.phone_outlined),
-            title: const Text('Phone'),
-            subtitle: Text(data['phoneNumber']?.toString() ?? 'Not set'),
+          StreamBuilder<String?>(
+            stream: settingsService.phoneStream(),
+            builder: (context, snapshot) {
+              return ListTile(
+                leading: const Icon(Icons.phone_outlined),
+                title: const Text('Phone'),
+                subtitle: Text(
+                  (snapshot.data == null || snapshot.data!.isEmpty)
+                      ? 'Not set'
+                      : snapshot.data!,
+                ),
+              );
+            },
           ),
           ListTile(
             leading: const Icon(Icons.water_drop_outlined),
@@ -169,10 +178,12 @@ class _ProfileTile extends StatelessWidget {
     );
   }
 
-  void _openEditProfileSheet(BuildContext context) {
+  Future<void> _openEditProfileSheet(BuildContext context) async {
     final nameCtrl = TextEditingController(text: data['name']?.toString());
-    final phoneCtrl =
-    TextEditingController(text: data['phoneNumber']?.toString());
+    // ✅ phoneNumber is no longer in `data` (top-level doc) — fetch it
+    // from the private subcollection before opening the sheet.
+    final currentPhone = await settingsService.getPhoneOnce();
+    final phoneCtrl = TextEditingController(text: currentPhone ?? '');
     final addressCtrl =
     TextEditingController(text: data['address']?.toString());
     String bloodGroup = data['bloodGroup']?.toString() ?? 'O+';
@@ -180,6 +191,7 @@ class _ProfileTile extends StatelessWidget {
       'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-',
     ];
 
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

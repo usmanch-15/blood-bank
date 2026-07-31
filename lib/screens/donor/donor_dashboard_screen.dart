@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../utils/app_animations.dart';
+import '../../widgets/loading_shimmer.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/app_custom_widgets.dart';

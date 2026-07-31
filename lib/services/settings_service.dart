@@ -13,7 +13,7 @@ import '../constants/app_constants.dart';
 ///   - delete account
 ///
 /// FIRESTORE SCHEMA ASSUMED on users/{uid}:
-///   name, phoneNumber, email, bloodGroup, address,
+///   name, email, bloodGroup, address,
 ///   isAvailable (bool),
 ///   locationSharingEnabled (bool),
 ///   notificationPrefs: {
@@ -23,9 +23,8 @@ import '../constants/app_constants.dart';
 ///   },
 ///   fcmToken (String?), fcmUpdatedAt (Timestamp?)
 ///
-/// If your current users/{uid} document uses different field names,
-/// just rename the keys below to match — the rest of the logic stays
-/// the same.
+/// phoneNumber lives separately, in users/{uid}/private/contact — see
+/// below.
 class SettingsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -40,10 +39,19 @@ class SettingsService {
     return _firestore.collection(AppConstants.usersCollection).doc(uid);
   }
 
+  // ✅ SECURITY FIX: phoneNumber used to live on _userDoc itself, which
+  // has `allow read: if isSignedIn()` — any signed-in user could read
+  // anyone's phone number. It now lives in this private subcollection,
+  // which firestore.rules restricts to `isOwner(userId) || isAdmin()`.
+  DocumentReference<Map<String, dynamic>> get _privateContactDoc =>
+      _userDoc.collection('private').doc('contact');
+
   // ─────────────────────────── PROFILE ───────────────────────────
 
   /// Fetch the current user's full profile document as a stream, so the
   /// Settings screen updates live if changed elsewhere (e.g. by admin).
+  /// NOTE: this stream no longer contains `phoneNumber` — use
+  /// [phoneStream] / [getPhoneOnce] for that.
   Stream<DocumentSnapshot<Map<String, dynamic>>> profileStream() {
     return _userDoc.snapshots();
   }
@@ -52,8 +60,24 @@ class SettingsService {
     return _userDoc.get();
   }
 
+  /// Stream just the phone number, from the private subcollection.
+  Stream<String?> phoneStream() {
+    return _privateContactDoc.snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return doc.data()?['phoneNumber'] as String?;
+    });
+  }
+
+  Future<String?> getPhoneOnce() async {
+    final doc = await _privateContactDoc.get();
+    if (!doc.exists) return null;
+    return doc.data()?['phoneNumber'] as String?;
+  }
+
   /// Update basic profile fields. Only non-null fields are written, so
   /// callers can update just one field at a time if they want.
+  /// `phoneNumber` is written to the private subcollection separately
+  /// from the rest of the (non-sensitive) profile fields.
   Future<void> updateProfile({
     String? name,
     String? phoneNumber,
@@ -62,14 +86,20 @@ class SettingsService {
   }) async {
     final data = <String, dynamic>{};
     if (name != null) data['name'] = name.trim();
-    if (phoneNumber != null) data['phoneNumber'] = phoneNumber.trim();
     if (bloodGroup != null) data['bloodGroup'] = bloodGroup;
     if (address != null) data['address'] = address.trim();
 
-    if (data.isEmpty) return;
-    data['updatedAt'] = FieldValue.serverTimestamp();
+    if (data.isNotEmpty) {
+      data['updatedAt'] = FieldValue.serverTimestamp();
+      await _userDoc.update(data);
+    }
 
-    await _userDoc.update(data);
+    if (phoneNumber != null) {
+      await _privateContactDoc.set(
+        {'phoneNumber': phoneNumber.trim()},
+        SetOptions(merge: true),
+      );
+    }
   }
 
   // ──────────────────────── NOTIFICATION PREFS ────────────────────────
