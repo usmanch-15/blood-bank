@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
@@ -121,16 +122,43 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
     }).toList();
   }
 
-  Future<void> _callDonor(String? phone) async {
-    if (phone == null || phone.isEmpty) {
+  // ✅ CHANGED: phoneNumber used to be read straight off DonorModel
+  // (populated from the top-level users/{uid} doc). That doc no longer
+  // carries phoneNumber (security fix — it was readable by any signed-in
+  // user). The number now lives in users/{uid}/private/contact, which a
+  // receiver can't read directly — so this calls the getDonorContact
+  // Cloud Function instead, which checks the donor is approved and logs
+  // the lookup to audit_logs.
+  Future<void> _callDonor(DonorModel donor) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Fetching donor number...'), duration: Duration(seconds: 1)),
+    );
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('getDonorContact');
+      final result = await callable.call({'donorId': donor.uid});
+      final phone = result.data['phoneNumber'] as String?;
+
+      if (!mounted) return;
+      if (phone == null || phone.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Phone number not available')),
+        );
+        return;
+      }
+      final uri = Uri.parse('tel:$phone');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Phone number not available')),
+        SnackBar(content: Text(e.message ?? 'Could not fetch donor number')),
       );
-      return;
-    }
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not fetch donor number: $e')),
+      );
     }
   }
 
@@ -346,8 +374,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                 itemCount: filtered.length,
                 itemBuilder: (context, i) => _DonorCard(
                   donor: filtered[i],
-                  onCall: () =>
-                      _callDonor(filtered[i].phoneNumber),
+                  onCall: () => _callDonor(filtered[i]),
                   // ✅ Only offer "Mark Donation Complete" when opened
                   // with a requestId — confirmDonation (Cloud Function)
                   // requires the caller to be the requester of that

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../models/donor_model.dart';
@@ -80,6 +81,22 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
   List<DonorModel> get _donorsWithLocation =>
       _donors.where((d) => d.latitude != null && d.longitude != null).toList();
 
+  // ✅ CHANGED: donor.phoneNumber used to come straight from the
+  // top-level users/{uid} doc. That field was removed from there for
+  // security (any signed-in user could read anyone's phone number) and
+  // now lives in users/{uid}/private/contact, which a receiver can't
+  // read directly. This fetches it through the getDonorContact Cloud
+  // Function instead, on-demand when the sheet opens.
+  Future<String?> _fetchDonorPhone(String donorId) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('getDonorContact');
+      final result = await callable.call({'donorId': donorId});
+      return result.data['phoneNumber'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _showDonorSheet(DonorModel donor) {
     showModalBottomSheet(
       context: context,
@@ -94,18 +111,36 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
             const SizedBox(height: 6),
             Text('Blood group: ${donor.bloodGroup ?? '—'}'),
             const SizedBox(height: 16),
-            if (donor.phoneNumber != null && donor.phoneNumber!.isNotEmpty)
-              ElevatedButton.icon(
-                icon: const Icon(Icons.call),
-                label: const Text('Call Donor'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryRed,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () => launchUrl(Uri(scheme: 'tel', path: donor.phoneNumber)),
-              )
-            else
-              const Text('No phone number on file for this donor.'),
+            FutureBuilder<String?>(
+              future: _fetchDonorPhone(donor.uid),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 40,
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  );
+                }
+                final phone = snapshot.data;
+                if (phone == null || phone.isEmpty) {
+                  return const Text('No phone number on file for this donor.');
+                }
+                return ElevatedButton.icon(
+                  icon: const Icon(Icons.call),
+                  label: const Text('Call Donor'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryRed,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => launchUrl(Uri(scheme: 'tel', path: phone)),
+                );
+              },
+            ),
           ],
         ),
       ),

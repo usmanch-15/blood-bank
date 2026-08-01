@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../services/settings_service.dart';
 import '../auth/login_screen.dart';
-
+import 'help_support_screen.dart';
+import 'about_screen.dart';
 /// ✅ PHASE 1 — Settings Screen
 ///
 /// Covers:
@@ -93,6 +94,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onSnack: _showSnack,
               ),
 
+              const SizedBox(height: 8),
+              _sectionHeader('Support & About'),
+              const _SupportAboutTile(),
               const SizedBox(height: 8),
               _sectionHeader('Account & Security'),
               _AccountSecurityTile(
@@ -470,20 +474,10 @@ class _LocationSharingTile extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════ ACCOUNT & SECURITY ═══════════════════════════
+// ═══════════════════════════ SUPPORT & ABOUT ═══════════════════════════
 
-class _AccountSecurityTile extends StatelessWidget {
-  final SettingsService settingsService;
-  final void Function(String, {bool isError}) onSnack;
-  final bool isSaving;
-  final void Function(bool) setSaving;
-
-  const _AccountSecurityTile({
-    required this.settingsService,
-    required this.onSnack,
-    required this.isSaving,
-    required this.setSaving,
-  });
+class _SupportAboutTile extends StatelessWidget {
+  const _SupportAboutTile();
 
   @override
   Widget build(BuildContext context) {
@@ -492,31 +486,31 @@ class _AccountSecurityTile extends StatelessWidget {
       child: Column(
         children: [
           ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: const Text('Change Password'),
+            leading: const Icon(Icons.help_outline),
+            title: const Text('Help & Support'),
+            subtitle: const Text('FAQs and contact us'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _openChangePasswordSheet(context),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.orange),
-            title: const Text('Logout'),
-            onTap: () => _confirmLogout(context),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text(
-              'Delete Account',
-              style: TextStyle(color: Colors.red),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
             ),
-            onTap: () => _confirmDelete(context),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('About'),
+            subtitle: const Text('Version, Terms, Privacy Policy'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AboutScreen()),
+            ),
           ),
         ],
       ),
     );
   }
-
+}
   void _confirmLogout(BuildContext context) {
     showDialog(
       context: context,

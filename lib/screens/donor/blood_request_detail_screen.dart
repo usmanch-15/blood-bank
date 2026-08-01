@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../constants/app_colors.dart';
+import '../../widgets/report_misuse_button.dart';
 
 class BloodRequestDetailScreen extends StatelessWidget {
   final Map<String, dynamic> requestData;
@@ -167,7 +168,20 @@ class BloodRequestDetailScreen extends StatelessWidget {
                   d['requesterName'] ?? 'Unknown'),
             ]),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 4),
+            // ✅ FIX: ReportMisuseButton existed but was never placed on
+            // any live screen, so users had no way to actually report a
+            // suspicious/fake request. This is the most natural place —
+            // a donor reviewing a request they think is fraudulent.
+            Align(
+              alignment: Alignment.centerRight,
+              child: ReportMisuseButton(
+                targetUserId: d['requesterId']?.toString(),
+                targetRequestId: d['id']?.toString(),
+              ),
+            ),
+
+            const SizedBox(height: 16),
 
             // ── Contact Button ──
             if (d['contactNumber'] != null &&

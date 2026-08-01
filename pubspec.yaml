@@ -13,13 +13,7 @@ dependencies:
   # UI
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
-  responsive_framework: ^1.4.0
-  flutter_svg: ^2.0.10+1
-  lottie: ^3.1.2
   shimmer: ^3.0.0
-  flutter_animate: ^4.5.0
-  skeletonizer: ^1.4.2
-  timelines_plus: ^1.0.2
 
   # Firebase
   firebase_core: ^3.6.0
@@ -27,15 +21,15 @@ dependencies:
   cloud_firestore: ^5.4.4
   firebase_messaging: ^15.1.3
   firebase_storage: ^12.3.4
-  cloud_functions: ^5.1.3        # ← NEW: confirmDonation Cloud Function call karne ke liye
+  cloud_functions: ^5.1.3        # confirmDonation / getDonorContact Cloud Functions
 
   # Networking (maps_service.dart use karta hai — pehle sirf transitive
   # dependency ki wajah se chal raha tha, ab explicitly declare kiya)
-  http: ^1.2.2                   # ← NEW
+  http: ^1.2.2
 
   # Google Maps & Location
-  flutter_map: ^7.0.2       # ✅ CHANGED: was google_maps_flutter — OpenStreetMap, no API key/billing needed
-  latlong2: ^0.9.1          # ✅ NEW — LatLng type used by flutter_map
+  flutter_map: ^7.0.2       # was google_maps_flutter — OpenStreetMap, no API key/billing needed
+  latlong2: ^0.9.1          # LatLng type used by flutter_map
   geolocator: ^13.0.1
   geocoding: ^3.0.0
 
@@ -43,13 +37,9 @@ dependencies:
   provider: ^6.1.2
 
   # Utilities
-  shared_preferences: ^2.3.2
   intl: ^0.20.2
   url_launcher: ^6.3.1
   image_picker: ^1.1.2
-  cached_network_image: ^3.4.1
-  uuid: ^4.4.0
-  connectivity_plus: ^6.1.1
   path_provider: ^2.1.4
 
   # Charts
@@ -57,34 +47,13 @@ dependencies:
 
   # PDF & Certificates
   pdf: ^3.11.1
-  printing: ^5.13.1
 
-  # Notifications
-  flutter_local_notifications: ^17.2.2
-
-  # Permissions
-  permission_handler: ^11.3.1
-
-  # Phone Formatting
-  phone_form_field: ^10.0.0
-
-  # Secure Storage
-  flutter_secure_storage: ^9.2.2
-
-  # Toast Messages
-  fluttertoast: ^8.2.8
-
-  # Splash
+  # Splash (build-time tool — driven by the flutter_native_splash: config
+  # block at the bottom of this file, never imported directly in lib/,
+  # so don't remove this thinking it's "unused")
   flutter_native_splash: ^2.4.1
 
-  # QR Code
-  qr_flutter: ^4.1.0
-
-  # File Handling
-  file_picker: ^8.0.0+1
-
   # Exports
-  excel: ^4.0.3
   csv: ^6.0.0
 
   # Sharing

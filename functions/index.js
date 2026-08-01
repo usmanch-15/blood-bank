@@ -278,6 +278,75 @@ exports.onBroadcastCreated = onDocumentCreated(
 );
 
 /**
+ * ✅ getDonorContact (callable) — NEW
+ * ----------------------------------------------------------------------
+ * phoneNumber ab users/{uid} (top-level) par nahi likha jata — us doc ko
+ * koi bhi signed-in user parh sakta tha, is liye phone number sab ko
+ * dikh raha tha (security issue). Phone number ab sirf
+ * users/{uid}/private/contact mein hai, jise sirf owner ya admin client-side
+ * Firestore rules se parh sakte hain.
+ *
+ * Lekin receiver ko donor ko CALL karna hota hai — receiver na owner hai
+ * na admin, is liye use number chahiye. Ye function wahi rasta hai:
+ * receiver donorId ke saath is function ko call karta hai, Admin SDK
+ * (jo rules bypass karta hai) private/contact se number nikaal ke deta
+ * hai. Har call audit_logs mein likha jata hai — taake pata rahe kisne
+ * kis donor ka number kab dekha (misuse detect karne ke liye).
+ *
+ * ⚠️ Abhi koi rate-limit nahi hai is function par — agar aage koi user
+ * isko loop mein call karke sab donors ke number scrape kare, to koi
+ * rok nahi. Agar production mein jaana hai to checkSosRateLimit() jaisa
+ * hi ek per-user rate limit yahan bhi lagana chahiye.
+ */
+exports.getDonorContact = onCall(async (request) => {
+  const auth = request.auth;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "Login required.");
+  }
+
+  const { donorId } = request.data;
+  if (!donorId) {
+    throw new HttpsError("invalid-argument", "donorId zaroori hai.");
+  }
+
+  const donorSnap = await db.collection("users").doc(donorId).get();
+  if (!donorSnap.exists) {
+    throw new HttpsError("not-found", "Donor account nahi mila.");
+  }
+  const donorData = donorSnap.data();
+  if (donorData.isDonor !== true || donorData.status !== "approved") {
+    // Sirf approved donors ka number diya jaye — random pending/rejected
+    // accounts ya receivers ka number is function se kabhi na mile.
+    throw new HttpsError(
+      "permission-denied",
+      "Ye user donor nahi hai ya approved nahi hai."
+    );
+  }
+
+  const contactSnap = await db
+      .collection("users")
+      .doc(donorId)
+      .collection("private")
+      .doc("contact")
+      .get();
+
+  const phoneNumber = contactSnap.exists ? contactSnap.data().phoneNumber : null;
+
+  // Audit trail — kisne kis donor ka number kab dekha.
+  await db.collection("audit_logs").add({
+    action: "donor_contact_viewed",
+    viewedBy: auth.uid,
+    donorId,
+    createdAt: admin.firestore.Timestamp.now(),
+  });
+
+  if (!phoneNumber) {
+    return { phoneNumber: null };
+  }
+  return { phoneNumber };
+});
+
+/**
  * ✅ dailyEligibilityCheck (Scheduled function) — NEW (Phase 3)
  * ----------------------------------------------------------------------
  * Har roz 09:00 Asia/Karachi par chalta hai. Jin donors ka 90-din
