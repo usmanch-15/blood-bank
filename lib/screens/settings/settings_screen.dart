@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../constants/app_colors.dart';
+import '../../controllers/theme_controller.dart';
 import '../../services/settings_service.dart';
 import '../auth/login_screen.dart';
 import 'help_support_screen.dart';
 import 'about_screen.dart';
+import 'change_email_screen.dart';
+
 /// ✅ PHASE 1 — Settings Screen
 ///
 /// Covers:
@@ -95,8 +100,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
 
               const SizedBox(height: 8),
+              _sectionHeader('Appearance'),
+              const _AppearanceTile(),
+
+              const SizedBox(height: 8),
               _sectionHeader('Support & About'),
               const _SupportAboutTile(),
+
               const SizedBox(height: 8),
               _sectionHeader('Account & Security'),
               _AccountSecurityTile(
@@ -474,6 +484,92 @@ class _LocationSharingTile extends StatelessWidget {
   }
 }
 
+// ═══════════════════════════ APPEARANCE ═══════════════════════════
+
+class _AppearanceTile extends StatelessWidget {
+  const _AppearanceTile();
+
+  String _label(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
+      case ThemeMode.system:
+        return 'System default';
+    }
+  }
+
+  IconData _icon(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return Icons.light_mode_outlined;
+      case ThemeMode.dark:
+        return Icons.dark_mode_outlined;
+      case ThemeMode.system:
+        return Icons.brightness_auto_outlined;
+    }
+  }
+
+  void _openPicker(BuildContext context, ThemeController controller) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'App Theme',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              for (final mode in ThemeMode.values)
+                RadioListTile<ThemeMode>(
+                  value: mode,
+                  // ignore: deprecated_member_use
+                  groupValue: controller.themeMode,
+                  activeColor: AppColors.primaryRed,
+                  secondary: Icon(_icon(mode)),
+                  title: Text(_label(mode)),
+                  // ignore: deprecated_member_use
+                  onChanged: (v) {
+                    if (v != null) controller.setThemeMode(v);
+                    Navigator.pop(sheetContext);
+                  },
+                ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeController = context.watch<ThemeController>();
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      child: ListTile(
+        leading: Icon(_icon(themeController.themeMode)),
+        title: const Text('Theme'),
+        subtitle: Text(_label(themeController.themeMode)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _openPicker(context, themeController),
+      ),
+    );
+  }
+}
+
 // ═══════════════════════════ SUPPORT & ABOUT ═══════════════════════════
 
 class _SupportAboutTile extends StatelessWidget {
@@ -511,6 +607,98 @@ class _SupportAboutTile extends StatelessWidget {
     );
   }
 }
+
+// ═══════════════════════════ ACCOUNT & SECURITY ═══════════════════════════
+
+class _AccountSecurityTile extends StatelessWidget {
+  final SettingsService settingsService;
+  final void Function(String, {bool isError}) onSnack;
+  final bool isSaving;
+  final void Function(bool) setSaving;
+
+  const _AccountSecurityTile({
+    required this.settingsService,
+    required this.onSnack,
+    required this.isSaving,
+    required this.setSaving,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text('Change Password'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openChangePasswordSheet(context),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.alternate_email),
+            title: const Text('Change Email'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ChangeEmailScreen()),
+            ),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: const Text('Download My Data'),
+            subtitle: const Text('Export your profile & donation history'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _downloadMyData(context),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.orange),
+            title: const Text('Logout'),
+            onTap: () => _confirmLogout(context),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.delete_forever, color: Colors.red),
+            title: const Text(
+              'Delete Account',
+              style: TextStyle(color: Colors.red),
+            ),
+            onTap: () => _confirmDelete(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _downloadMyData(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Expanded(child: Text('Preparing your data...')),
+          ],
+        ),
+      ),
+    );
+    try {
+      final export = await settingsService.exportUserData();
+      if (context.mounted) Navigator.pop(context); // close loading dialog
+      await Share.share(export, subject: 'My Smart Blood Bank Data');
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // close loading dialog
+        onSnack('Could not export data: $e', isError: true);
+      }
+    }
+  }
+
   void _confirmLogout(BuildContext context) {
     showDialog(
       context: context,

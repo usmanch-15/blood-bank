@@ -21,7 +21,69 @@ class AboutScreen extends StatelessWidget {
       subject: 'Smart Blood Bank',
     );
   }
-
+  void _showRatingDialog(BuildContext context) {
+    int selectedStars = 0;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Rate Smart Blood Bank'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('How would you rate your experience?'),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) {
+                  final starIndex = i + 1;
+                  return IconButton(
+                    onPressed: () => setDialogState(
+                            () => selectedStars = starIndex),
+                    icon: Icon(
+                      starIndex <= selectedStars
+                          ? Icons.star
+                          : Icons.star_border,
+                      color: Colors.amber,
+                      size: 32,
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: selectedStars == 0
+                  ? null
+                  : () {
+                Navigator.pop(dialogContext);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      selectedStars >= 4
+                          ? 'Thanks for the $selectedStars★ rating! 🎉'
+                          : 'Thanks for the feedback — we\'ll keep '
+                          'improving. 🙏',
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryRed,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,20 +158,10 @@ class AboutScreen extends StatelessWidget {
                   title: const Text('Share App'),
                   onTap: _shareApp,
                 ),
-                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.star_outline),
                   title: const Text('Rate Us'),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Not yet available on the Play Store — thanks for '
-                              'your support in the meantime! 🙏',
-                        ),
-                      ),
-                    );
-                  },
+                  onTap: () => _showRatingDialog(context),
                 ),
                 const Divider(height: 1),
                 ListTile(

@@ -103,7 +103,7 @@ If you delete your account (Settings → Delete Account), your account is immedi
 
 6. YOUR CHOICES
 
-You can, at any time from Settings: edit your profile, turn location sharing on/off, turn notification categories on/off, mark yourself unavailable to donate, change your password, or delete your account.
+You can, at any time from Settings: edit your profile, turn location sharing on/off, turn notification categories on/off, mark yourself unavailable to donate, change your password or email, download a copy of your data, or delete your account.
 
 7. CHILDREN'S PRIVACY
 
