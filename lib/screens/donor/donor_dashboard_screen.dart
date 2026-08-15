@@ -281,7 +281,14 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                   if (snap.connectionState == ConnectionState.waiting) {
                     return const LoadingShimmerList(itemCount: 2);
                   }
-                  final docs = snap.data?.docs ?? [];
+                  // ✅ NEW — hide requests this donor already declined
+                  // (recorded on their own user doc via
+                  // DonorController.declineRequest; see blood_request_detail_screen.dart).
+                  final declinedIds = List<String>.from(
+                      _userData?['declinedRequestIds'] ?? const []);
+                  final docs = (snap.data?.docs ?? [])
+                      .where((doc) => !declinedIds.contains(doc.id))
+                      .toList();
                   if (docs.isEmpty) {
                     return const EmptyState(
                       icon: Icons.bloodtype_outlined,
@@ -295,12 +302,21 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                       final urgency = d['urgency'] ?? 'Normal';
 
                       return GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BloodRequestDetailScreen(requestData: d),
-                          ),
-                        ),
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BloodRequestDetailScreen(
+                                requestData: d,
+                                requestId: doc.id,
+                              ),
+                            ),
+                          );
+                          // Accept/Decline both change this donor's own doc
+                          // (declinedRequestIds) or the request's status —
+                          // refresh so the list reflects it right away.
+                          _loadUserData();
+                        },
                         child: Card(
                           margin: const EdgeInsets.only(bottom: AppSpacing.md),
                           shape: RoundedRectangleBorder(

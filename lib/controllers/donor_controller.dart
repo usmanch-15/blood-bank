@@ -138,4 +138,25 @@ class DonorController extends ChangeNotifier {
       throw Exception('Failed to confirm donation: $e');
     }
   }
+
+  /// ✅ NEW — lets a donor decline an incoming blood request from their
+  /// own dashboard. Donors have no write access to other users'
+  /// `blood_requests` docs (only the requester or admin can update those —
+  /// see firestore.rules), so this can't set a status on the request
+  /// itself. Instead it records the decline on the donor's OWN user doc
+  /// (which they're allowed to update), and the dashboard filters out any
+  /// request id present in this list so declined requests stop showing
+  /// up for this donor, on this and future sessions.
+  Future<void> declineRequest({
+    required String donorId,
+    required String requestId,
+  }) async {
+    await FirebaseFirestore.instance
+        .collection(AppConstants.usersCollection)
+        .doc(donorId)
+        .update({
+      'declinedRequestIds': FieldValue.arrayUnion([requestId]),
+    });
+    notifyListeners();
+  }
 }

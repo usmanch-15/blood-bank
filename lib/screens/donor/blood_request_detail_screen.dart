@@ -1,16 +1,119 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
+import '../../controllers/donor_controller.dart';
 import '../../widgets/report_misuse_button.dart';
 
-class BloodRequestDetailScreen extends StatelessWidget {
+class BloodRequestDetailScreen extends StatefulWidget {
   final Map<String, dynamic> requestData;
 
-  const BloodRequestDetailScreen({super.key, required this.requestData});
+  /// ✅ NEW — Firestore doc id of this blood_requests entry. Needed so the
+  /// donor can Accept (confirmDonation Cloud Function requires it) or
+  /// Decline (recorded on the donor's own doc) this specific request.
+  /// Nullable to stay backward compatible with any other caller that
+  /// doesn't have it handy — Accept/Decline are simply hidden if absent.
+  final String? requestId;
+
+  const BloodRequestDetailScreen({
+    super.key,
+    required this.requestData,
+    this.requestId,
+  });
+
+  @override
+  State<BloodRequestDetailScreen> createState() =>
+      _BloodRequestDetailScreenState();
+}
+
+class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
+  bool _isSubmitting = false;
+
+  Future<void> _handleAccept() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final requestId = widget.requestId;
+    if (uid == null || requestId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Donation'),
+        content: const Text(
+          'This marks the request as fulfilled by you and adds it to your '
+              'donation history. Only confirm once you\'ve actually donated.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryRed,
+                foregroundColor: Colors.white),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      await context.read<DonorController>().confirmDonation(
+        donorId: uid,
+        bloodGroup: widget.requestData['bloodGroup'] ?? '',
+        requestId: requestId,
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Donation confirmed — thank you!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not confirm: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _handleDecline() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final requestId = widget.requestId;
+    if (uid == null || requestId == null) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      await context.read<DonorController>().declineRequest(
+        donorId: uid,
+        requestId: requestId,
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request declined.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not decline: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final d = requestData;
+    final d = widget.requestData;
     final urgency = d['urgency'] ?? 'Normal';
     final status = d['status'] ?? 'pending';
 
@@ -264,6 +367,56 @@ class BloodRequestDetailScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+            ],
+
+            // ── Accept / Decline (only when we know which request this is,
+            // and it's still awaiting a donor) ──
+            if (widget.requestId != null && status == 'pending') ...[
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.close),
+                      label: const Text('Decline'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey[700],
+                        side: BorderSide(color: Colors.grey[400]!),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: _isSubmitting ? null : _handleDecline,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                          : const Icon(Icons.check),
+                      label: const Text(
+                        'Accept',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[700],
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: _isSubmitting ? null : _handleAccept,
+                    ),
+                  ),
+                ],
               ),
             ],
 
