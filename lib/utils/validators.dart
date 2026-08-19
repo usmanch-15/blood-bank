@@ -58,6 +58,18 @@ class AppValidators {
     return null;
   }
 
+  // ✅ NEW — Pakistani CNIC. Accepts both the formatted
+  // "12345-1234567-1" style and a plain 13-digit string, since users tend
+  // to type either. Always exactly 13 digits underneath.
+  static String? validateCnic(String? value) {
+    if (value == null || value.trim().isEmpty) return 'CNIC is required';
+    final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.length != 13) {
+      return 'CNIC must be 13 digits (e.g. 12345-1234567-1)';
+    }
+    return null;
+  }
+
   static String? validateName(String? value) {
     if (value == null || value.isEmpty) return 'Name required';
     if (value.length < 2) return 'Name too short';

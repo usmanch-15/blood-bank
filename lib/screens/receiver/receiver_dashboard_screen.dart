@@ -12,6 +12,7 @@ import 'blood_request_form_screen.dart';
 import 'sos_emergency_screen.dart';
 import '../maps/nearby_donors_map_screen.dart'; // Nearby Donors map
 import 'donor_matching_screen.dart'; // Find Donors for a specific request
+import '../settings/settings_screen.dart'; // ✅ NEW — was never reachable anywhere in the app
 
 /// ✅ UI POLISH ONLY — all 3 features added earlier this session (SOS
 /// button → SosEmergencyScreen, "Find Nearby Donors" → NearbyDonorsMapScreen,
@@ -76,6 +77,21 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                 ),
               ],
             ),
+            // ✅ NEW — Settings was completely unreachable from anywhere
+            // in the receiver flow before this.
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.settings_outlined,
+                    color: AppColors.primaryRed),
+                tooltip: 'Settings',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  );
+                },
+              ),
+            ],
           ),
 
           SliverPadding(

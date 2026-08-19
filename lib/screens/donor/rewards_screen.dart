@@ -68,7 +68,10 @@ class _RewardsScreenState extends State<RewardsScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: AppColors.primaryRed,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        ),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -281,25 +284,43 @@ class _TierProgressCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          // Tier steps row
+          // Tier steps row — connecting line + circular badges instead of
+          // bare icons, so it reads as a proper progress stepper.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: ['bronze', 'silver', 'gold', 'platinum'].map((t) {
               final tc = _RewardsScreen._tiers[t]!;
               final isActive = _tierIndex(tier) >= _tierIndex(t);
+              final isCurrent = tier == t;
               return Column(
                 children: [
-                  Icon(
-                    tc.icon,
-                    color: isActive ? tc.color : Colors.grey[300],
-                    size: 28,
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isActive
+                          ? tc.color.withOpacity(0.15)
+                          : Colors.grey[100],
+                      border: Border.all(
+                        color: isCurrent
+                            ? tc.color
+                            : (isActive ? tc.color.withOpacity(0.4) : Colors.grey[300]!),
+                        width: isCurrent ? 2 : 1,
+                      ),
+                    ),
+                    child: Icon(
+                      tc.icon,
+                      color: isActive ? tc.color : Colors.grey[400],
+                      size: 20,
+                    ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     tc.label,
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
                       color: isActive ? tc.color : Colors.grey[400],
                     ),
                   ),
@@ -307,25 +328,32 @@ class _TierProgressCard extends StatelessWidget {
               );
             }).toList(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 8,
+              minHeight: 10,
               backgroundColor: Colors.grey[200],
               valueColor: AlwaysStoppedAnimation<Color>(config.color),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            isPlatinum
-                ? '🏆 You have reached the highest tier!'
-                : '$remaining more points to ${_nextTierLabel(tier)}',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.flag_rounded, size: 14, color: Colors.grey[500]),
+              const SizedBox(width: 6),
+              Text(
+                isPlatinum
+                    ? 'You have reached the highest tier!'
+                    : '$remaining more points to ${_nextTierLabel(tier)}',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -538,12 +566,27 @@ class _EmptyCertificates extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Icon(Icons.card_membership,
-              size: 56, color: Colors.grey[300]),
-          const SizedBox(height: 12),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.primaryRed.withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.card_membership,
+                size: 34, color: AppColors.primaryRed.withOpacity(0.6)),
+          ),
+          const SizedBox(height: 14),
           const Text(
             'No certificates yet',
             style: TextStyle(

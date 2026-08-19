@@ -68,6 +68,7 @@ class AuthService {
     required String role,
     String? phoneNumber,
     String? bloodGroup,
+    String? cnic, // ✅ NEW
   }) async {
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
@@ -107,9 +108,16 @@ class AuthService {
         'profileImageUrl': null,
       });
 
-      if (phoneNumber != null && phoneNumber.trim().isNotEmpty) {
+      // ✅ NEW — CNIC is stored the same secure way as phoneNumber: in
+      // users/{uid}/private/contact, readable only by the owner/admin,
+      // never on the top-level user doc that any signed-in user can read.
+      if ((phoneNumber != null && phoneNumber.trim().isNotEmpty) ||
+          (cnic != null && cnic.trim().isNotEmpty)) {
         await userRef.collection('private').doc('contact').set({
-          'phoneNumber': phoneNumber.trim(),
+          if (phoneNumber != null && phoneNumber.trim().isNotEmpty)
+            'phoneNumber': phoneNumber.trim(),
+          if (cnic != null && cnic.trim().isNotEmpty)
+            'cnic': cnic.trim(),
         }, SetOptions(merge: true));
       }
 

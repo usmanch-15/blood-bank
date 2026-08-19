@@ -7,6 +7,7 @@ import '../../constants/app_colors.dart';
 import '../../models/donor_model.dart';
 import '../../utils/eligibility_checker.dart';
 import '../../controllers/donor_controller.dart';
+import '../maps/nearby_donors_map_screen.dart'; // ✅ NEW — "view on map" from Find Donors
 
 class DonorMatchingScreen extends StatefulWidget {
   final String? initialBloodGroup;
@@ -229,6 +230,24 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
         backgroundColor: AppColors.primaryRed,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          // ✅ NEW — the "Find Donors" screen only ever showed a flat list;
+          // there was no way to see WHERE these donors actually are. This
+          // opens the existing (previously orphaned-from-here)
+          // NearbyDonorsMapScreen, pre-filtered to the currently selected
+          // blood group.
+          IconButton(
+            icon: const Icon(Icons.map_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      NearbyDonorsMapScreen(bloodGroup: _selectedBloodGroup),
+                ),
+              );
+            },
+            tooltip: 'View on Map',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _fetchDonors,
@@ -240,8 +259,17 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
         children: [
           // ── Filter Bar ──
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
             child: Column(
               children: [
                 // Search

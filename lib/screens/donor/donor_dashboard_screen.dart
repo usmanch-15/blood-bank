@@ -13,6 +13,7 @@ import 'donor_profile_screen.dart';
 import 'donation_history_screen.dart';
 import 'blood_request_detail_screen.dart';
 import 'rewards_screen.dart'; // ✅ FIX — see note below
+import '../settings/settings_screen.dart'; // ✅ NEW — was never reachable anywhere in the app
 
 /// ✅ FIXED BUG — this file used to define its OWN local `RewardsScreen`
 /// class (a placeholder that just showed the text "Rewards Screen"), while
@@ -286,8 +287,21 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                   // DonorController.declineRequest; see blood_request_detail_screen.dart).
                   final declinedIds = List<String>.from(
                       _userData?['declinedRequestIds'] ?? const []);
+                  final myUid = _auth.currentUser?.uid;
+                  // ✅ BUG FIX — a receiver who is ALSO a donor (dual role)
+                  // was seeing their own blood request show up inside their
+                  // own "Blood Requests Near You" feed, because the query
+                  // only filtered by status == pending and never excluded
+                  // requests where requesterId == the signed-in user. Now
+                  // we filter those out client-side (Firestore doesn't
+                  // support a "not equal to me" + other filters combo
+                  // cleanly without a composite index for this shape).
                   final docs = (snap.data?.docs ?? [])
                       .where((doc) => !declinedIds.contains(doc.id))
+                      .where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return data['requesterId'] != myUid;
+                  })
                       .toList();
                   if (docs.isEmpty) {
                     return const EmptyState(
@@ -460,6 +474,21 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const RewardsScreen()), // ✅ now the real screen
+                  );
+                },
+              ),
+
+              // ✅ NEW — SettingsScreen (notifications, theme, privacy,
+              // help/about, legal, sign out) existed as a complete, working
+              // file but had no button anywhere in the app that opened it.
+              _buildActionTile(
+                title: 'Settings',
+                icon: Icons.settings_outlined,
+                color: AppColors.textSecondary,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
                   );
                 },
               ),

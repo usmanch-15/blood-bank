@@ -4,6 +4,33 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../../constants/app_constants.dart';
 import '../../services/auth_service.dart';
+import '../../utils/validators.dart';
+
+/// ✅ NEW — auto-inserts the CNIC dashes as the user types
+/// (12345-1234567-1), same UX pattern as bank/telco apps use for CNIC.
+class _CnicInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    final digits =
+    newValue.text.replaceAll(RegExp(r'[^0-9]'), '').substring(
+        0, newValue.text.replaceAll(RegExp(r'[^0-9]'), '').length > 13
+        ? 13
+        : newValue.text.replaceAll(RegExp(r'[^0-9]'), '').length);
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      buffer.write(digits[i]);
+      if (i == 4 || i == 11) {
+        if (i != digits.length - 1) buffer.write('-');
+      }
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -18,6 +45,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _cnicController = TextEditingController(); // ✅ NEW
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
@@ -54,6 +82,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _cnicController.dispose(); // ✅ NEW
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _fadeCtrl.dispose();
@@ -74,6 +103,7 @@ class _SignUpScreenState extends State<SignUpScreen>
         role: 'donor',
         phoneNumber: _phoneController.text.trim(),
         bloodGroup: _selectedBloodGroup,
+        cnic: _cnicController.text.trim(), // ✅ NEW
       );
       if (mounted) _showSuccessDialog();
     } catch (e) {
@@ -317,6 +347,38 @@ class _SignUpScreenState extends State<SignUpScreen>
                                   ),
                                   const SizedBox(height: 18),
 
+                                  // ✅ NEW — CNIC (National ID)
+                                  _buildLabel('CNIC (National ID)'),
+                                  const SizedBox(height: 8),
+                                  _buildField(
+                                    controller: _cnicController,
+                                    hint: '12345-1234567-1',
+                                    icon: Icons.badge_outlined,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [_CnicInputFormatter()],
+                                    validator: AppValidators.validateCnic,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Padding(
+                                    padding:
+                                    const EdgeInsets.only(left: 4),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.lock_outline,
+                                            size: 13,
+                                            color: Colors.grey[600]),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Used only to verify identity — kept private.',
+                                          style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: Colors.grey[600]),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+
                                   // Blood Group
                                   _buildLabel('Blood Group'),
                                   const SizedBox(height: 8),
@@ -515,12 +577,14 @@ class _SignUpScreenState extends State<SignUpScreen>
     Widget? suffix,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    List<TextInputFormatter>? inputFormatters, // ✅ NEW
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      inputFormatters: inputFormatters,
       style: const TextStyle(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
