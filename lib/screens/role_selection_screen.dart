@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../constants/app_colors.dart';
-import '../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import 'donor/donor_dashboard_screen.dart';
@@ -104,6 +102,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
     }
   }
 
+  Future<void> _backToLogin() async {
+    await _authService.signOut();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/login');
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
@@ -159,155 +163,162 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
               painter: _GridPainter(),
             ),
 
-            // ── Main content — SingleChildScrollView se overflow fix ──
+            // ── Main content ──
             SafeArea(
               child: FadeTransition(
                 opacity: _fadeAnim,
                 child: SlideTransition(
                   position: _slideAnim,
-                  child: SingleChildScrollView(         // ← overflow fix
+                  child: SingleChildScrollView(
                     physics: const ClampingScrollPhysics(),
                     padding: EdgeInsets.symmetric(
                       horizontal: 28,
-                      vertical: screenHeight * 0.04,   // responsive vertical padding
+                      vertical: screenHeight * 0.05,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 7),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                                color:
-                                const Color(0xFFB71C1C).withOpacity(0.6)),
-                            borderRadius: BorderRadius.circular(30),
-                            color:
-                            const Color(0xFFB71C1C).withOpacity(0.08),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Color(0xFFEF5350),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Blood Connect',
-                                style: TextStyle(
-                                  color: Color(0xFFEF5350),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // ── Back to Login button ──
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: GestureDetector(
-                            onTap: () async {
-                              await _authService.signOut();
-                              if (!mounted) return;
-                              Navigator.of(context).pushReplacementNamed('/login');
-                            },
-                            child: Container(
+                    child: Center(
+                      child: ConstrainedBox(
+                        // ✅ Cards capped at ~960px on desktop instead of
+                        // stretching edge-to-edge with a lot of dead space;
+                        // shrinks naturally to full width on mobile.
+                        constraints: const BoxConstraints(maxWidth: 960),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Badge
+                            Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 9),
+                                  horizontal: 14, vertical: 7),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                    color: Colors.white.withOpacity(0.1)),
+                                    color: const Color(0xFFB71C1C)
+                                        .withOpacity(0.6)),
+                                borderRadius: BorderRadius.circular(30),
+                                color: const Color(0xFFB71C1C)
+                                    .withOpacity(0.08),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.arrow_back_ios_rounded,
-                                      size: 14,
-                                      color: Colors.white.withOpacity(0.6)),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Back to Login',
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Color(0xFFEF5350),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Blood Connect',
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.6),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFFEF5350),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 1.2,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
+
+                            SizedBox(height: screenHeight * 0.035),
+
+                            // ✅ Action-first heading — covers both donor
+                            // and receiver naturally, instead of "How will
+                            // you help?" which read oddly for someone who
+                            // just needs blood, not to give it.
+                            const Text(
+                              'How can we help\nyou today?',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 38,
+                                fontWeight: FontWeight.w800,
+                                height: 1.15,
+                                letterSpacing: -1,
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            Text(
+                              'Choose an option to continue.',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.45),
+                                fontSize: 15,
+                                height: 1.5,
+                              ),
+                            ),
+
+                            SizedBox(height: screenHeight * 0.045),
+
+                            // Donor Card
+                            _RoleCard(
+                              icon: Icons.volunteer_activism_rounded,
+                              badge: 'SAVE A LIFE',
+                              title: 'Donate Blood',
+                              description:
+                              'Register as a donor and help someone in need.',
+                              ctaLabel: 'Continue as Donor',
+                              accentColor: const Color(0xFFEF5350),
+                              glowColor: const Color(0xFFB71C1C),
+                              isLoading:
+                              _isLoading && _selectedRole == 'donor',
+                              onTap: () => _handleRoleSelection('donor'),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Receiver Card
+                            _RoleCard(
+                              icon: Icons.local_hospital_rounded,
+                              badge: 'FIND A DONOR',
+                              title: 'Request Blood',
+                              description:
+                              'Find compatible blood donors near you.',
+                              ctaLabel: 'Continue as Receiver',
+                              accentColor: const Color(0xFF42A5F5),
+                              glowColor: const Color(0xFF1565C0),
+                              isLoading:
+                              _isLoading && _selectedRole == 'receiver',
+                              onTap: () => _handleRoleSelection('receiver'),
+                            ),
+
+                            SizedBox(height: screenHeight * 0.04),
+
+                            // ✅ Back-to-login moved to the bottom as a
+                            // quiet closing line, outlined-button style,
+                            // instead of competing with the heading at
+                            // the top of the screen.
+                            Center(
+                              child: OutlinedButton.icon(
+                                onPressed: _backToLogin,
+                                icon: Icon(Icons.arrow_back_rounded,
+                                    size: 16,
+                                    color: Colors.white.withOpacity(0.55)),
+                                label: Text(
+                                  'Already registered?  Back to Login',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.55),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(
+                                      color: Colors.white.withOpacity(0.12)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 18, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+                          ],
                         ),
-
-                        SizedBox(height: screenHeight * 0.03),
-
-                        // Heading
-                        const Text(
-                          'How will\nyou help?',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 42,
-                            fontWeight: FontWeight.w800,
-                            height: 1.1,
-                            letterSpacing: -1,
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        Text(
-                          'Choose your role to get started.',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.45),
-                            fontSize: 15,
-                            height: 1.5,
-                          ),
-                        ),
-
-                        SizedBox(height: screenHeight * 0.05),
-
-                        // Donor Card
-                        _RoleCard(
-                          title: 'Donor',
-                          subtitle: 'Give blood,\nsave a life today',
-                          tag: 'DONATE',
-                          icon: Icons.volunteer_activism_rounded,
-                          accentColor: const Color(0xFFEF5350),
-                          glowColor: const Color(0xFFB71C1C),
-                          isLoading:
-                          _isLoading && _selectedRole == 'donor',
-                          onTap: () => _handleRoleSelection('donor'),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Receiver Card
-                        _RoleCard(
-                          title: 'Receiver',
-                          subtitle: 'Find donors\nnear you fast',
-                          tag: 'REQUEST',
-                          icon: Icons.local_hospital_rounded,
-                          accentColor: const Color(0xFF42A5F5),
-                          glowColor: const Color(0xFF1565C0),
-                          isLoading:
-                          _isLoading && _selectedRole == 'receiver',
-                          onTap: () => _handleRoleSelection('receiver'),
-                        ),
-
-                        // Extra bottom padding taake nav bar se overlap na ho
-                        const SizedBox(height: 24),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -320,22 +331,29 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
   }
 }
 
-// ─── Role Card ────────────────────────────────────────────────────────────────
+// ─── Role Card ────────────────────────────────────────────────────────────
+// ✅ Redesigned per spec: fixed compact height (~168px, no more sprawling
+// empty space), left-aligned icon + copy, an explicit CTA pill with label
+// text (not just a bare arrow circle) on the right, and a hover lift on
+// desktop/web (translateY + border/shadow intensify) in addition to the
+// existing tap-press feedback.
 class _RoleCard extends StatefulWidget {
-  final String title;
-  final String subtitle;
-  final String tag;
   final IconData icon;
+  final String badge;
+  final String title;
+  final String description;
+  final String ctaLabel;
   final Color accentColor;
   final Color glowColor;
   final bool isLoading;
   final VoidCallback onTap;
 
   const _RoleCard({
-    required this.title,
-    required this.subtitle,
-    required this.tag,
     required this.icon,
+    required this.badge,
+    required this.title,
+    required this.description,
+    required this.ctaLabel,
     required this.accentColor,
     required this.glowColor,
     required this.isLoading,
@@ -348,48 +366,55 @@ class _RoleCard extends StatefulWidget {
 
 class _RoleCardState extends State<_RoleCard> {
   bool _pressed = false;
+  bool _hovering = false;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 120),
+    final active = _pressed || _hovering;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) {
+          setState(() => _pressed = false);
+          widget.onTap();
+        },
+        onTapCancel: () => setState(() => _pressed = false),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(AppSpacing.xxl),
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          transform: Matrix4.translationValues(
+              0, _hovering && !_pressed ? -4 : 0, 0),
+          constraints: const BoxConstraints(minHeight: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(22),
             color: const Color(0xFF13131A),
             border: Border.all(
-              color: _pressed
-                  ? widget.accentColor.withOpacity(0.6)
+              color: active
+                  ? widget.accentColor.withOpacity(0.55)
                   : Colors.white.withOpacity(0.07),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.glowColor
-                    .withOpacity(_pressed ? 0.3 : 0.12),
-                blurRadius: _pressed ? 30 : 16,
-                offset: const Offset(0, 8),
+                color: widget.glowColor.withOpacity(active ? 0.28 : 0.1),
+                blurRadius: active ? 28 : 14,
+                offset: Offset(0, active ? 12 : 6),
               ),
             ],
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Icon box
               Container(
-                width: 72,
-                height: 72,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -402,16 +427,16 @@ class _RoleCardState extends State<_RoleCard> {
                     color: widget.accentColor.withOpacity(0.2),
                   ),
                 ),
-                child: Icon(widget.icon,
-                    color: widget.accentColor, size: 32),
+                child: Icon(widget.icon, color: widget.accentColor, size: 26),
               ),
 
-              const SizedBox(width: 20),
+              const SizedBox(width: 18),
 
-              // Text
+              // Copy
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -421,12 +446,12 @@ class _RoleCardState extends State<_RoleCard> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        widget.tag,
+                        widget.badge,
                         style: TextStyle(
                           color: widget.accentColor,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
+                          letterSpacing: 1.3,
                         ),
                       ),
                     ),
@@ -435,16 +460,16 @@ class _RoleCardState extends State<_RoleCard> {
                       widget.title,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 24,
+                        fontSize: 21,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: -0.5,
+                        letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      widget.subtitle,
+                      widget.description,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.4),
+                        color: Colors.white.withOpacity(0.45),
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -453,27 +478,43 @@ class _RoleCardState extends State<_RoleCard> {
                 ),
               ),
 
-              // Arrow / loader
+              const SizedBox(width: 16),
+
+              // CTA — explicit label + arrow, not just a bare icon circle
               widget.isLoading
                   ? SizedBox(
-                width: 24,
-                height: 24,
+                width: 22,
+                height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: widget.accentColor,
                 ),
               )
                   : Container(
-                width: 36,
-                height: 36,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: widget.accentColor.withOpacity(0.12),
+                  color: widget.accentColor.withOpacity(active ? 0.18 : 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: widget.accentColor.withOpacity(0.3),
+                  ),
                 ),
-                child: Icon(
-                  Icons.arrow_forward_rounded,
-                  color: widget.accentColor,
-                  size: 18,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.ctaLabel,
+                      style: TextStyle(
+                        color: widget.accentColor,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(Icons.arrow_forward_rounded,
+                        color: widget.accentColor, size: 15),
+                  ],
                 ),
               ),
             ],
@@ -484,7 +525,7 @@ class _RoleCardState extends State<_RoleCard> {
   }
 }
 
-// ─── Grid background painter ──────────────────────────────────────────────────
+// ─── Grid background painter ───────────────────────────────────────────
 class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {

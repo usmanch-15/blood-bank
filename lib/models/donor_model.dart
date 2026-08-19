@@ -23,6 +23,7 @@ class DonorModel extends UserModel {
     super.isAvailable,
     super.nextEligibleDate,
     super.phoneVerified,
+    super.lastLoginAt,
   });
 
   factory DonorModel.fromFirestore(Map<String, dynamic> json, String uid) {
@@ -47,6 +48,7 @@ class DonorModel extends UserModel {
       isAvailable: json['isAvailable'] ?? true,
       nextEligibleDate: (json['nextEligibleDate'] as Timestamp?)?.toDate(),
       phoneVerified: json['phoneVerified'] ?? false,
+      lastLoginAt: (json['lastLoginAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -72,6 +74,7 @@ class DonorModel extends UserModel {
     bool? isAvailable,
     DateTime? nextEligibleDate,
     bool? phoneVerified,
+    DateTime? lastLoginAt,
   }) {
     return DonorModel(
       uid: uid ?? this.uid,
@@ -94,6 +97,7 @@ class DonorModel extends UserModel {
       isAvailable: isAvailable ?? this.isAvailable,
       nextEligibleDate: nextEligibleDate ?? this.nextEligibleDate,
       phoneVerified: phoneVerified ?? this.phoneVerified,
+      lastLoginAt: lastLoginAt ?? this.lastLoginAt,
     );
   }
 }

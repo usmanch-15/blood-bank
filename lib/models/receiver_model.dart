@@ -23,6 +23,7 @@ class ReceiverModel extends UserModel {
     super.isAvailable,
     super.nextEligibleDate,
     super.phoneVerified,
+    super.lastLoginAt,
   });
 
   factory ReceiverModel.fromFirestore(Map<String, dynamic> json, String uid) {
@@ -47,6 +48,7 @@ class ReceiverModel extends UserModel {
       isAvailable: json['isAvailable'] ?? true,
       nextEligibleDate: (json['nextEligibleDate'] as Timestamp?)?.toDate(),
       phoneVerified: json['phoneVerified'] ?? false,
+      lastLoginAt: (json['lastLoginAt'] as Timestamp?)?.toDate(),
     );
   }
 }

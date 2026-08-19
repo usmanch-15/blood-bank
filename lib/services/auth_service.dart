@@ -19,13 +19,12 @@ class AuthService {
         password: password.trim(),
       );
 
-      // ✅ Email verification check — before this fix, unverified emails
-      // (typos, fake addresses) could log in and use the app normally.
-      await credential.user!.reload();
-      if (!credential.user!.emailVerified) {
-        await _auth.signOut();
-        throw 'email-not-verified';
-      }
+      // ✅ CHANGE: email verification is no longer required to log in.
+      // Verification emails are still sent on signup (see signupWithEmail
+      // below) for record-keeping / trust, but a user does not need to
+      // click that link before using the app — matches the "no approval
+      // gate at all" requirement. If verification is ever required again,
+      // reinstate a check here using credential.user!.emailVerified.
 
       // Firestore se status check karo
       final doc = await _firestore
@@ -45,6 +44,14 @@ class AuthService {
           await _auth.signOut();
           throw 'rejected';
         }
+
+        // ✅ NEW — admin approval is no longer required before login, so
+        // this is now how admins see real activity: a timestamp of each
+        // user's most recent successful login, shown in AdminWebUsers.
+        await _firestore
+            .collection('users')
+            .doc(credential.user!.uid)
+            .update({'lastLoginAt': FieldValue.serverTimestamp()});
       }
 
       return credential;
@@ -71,7 +78,11 @@ class AuthService {
       final userRef =
       _firestore.collection('users').doc(credential.user!.uid);
 
-      // Firestore mein user data save karo — status: pending
+      // Firestore mein user data save karo — status: approved
+      // ✅ CHANGE: admin approval step removed — new signups get full
+      // access immediately (status: 'approved' instead of 'pending').
+      // Admin panel now shows lastLoginAt instead, so admins can still
+      // see who has actually logged in, without gatekeeping access.
       // ⚠️ SECURITY FIX: phoneNumber ab is top-level doc mein NAHI jata —
       // ye doc `allow read: if isSignedIn()` hai, matlab koi bhi signed-in
       // user kisi ka bhi phone number parh sakta tha. Phone number ab
@@ -84,10 +95,11 @@ class AuthService {
         'name': name.trim(),
         'role': role,
         'bloodGroup': bloodGroup,
-        'status': 'pending',   // ← admin approval required
+        'status': 'approved',
         'isEligible': true,
         'rewardPoints': 0,
         'createdAt': FieldValue.serverTimestamp(),
+        'lastLoginAt': null,
         'lastDonationDate': null,
         'location': null,
         'latitude': null,
@@ -101,11 +113,13 @@ class AuthService {
         }, SetOptions(merge: true));
       }
 
-      // ✅ Send verification email — user must click the link before they
-      // can log in (enforced in signInWithEmailPassword above).
+      // Verification email bhejo — sirf record ke liye, ab login isko
+      // require nahi karta (signInWithEmailPassword mein check hata diya
+      // gaya hai).
       await credential.user!.sendEmailVerification();
 
-      // Turant logout — pehle email verify, phir admin approve kare tab tak wait
+      // Signup ke baad sign out — user login screen se khud login karega.
+      // Ab koi verification/approval wait nahi, login turant kaam karega.
       await _auth.signOut();
 
       return credential;

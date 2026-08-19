@@ -390,6 +390,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                           DataColumn(label: Text('Blood Group')),
                           DataColumn(label: Text('Location')),
                           DataColumn(label: Text('Joined')),
+                          DataColumn(label: Text('Last Login')),
                           DataColumn(label: Text('Eligibility')),
                           DataColumn(label: Text('Actions')),
                         ],
@@ -495,6 +496,39 @@ class _AdminWebUsersState extends State<AdminWebUsers>
           Text(
             _formatDate(user.createdAt),
             style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+          ),
+        ),
+
+        // ── Last Login ── ✅ NEW — replaces the old approval gate: since
+        // signup no longer requires admin approval, this is how admins
+        // see genuine activity (set by AuthService on every login).
+        DataCell(
+          user.lastLoginAt != null
+              ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: Colors.green.shade500,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _formatDate(user.lastLoginAt!),
+                style: TextStyle(
+                    color: Colors.grey.shade700, fontSize: 12),
+              ),
+            ],
+          )
+              : Text(
+            'Never logged in',
+            style: TextStyle(
+                color: Colors.grey.shade400,
+                fontSize: 12,
+                fontStyle: FontStyle.italic),
           ),
         ),
 

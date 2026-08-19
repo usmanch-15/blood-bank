@@ -36,6 +36,11 @@ class UserModel {
 
   final bool phoneVerified;
 
+  // ✅ NEW — admin approval on signup was removed; this is how admins now
+  // see genuine activity instead (set by AuthService on every successful
+  // login). Null means the account has never logged in yet.
+  final DateTime? lastLoginAt;
+
   UserModel({
     required this.uid,
     required this.email,
@@ -57,9 +62,9 @@ class UserModel {
     this.isAvailable = true,
     this.nextEligibleDate,
     this.phoneVerified = false,
+    this.lastLoginAt,
   });
 
-  /// Create UserModel from Firestore document
   factory UserModel.fromFirestore(Map<String, dynamic> json, String uid) {
     return UserModel(
       uid: uid,
@@ -82,6 +87,7 @@ class UserModel {
       isAvailable: json['isAvailable'] ?? true,
       nextEligibleDate: (json['nextEligibleDate'] as Timestamp?)?.toDate(),
       phoneVerified: json['phoneVerified'] ?? false,
+      lastLoginAt: (json['lastLoginAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -107,6 +113,7 @@ class UserModel {
       'isAvailable': isAvailable,
       'nextEligibleDate': nextEligibleDate,
       'phoneVerified': phoneVerified,
+      'lastLoginAt': lastLoginAt,
     };
   }
 
@@ -132,6 +139,7 @@ class UserModel {
     bool? isAvailable,
     DateTime? nextEligibleDate,
     bool? phoneVerified,
+    DateTime? lastLoginAt,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -154,6 +162,7 @@ class UserModel {
       isAvailable: isAvailable ?? this.isAvailable,
       nextEligibleDate: nextEligibleDate ?? this.nextEligibleDate,
       phoneVerified: phoneVerified ?? this.phoneVerified,
+      lastLoginAt: lastLoginAt ?? this.lastLoginAt,
     );
   }
 }
