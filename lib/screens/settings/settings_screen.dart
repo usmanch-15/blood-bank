@@ -47,9 +47,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: AppColors.primaryRed,
+        title: const Text('Settings',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        ),
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: StreamBuilder<dynamic>(
         stream: _settingsService.profileStream(),
@@ -70,11 +75,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           return ListView(
             padding: const EdgeInsets.symmetric(vertical: 12),
             children: [
-              _sectionHeader('Profile'),
+              _sectionHeader('Profile', Icons.person_outline_rounded),
               _ProfileTile(data: data, settingsService: _settingsService),
 
               const SizedBox(height: 8),
-              _sectionHeader('Notifications'),
+              _sectionHeader('Notifications', Icons.notifications_outlined),
               _NotificationsTile(
                 data: data,
                 settingsService: _settingsService,
@@ -83,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               if (isDonor) ...[
                 const SizedBox(height: 8),
-                _sectionHeader('Availability'),
+                _sectionHeader('Availability', Icons.favorite_outline),
                 _AvailabilityTile(
                   data: data,
                   settingsService: _settingsService,
@@ -92,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
 
               const SizedBox(height: 8),
-              _sectionHeader('Location & Privacy'),
+              _sectionHeader('Location & Privacy', Icons.location_on_outlined),
               _LocationSharingTile(
                 data: data,
                 settingsService: _settingsService,
@@ -100,15 +105,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
 
               const SizedBox(height: 8),
-              _sectionHeader('Appearance'),
+              _sectionHeader('Appearance', Icons.palette_outlined),
               const _AppearanceTile(),
 
               const SizedBox(height: 8),
-              _sectionHeader('Support & About'),
+              _sectionHeader('Support & About', Icons.help_outline_rounded),
               const _SupportAboutTile(),
 
               const SizedBox(height: 8),
-              _sectionHeader('Account & Security'),
+              _sectionHeader('Account & Security', Icons.lock_outline_rounded),
               _AccountSecurityTile(
                 settingsService: _settingsService,
                 onSnack: _showSnack,
@@ -124,17 +129,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _sectionHeader(String title) {
+  // ✅ POLISH — icon + bolder label instead of a bare line of red text,
+  // so each section reads as a distinct group at a glance.
+  Widget _sectionHeader(String title, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          color: AppColors.primaryRed,
-          letterSpacing: 0.5,
-        ),
+      padding: const EdgeInsets.fromLTRB(20, 20, 16, 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.primaryRed),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryRed,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
       ),
     );
   }

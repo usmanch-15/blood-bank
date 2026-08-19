@@ -293,6 +293,8 @@ class _LoginScreenState extends State<LoginScreen>
                               hint: 'your@email.com',
                               icon: Icons.email_outlined,
                               keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.email],
                               validator: (v) {
                                 if (v == null || v.trim().isEmpty)
                                   return 'Email required';
@@ -309,6 +311,9 @@ class _LoginScreenState extends State<LoginScreen>
                               hint: '••••••••',
                               icon: Icons.lock_outline,
                               obscureText: _obscurePassword,
+                              textInputAction: TextInputAction.done,
+                              autofillHints: const [AutofillHints.password],
+                              onSubmitted: (_) => _handleLogin(),
                               suffix: GestureDetector(
                                 onTap: () => setState(() =>
                                 _obscurePassword = !_obscurePassword),
@@ -458,7 +463,11 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ],
             ),
-            child: const Icon(Icons.bloodtype_rounded,
+            // ✅ FIX — brand icon now matches the mark used on Role
+            // Selection (water_drop_rounded) and Signup instead of a
+            // different icon (bloodtype_rounded) on each screen, so the
+            // logo actually reads as one consistent brand across the flow.
+            child: const Icon(Icons.water_drop_rounded,
                 color: Colors.white, size: 32),
           ),
         ],
@@ -484,12 +493,18 @@ class _LoginScreenState extends State<LoginScreen>
     Widget? suffix,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    TextInputAction? textInputAction, // ✅ NEW
+    Iterable<String>? autofillHints, // ✅ NEW
+    void Function(String)? onSubmitted, // ✅ NEW
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      textInputAction: textInputAction,
+      autofillHints: autofillHints,
+      onFieldSubmitted: onSubmitted,
       style: const TextStyle(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,

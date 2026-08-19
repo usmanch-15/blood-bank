@@ -299,6 +299,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     controller: _nameController,
                                     hint: 'Muhammad Ali',
                                     icon: Icons.person_outline,
+                                    textInputAction: TextInputAction.next,
+                                    autofillHints: const [AutofillHints.name],
                                     validator: (v) {
                                       if (v == null || v.isEmpty)
                                         return 'Name required';
@@ -318,6 +320,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     icon: Icons.email_outlined,
                                     keyboardType:
                                     TextInputType.emailAddress,
+                                    textInputAction: TextInputAction.next,
+                                    autofillHints: const [AutofillHints.email],
                                     validator: (v) {
                                       if (v == null || v.trim().isEmpty)
                                         return 'Email required';
@@ -337,6 +341,10 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     hint: '03XX-XXXXXXX',
                                     icon: Icons.phone_outlined,
                                     keyboardType: TextInputType.phone,
+                                    textInputAction: TextInputAction.next,
+                                    autofillHints: const [
+                                      AutofillHints.telephoneNumber
+                                    ],
                                     validator: (v) {
                                       if (v == null || v.isEmpty)
                                         return 'Phone required';
@@ -355,6 +363,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     hint: '12345-1234567-1',
                                     icon: Icons.badge_outlined,
                                     keyboardType: TextInputType.number,
+                                    textInputAction: TextInputAction.next,
                                     inputFormatters: [_CnicInputFormatter()],
                                     validator: AppValidators.validateCnic,
                                   ),
@@ -393,6 +402,10 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     hint: 'Min 6 characters',
                                     icon: Icons.lock_outline,
                                     obscureText: _obscurePassword,
+                                    textInputAction: TextInputAction.next,
+                                    autofillHints: const [
+                                      AutofillHints.newPassword
+                                    ],
                                     suffix: GestureDetector(
                                       onTap: () => setState(() =>
                                       _obscurePassword =
@@ -423,6 +436,10 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     hint: 'Re-enter password',
                                     icon: Icons.lock_outline,
                                     obscureText: _obscureConfirmPassword,
+                                    textInputAction: TextInputAction.done,
+                                    autofillHints: const [
+                                      AutofillHints.newPassword
+                                    ],
                                     suffix: GestureDetector(
                                       onTap: () => setState(() =>
                                       _obscureConfirmPassword =
@@ -578,6 +595,8 @@ class _SignUpScreenState extends State<SignUpScreen>
     TextInputType? keyboardType,
     String? Function(String?)? validator,
     List<TextInputFormatter>? inputFormatters, // ✅ NEW
+    TextInputAction? textInputAction, // ✅ NEW
+    Iterable<String>? autofillHints, // ✅ NEW
   }) {
     return TextFormField(
       controller: controller,
@@ -585,6 +604,8 @@ class _SignUpScreenState extends State<SignUpScreen>
       keyboardType: keyboardType,
       validator: validator,
       inputFormatters: inputFormatters,
+      textInputAction: textInputAction,
+      autofillHints: autofillHints,
       style: const TextStyle(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,

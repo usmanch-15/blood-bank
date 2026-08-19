@@ -184,6 +184,44 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // ✅ NEW — small brand mark (icon + wordmark)
+                            // above the status badge, so this screen reads
+                            // as part of the same product as Login/Signup
+                            // instead of a disconnected "step 3" screen.
+                            Row(
+                              children: [
+                                Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(9),
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFFEF5350),
+                                        Color(0xFFB71C1C)
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: const Icon(Icons.water_drop_rounded,
+                                      color: Colors.white, size: 18),
+                                ),
+                                const SizedBox(width: 10),
+                                const Text(
+                                  'BloodConnect',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            SizedBox(height: screenHeight * 0.03),
+
                             // Badge
                             Container(
                               padding: const EdgeInsets.symmetric(

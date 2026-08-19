@@ -80,4 +80,24 @@ class AppColors {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
+
+  // ── ✅ NEW — professional design-system tokens ──────────────────────
+  // Purely additive (nothing above changed), used by the refreshed
+  // AppTheme to give cards/surfaces more depth and hierarchy than plain
+  // Colors.white everywhere.
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color surfaceAlt = Color(0xFFFAFAFC); // faint off-white for grouped sections
+  static const Color border = Color(0xFFE8E8ED);
+  static const Color borderStrong = Color(0xFFD8D8E0);
+
+  // A slightly deeper, more premium crimson used for gradients/headers so
+  // the app doesn't read as flat "stock Material red".
+  static const Color primaryRedDeep = Color(0xFFB3122E);
+
+  static const LinearGradient heroGradient = LinearGradient(
+    colors: [primaryRed, primaryRedDeep, primaryDarkRed],
+    stops: [0.0, 0.55, 1.0],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }

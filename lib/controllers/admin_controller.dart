@@ -18,7 +18,7 @@ class AdminController extends ChangeNotifier {
   int get totalRequests => _totalRequests;
   int get totalDonations => _totalDonations;
 
-  Future<void> loadStats() async {
+  Future<void> loadStats(dynamic AppConstants) async {
     _isLoading = true;
     notifyListeners();
     try {
