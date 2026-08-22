@@ -47,16 +47,25 @@ class FirestoreService {
   }
 
   /// 'pending' | 'approved' | 'rejected'
+  // ✅ FIX — this used to chain .where('status', ...).orderBy('createdAt', ...)
+  // which Firestore refuses to run without a manual composite index (the
+  // "failed-precondition ... requires an index" error on the admin Users
+  // page). Rather than making you create/deploy an index in the Firebase
+  // console, we drop the server-side orderBy and sort the already-small
+  // per-status admin list client-side instead — same result, zero setup.
   Stream<List<UserModel>> getUsersByStatus(String status) {
     return _firestore
         .collection(AppConstants.usersCollection)
         .where('status', isEqualTo: status)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-        .map((d) => UserModel.fromFirestore(
-        d.data() as Map<String, dynamic>, d.id))
-        .toList());
+        .map((snap) {
+      final users = snap.docs
+          .map((d) =>
+          UserModel.fromFirestore(d.data() as Map<String, dynamic>, d.id))
+          .toList();
+      users.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return users;
+    });
   }
 
   Future<void> addRewardPoints(String uid, int points) async {
@@ -146,18 +155,21 @@ class FirestoreService {
     }
   }
 
+  // ✅ FIX — same composite-index trap as getUsersByStatus above
+  // (where + orderBy on different fields). Sort client-side instead.
   Stream<List<DonationModel>> getDonationHistory(String donorId) {
     return _firestore
         .collection(AppConstants.donationsCollection)
         .where('donorId', isEqualTo: donorId)
-        .orderBy('donationDate', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-        .map((d) => DonationModel.fromFirestore(
-      d.data() as Map<String, dynamic>,
-      d.id,
-    ))
-        .toList());
+        .map((snap) {
+      final donations = snap.docs
+          .map((d) => DonationModel.fromFirestore(
+          d.data() as Map<String, dynamic>, d.id))
+          .toList();
+      donations.sort((a, b) => b.donationDate.compareTo(a.donationDate));
+      return donations;
+    });
   }
 
   // ==================== BLOOD DRIVES ====================

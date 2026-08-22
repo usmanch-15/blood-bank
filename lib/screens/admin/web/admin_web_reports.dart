@@ -36,17 +36,22 @@ class _AdminWebReportsState extends State<AdminWebReports>
     super.dispose();
   }
 
+  // ✅ FIX — same composite-index trap: filtering by status AND ordering
+  // by reportedAt together needs a Firestore composite index. Sort
+  // client-side instead so this works with zero index setup.
   Stream<List<MisuseReportModel>> _getReports(String status) {
-    Query query = FirebaseFirestore.instance
-        .collection('misuse_reports')
-        .orderBy('reportedAt', descending: true);
+    Query query = FirebaseFirestore.instance.collection('misuse_reports');
     if (status != 'all') {
       query = query.where('status', isEqualTo: status);
     }
-    return query.snapshots().map((snap) => snap.docs
-        .map((d) => MisuseReportModel.fromFirestore(
-        d.data() as Map<String, dynamic>, d.id))
-        .toList());
+    return query.snapshots().map((snap) {
+      final reports = snap.docs
+          .map((d) => MisuseReportModel.fromFirestore(
+          d.data() as Map<String, dynamic>, d.id))
+          .toList();
+      reports.sort((a, b) => b.reportedAt.compareTo(a.reportedAt));
+      return reports;
+    });
   }
 
   @override

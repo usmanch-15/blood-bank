@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../controllers/receiver_controller.dart';
+import '../../utils/location_helper.dart';
 
 class SosEmergencyScreen extends StatefulWidget {
   const SosEmergencyScreen({super.key});
@@ -21,10 +23,78 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
   final List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
   final List<String> _urgencyLevels = ['urgent', 'critical', 'life_threatening'];
 
+  // ✅ NEW — replaces the old hardcoded "Lahore, Pakistan" demo text.
+  // Fetched once on screen load and again whenever "Update Location" is
+  // pressed, using the same GPS + reverse-geocoding utility the rest of
+  // the app already relies on (LocationHelper) — no more fake data.
+  String? _locationAddress;
+  double? _currentLat;
+  double? _currentLng;
+  bool _isLocating = true;
+  String? _locationError;
+
   @override
   void initState() {
     super.initState();
-    // SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    _fetchRealLocation();
+  }
+
+  Future<void> _fetchRealLocation() async {
+    setState(() {
+      _isLocating = true;
+      _locationError = null;
+    });
+
+    final position = await LocationHelper.getCurrentLocation();
+    if (position == null) {
+      if (!mounted) return;
+      setState(() {
+        _isLocating = false;
+        _locationError =
+        'Could not get your location. Please enable location services and grant permission.';
+      });
+      return;
+    }
+
+    final address = await LocationHelper.getAddressFromCoordinates(
+        position.latitude, position.longitude);
+
+    if (!mounted) return;
+    setState(() {
+      _currentLat = position.latitude;
+      _currentLng = position.longitude;
+      _locationAddress =
+          address ?? '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
+      _isLocating = false;
+    });
+  }
+
+  Future<void> _callNumber(String number) async {
+    final uri = Uri(scheme: 'tel', path: number);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open dialer for $number')),
+      );
+    }
+  }
+
+  // ✅ NEW — real "nearest hospitals" instead of a hardcoded "City
+  // Hospital" row. Opens a maps search centered on the receiver's actual
+  // GPS position (or a generic search if location isn't available yet).
+  Future<void> _openNearbyHospitals() async {
+    final uri = (_currentLat != null && _currentLng != null)
+        ? Uri.parse(
+        'https://www.google.com/maps/search/hospital/@$_currentLat,$_currentLng,14z')
+        : Uri.parse('https://www.google.com/maps/search/hospital+near+me');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open maps.')),
+      );
+    }
   }
 
   @override
@@ -466,13 +536,18 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
           if (_isSosActive)
             IconButton(
               icon: const Icon(Icons.phone),
+              tooltip: 'Call Emergency Services',
               onPressed: () {
-                // Simulate emergency call
+                // ✅ FIX — this used to be a fake dialog ("Calling nearest
+                // emergency contact...") that never actually dialed
+                // anyone. Now it confirms, then really opens the phone
+                // dialer via url_launcher, pre-filled with Pakistan's
+                // national emergency/ambulance number (Rescue 1122).
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text('Emergency Call'),
-                    content: const Text('Calling nearest emergency contact...'),
+                    content: const Text('Call Rescue 1122 (ambulance)?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
@@ -481,12 +556,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                       ElevatedButton(
                         onPressed: () {
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Emergency call initiated'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
+                          _callNumber('1122');
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
@@ -566,21 +636,54 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Lahore, Pakistan',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
+                    if (_isLocating)
+                      const Row(
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 10),
+                          Text('Getting your location...',
+                              style: TextStyle(fontSize: 14)),
+                        ],
+                      )
+                    else if (_locationError != null)
+                      Text(
+                        _locationError!,
+                        style: const TextStyle(fontSize: 13, color: Colors.red),
+                      )
+                    else
+                      Text(
+                        _locationAddress ?? 'Location unavailable',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 8),
                     ElevatedButton.icon(
-                      icon: const Icon(Icons.my_location, size: 16),
-                      label: const Text('Update Location'),
-                      onPressed: () {
+                      icon: _isLocating
+                          ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                          : const Icon(Icons.my_location, size: 16),
+                      label: Text(_isLocating ? 'Locating...' : 'Update Location'),
+                      onPressed: _isLocating
+                          ? null
+                          : () async {
+                        await _fetchRealLocation();
+                        if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Location updated (Demo Mode)'),
+                          SnackBar(
+                            content: Text(
+                              _locationError ??
+                                  'Location updated: ${_locationAddress ?? ''}',
+                            ),
                           ),
                         );
                       },
@@ -628,29 +731,41 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    // ✅ FIX — "Ambulance: 1020" was a made-up number and
+                    // the call button did nothing (onPressed: () {}).
+                    // Rescue 1122 is Pakistan's real national
+                    // emergency/ambulance service, and the button now
+                    // actually opens the phone dialer.
                     ListTile(
                       leading: const CircleAvatar(
                         backgroundColor: Colors.green,
                         child: Icon(Icons.person, color: Colors.white, size: 20),
                       ),
-                      title: const Text('Ambulance'),
-                      subtitle: const Text('1020'),
+                      title: const Text('Ambulance (Rescue 1122)'),
+                      subtitle: const Text('1122'),
                       trailing: IconButton(
                         icon: const Icon(Icons.phone, color: Colors.green),
-                        onPressed: () {},
+                        onPressed: () => _callNumber('1122'),
                       ),
                     ),
+                    // ✅ FIX — "Nearest Hospital: City Hospital" was a
+                    // hardcoded fake entry with a dead call button.
+                    // Finding a real "nearest" hospital needs a places
+                    // API we don't have configured, so instead of faking
+                    // a name, this opens a real maps search for hospitals
+                    // centered on the user's actual GPS location.
                     ListTile(
                       leading: const CircleAvatar(
                         backgroundColor: Colors.orange,
                         child: Icon(Icons.local_hospital, color: Colors.white, size: 20),
                       ),
-                      title: const Text('Nearest Hospital'),
-                      subtitle: const Text('City Hospital'),
+                      title: const Text('Find Nearby Hospitals'),
+                      subtitle: const Text('Opens maps near your location'),
                       trailing: IconButton(
-                        icon: const Icon(Icons.phone, color: Colors.orange),
-                        onPressed: () {},
+                        icon: const Icon(Icons.map_outlined, color: Colors.orange),
+                        onPressed: _openNearbyHospitals,
                       ),
+                      onTap: _openNearbyHospitals,
                     ),
                   ],
                 ),
