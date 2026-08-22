@@ -92,4 +92,75 @@ class GeoLocationService {
       double lat1, double lng1, double lat2, double lng2) {
     return LocationHelper.calculateDistance(lat1, lng1, lat2, lng2);
   }
+
+  // ── ✅ NEW — Uber/InDrive-style donor search ────────────────────────
+  // Which blood groups CAN donate to a given recipient group. Kept local
+  // to this service (separate copy from DonorMatchingScreen's own map) so
+  // neither screen risks breaking the other.
+  static const Map<String, List<String>> compatibleDonorGroups = {
+    'A+': ['A+', 'A-', 'O+', 'O-'],
+    'A-': ['A-', 'O-'],
+    'B+': ['B+', 'B-', 'O+', 'O-'],
+    'B-': ['B-', 'O-'],
+    'AB+': ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+    'AB-': ['A-', 'B-', 'AB-', 'O-'],
+    'O+': ['O+', 'O-'],
+    'O-': ['O-'],
+  };
+
+  /// Fetches every approved donor with a compatible blood group (or every
+  /// approved donor if [bloodGroup] is null), computes each one's distance
+  /// from the receiver, and returns them all sorted nearest-first — up to
+  /// [maxRadiusKm]. The UI then filters this ONE fetched list locally as
+  /// the user drags a radius slider, instead of re-querying Firestore on
+  /// every slider move (same pattern Uber/InDrive use: fetch a wide pool
+  /// once, filter client-side for instant slider feedback).
+  Future<List<DonorWithDistance>> findCompatibleDonorsWithDistance({
+    required double receiverLat,
+    required double receiverLng,
+    String? bloodGroup,
+    double maxRadiusKm = 50.0,
+  }) async {
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+        .collection(AppConstants.usersCollection)
+        .where('isDonor', isEqualTo: true)
+        .where('status', isEqualTo: 'approved');
+
+    final snapshot = await query.get();
+    final compatible =
+    bloodGroup != null ? compatibleDonorGroups[bloodGroup] : null;
+
+    final results = <DonorWithDistance>[];
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final lat = data['latitude']?.toDouble();
+      final lng = data['longitude']?.toDouble();
+      if (lat == null || lng == null) continue;
+
+      if (compatible != null && !compatible.contains(data['bloodGroup'])) {
+        continue;
+      }
+
+      final distance =
+      LocationHelper.calculateDistance(receiverLat, receiverLng, lat, lng);
+      if (distance > maxRadiusKm) continue;
+
+      results.add(DonorWithDistance(
+        donor: DonorModel.fromFirestore(data, doc.id),
+        distanceKm: distance,
+      ));
+    }
+
+    results.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+    return results;
+  }
+}
+
+/// ✅ NEW — pairs a donor with their precomputed distance from the
+/// receiver, so the map/list UI never has to recompute it repeatedly.
+class DonorWithDistance {
+  final DonorModel donor;
+  final double distanceKm;
+
+  DonorWithDistance({required this.donor, required this.distanceKm});
 }

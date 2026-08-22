@@ -242,7 +242,10 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (_) =>
-                      NearbyDonorsMapScreen(bloodGroup: _selectedBloodGroup),
+                      NearbyDonorsMapScreen(
+                        bloodGroup: _selectedBloodGroup,
+                        requestId: widget.requestId, // ✅ so "Notify Donors" can tag this request
+                      ),
                 ),
               );
             },

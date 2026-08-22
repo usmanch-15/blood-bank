@@ -11,6 +11,7 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/status_badge.dart';
+import '../maps/nearby_donors_map_screen.dart'; // ✅ NEW — post-submit map redirect
 
 /// ✅ UI POLISH ONLY — every piece of logic below (Firestore save, geo
 /// location fetch, nearby-donor search + notify, validators) is byte-for-
@@ -191,8 +192,23 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
           ),
         );
 
-        /// ✅ RETURN DATA TO DASHBOARD
-        Navigator.pop(context, request);
+        // ✅ NEW — Uber/InDrive-style flow: instead of silently popping
+        // back to the dashboard, take the receiver straight to the map so
+        // they can SEE who was found, drag the search radius, tap a donor
+        // for full details, and notify anyone the automatic nearby-notify
+        // above may have missed (e.g. it only auto-notifies once at
+        // submit time — the map lets them re-notify with a wider radius
+        // later without creating a new request).
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => NearbyDonorsMapScreen(
+              bloodGroup: _selectedBloodGroup,
+              requestId: requestId,
+              unitsNeeded: units,
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
