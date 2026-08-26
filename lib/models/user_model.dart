@@ -18,27 +18,15 @@ class UserModel {
   final bool isEligible;
   final String status; // 'pending', 'approved', 'rejected'
 
-  // ── Dual-role support ──────────────────────────────────────────────
-  // `role` field ab sirf "abhi kis mode mein hai" (active/UI mode) batata hai.
-  // isDonor / isReceiver capability flags hain jo ek dafa true hone ke
-  // baad wapis false nahi hote — is se user donor + receiver dono ban
-  // sakta hai aur role switch karne par donor search se gayab nahi hota.
   final bool isDonor;
   final bool isReceiver;
 
-  // Donor availability toggle — ab Firestore mein persist hota hai.
   final bool isAvailable;
 
-  // Query-time eligibility ke liye stored timestamp (90-day rule).
-  // Client ke app kholne ka intezar nahi karna padta — seedha
-  // `where('nextEligibleDate', isLessThanOrEqualTo: now)` query chalti hai.
   final DateTime? nextEligibleDate;
 
   final bool phoneVerified;
 
-  // ✅ NEW — admin approval on signup was removed; this is how admins now
-  // see genuine activity instead (set by AuthService on every successful
-  // login). Null means the account has never logged in yet.
   final DateTime? lastLoginAt;
 
   UserModel({
@@ -56,7 +44,7 @@ class UserModel {
     required this.createdAt,
     this.lastDonationDate,
     this.isEligible = true,
-    this.status = 'pending', // ← naya field
+    this.status = 'pending',
     this.isDonor = false,
     this.isReceiver = false,
     this.isAvailable = true,
@@ -81,7 +69,7 @@ class UserModel {
       createdAt: json['createdAt']?.toDate() ?? DateTime.now(),
       lastDonationDate: json['lastDonationDate']?.toDate(),
       isEligible: json['isEligible'] ?? true,
-      status: json['status'] ?? 'pending', // ← naya field
+      status: json['status'] ?? 'pending',
       isDonor: json['isDonor'] ?? (json['role'] == 'donor'),
       isReceiver: json['isReceiver'] ?? (json['role'] == 'receiver'),
       isAvailable: json['isAvailable'] ?? true,
@@ -91,11 +79,13 @@ class UserModel {
     );
   }
 
-  /// Convert UserModel to Firestore document
+  /// Convert UserModel to Firestore document — top-level `users/{uid}` doc.
+  /// SECURITY: phoneNumber is intentionally OMITTED here — that doc is
+  /// readable by any signed-in user, so phone numbers must only ever be
+  /// written to users/{uid}/private/contact.
   Map<String, dynamic> toFirestore() {
     return {
       'email': email,
-      'phoneNumber': phoneNumber,
       'name': name,
       'role': role,
       'bloodGroup': bloodGroup,
@@ -107,7 +97,7 @@ class UserModel {
       'createdAt': createdAt,
       'lastDonationDate': lastDonationDate,
       'isEligible': isEligible,
-      'status': status, // ← naya field
+      'status': status,
       'isDonor': isDonor,
       'isReceiver': isReceiver,
       'isAvailable': isAvailable,
@@ -133,7 +123,7 @@ class UserModel {
     DateTime? createdAt,
     DateTime? lastDonationDate,
     bool? isEligible,
-    String? status, // ← naya field
+    String? status,
     bool? isDonor,
     bool? isReceiver,
     bool? isAvailable,
@@ -156,7 +146,7 @@ class UserModel {
       createdAt: createdAt ?? this.createdAt,
       lastDonationDate: lastDonationDate ?? this.lastDonationDate,
       isEligible: isEligible ?? this.isEligible,
-      status: status ?? this.status, // ← naya field
+      status: status ?? this.status,
       isDonor: isDonor ?? this.isDonor,
       isReceiver: isReceiver ?? this.isReceiver,
       isAvailable: isAvailable ?? this.isAvailable,
