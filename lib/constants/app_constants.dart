@@ -37,9 +37,16 @@ class AppConstants {
   // Default Values
   static const String defaultProfileImage = 'https://via.placeholder.com/150';
 
-  // Google Maps
+  // Maps (flutter_map / OpenStreetMap — no API key needed)
   static const double defaultZoom = 14.0;
   static const double nearbyRadius = 10.0; // 10 km radius
+
+  // ✅ NEW — donor geo-location field names on users/{uid}. Kept as
+  // constants so every read/write site (donor_controller, geo_location_service,
+  // donor_profile_screen) agrees on the same field names.
+  static const String fieldLatitude = 'latitude';
+  static const String fieldLongitude = 'longitude';
+  static const String fieldLocationUpdatedAt = 'locationUpdatedAt';
 
   // ✅ NEW — support/contact info shown in Settings → Help & Support and
   // About. Change these to your real values before publishing the app.

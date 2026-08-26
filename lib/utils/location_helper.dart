@@ -61,4 +61,24 @@ class LocationHelper {
       double radiusKm,
       ) =>
       calculateDistance(lat1, lon1, lat2, lon2) <= radiusKm;
+
+  // ── Privacy: coordinate rounding ─────────────────────────────────────────
+  // Donor latitude/longitude lives on the public `users/{uid}` doc (any
+  // signed-in user can read it — that's what lets receivers discover nearby
+  // donors on the map / findNearbyDonors()). Firestore rules can only
+  // grant/deny a WHOLE document, not individual fields, so we can't hide
+  // just these two fields from other signed-in users without a much bigger
+  // architecture change (per-donor Cloud Function proxy, etc).
+  //
+  // As a privacy-safe middle ground, we round the stored coordinates to
+  // [privacyDecimalPlaces] decimal places before ever writing them. At 2
+  // decimal places that's ~1.1 km of "fuzz" — donor discovery within a
+  // 15–50 km radius is unaffected, but a donor's exact home address is
+  // never stored or exposed.
+  static const int privacyDecimalPlaces = 2;
+
+  static double roundForPrivacy(double value) {
+    final factor = pow(10, privacyDecimalPlaces);
+    return (value * factor).round() / factor;
+  }
 }

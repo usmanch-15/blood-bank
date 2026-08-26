@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart'; // ✅ NEW — confirmDon
 import '../models/donor_model.dart';
 import '../models/donation_model.dart';
 import '../utils/date_utils.dart';
+import '../utils/location_helper.dart';
 import '../constants/app_constants.dart';
 
 class DonorController extends ChangeNotifier {
@@ -66,6 +67,21 @@ class DonorController extends ChangeNotifier {
     }
   }
 
+  /// ⚠️ SECURITY FIX: this method used to write `phoneNumber`, `latitude`,
+  /// and `longitude` straight onto the top-level `users/{uid}` doc — which
+  /// `firestore.rules` allows ANY signed-in user to read
+  /// (`allow read: if isSignedIn();`). That would have leaked every donor's
+  /// phone number the moment this method was ever wired up.
+  ///
+  /// Fixed to follow the same secure split used everywhere else in the app:
+  ///   • phoneNumber → users/{uid}/private/contact (owner/admin read-only)
+  ///   • latitude/longitude → top-level doc, but rounded to
+  ///     [LocationHelper.privacyDecimalPlaces] so exact home address is
+  ///     never stored (see LocationHelper.roundForPrivacy). This field is
+  ///     intentionally public-but-approximate: it's what powers
+  ///     findNearbyDonors() / the donor discovery map.
+  ///   • name/bloodGroup/location(text) → top-level doc, unchanged
+  ///     (never sensitive).
   Future<void> updateProfile({
     required String uid,
     String? name,
@@ -75,17 +91,33 @@ class DonorController extends ChangeNotifier {
     double? longitude,
     String? location,
   }) async {
-    await FirebaseFirestore.instance
+    final userRef = FirebaseFirestore.instance
         .collection(AppConstants.usersCollection)
-        .doc(uid)
-        .update({
+        .doc(uid);
+
+    final publicUpdates = <String, dynamic>{
       if (name != null) 'name': name,
-      if (phoneNumber != null) 'phoneNumber': phoneNumber,
       if (bloodGroup != null) 'bloodGroup': bloodGroup,
-      if (latitude != null) 'latitude': latitude,
-      if (longitude != null) 'longitude': longitude,
       if (location != null) 'location': location,
-    });
+      if (latitude != null)
+        AppConstants.fieldLatitude: LocationHelper.roundForPrivacy(latitude),
+      if (longitude != null)
+        AppConstants.fieldLongitude:
+        LocationHelper.roundForPrivacy(longitude),
+      if (latitude != null || longitude != null)
+        AppConstants.fieldLocationUpdatedAt: FieldValue.serverTimestamp(),
+    };
+    if (publicUpdates.isNotEmpty) {
+      await userRef.update(publicUpdates);
+    }
+
+    if (phoneNumber != null && phoneNumber.trim().isNotEmpty) {
+      await userRef.collection('private').doc('contact').set(
+        {'phoneNumber': phoneNumber.trim()},
+        SetOptions(merge: true),
+      );
+    }
+
     await loadDonor(uid);
   }
 
