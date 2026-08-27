@@ -32,27 +32,42 @@ class AuthService {
           .doc(credential.user!.uid)
           .get();
 
-      if (doc.exists) {
-        final status = doc.data()?['status'] ?? 'pending';
-
-        if (status == 'pending') {
-          await _auth.signOut();
-          throw 'pending';
-        }
-
-        if (status == 'rejected') {
-          await _auth.signOut();
-          throw 'rejected';
-        }
-
-        // ✅ NEW — admin approval is no longer required before login, so
-        // this is now how admins see real activity: a timestamp of each
-        // user's most recent successful login, shown in AdminWebUsers.
-        await _firestore
-            .collection('users')
-            .doc(credential.user!.uid)
-            .update({'lastLoginAt': FieldValue.serverTimestamp()});
+      // ⚠️ SECURITY FIX: previously this whole block was `if (doc.exists)`,
+      // so a MISSING doc (e.g. an admin-deleted user, or any other way the
+      // doc could vanish while the Auth account survives) skipped every
+      // check below and fell straight through to `return credential` —
+      // i.e. login succeeded with zero restrictions. A real account
+      // always has a users/{uid} doc created at signup, so a missing doc
+      // now blocks login instead of silently allowing it.
+      if (!doc.exists) {
+        await _auth.signOut();
+        throw 'account-not-found';
       }
+
+      final status = doc.data()?['status'] ?? 'pending';
+
+      if (status == 'pending') {
+        await _auth.signOut();
+        throw 'pending';
+      }
+
+      if (status == 'rejected') {
+        await _auth.signOut();
+        throw 'rejected';
+      }
+
+      if (status == 'deleted') {
+        await _auth.signOut();
+        throw 'account-not-found';
+      }
+
+      // ✅ admin approval is no longer required before login, so this is
+      // now how admins see real activity: a timestamp of each user's most
+      // recent successful login, shown in AdminWebUsers.
+      await _firestore
+          .collection('users')
+          .doc(credential.user!.uid)
+          .update({'lastLoginAt': FieldValue.serverTimestamp()});
 
       return credential;
     } on FirebaseAuthException catch (e) {

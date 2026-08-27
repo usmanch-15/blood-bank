@@ -133,7 +133,12 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         id: '',
         requesterId: user.uid,
         requesterName: user.displayName ?? 'Unknown',
-        requesterPhone: user.phoneNumber ?? '',
+        // ✅ FIX: `user.phoneNumber` here is FirebaseAuth's linked-phone
+        // field, which is null for the vast majority of accounts (email/
+        // password signup, no phone-auth linking) — so this was always
+        // saving an empty string. The number the receiver actually typed
+        // into this form is `_contactNumberController`, so use that.
+        requesterPhone: _contactNumberController.text.trim(),
         patientName: _patientNameController.text.trim(),
         patientAge: age,
         patientGender: _selectedGender,

@@ -347,6 +347,85 @@ exports.getDonorContact = onCall(async (request) => {
 });
 
 /**
+ * ✅ adminDeleteUser (callable) — NEW SECURITY FIX
+ * ----------------------------------------------------------------------
+ * Bug found: AdminController.deleteUser() (client) only ever called
+ * `.collection('users').doc(uid).delete()` — that deletes the FIRESTORE
+ * profile doc, but the person's FIREBASE AUTH account (email+password
+ * login) was never touched, because client SDKs cannot delete an
+ * arbitrary other user's Auth account — only Admin SDK (server-side) can.
+ *
+ * The real-world impact: after an admin "deletes" a user, that person
+ * could still log in with email+password. Worse, `signInWithEmailPassword`
+ * in auth_service.dart only runs the pending/rejected status check
+ * `if (doc.exists)` — since the Firestore doc is gone, that whole check
+ * was skipped, so a deleted user logged in with ZERO restrictions.
+ *
+ * Fix: this callable Cloud Function (Admin SDK, admin-only) now does the
+ * full cleanup in one atomic-ish step:
+ *   1. Verifies the caller is an approved admin (same check as isAdmin()
+ *      in firestore.rules, done here in JS since rules don't gate
+ *      Cloud Function calls).
+ *   2. Deletes users/{uid}/private/contact (phone/CNIC).
+ *   3. Deletes users/{uid}.
+ *   4. Deletes the actual Firebase Auth account via admin.auth().deleteUser
+ *      — this is the step that was always missing, and is the only way
+ *      to guarantee the person can no longer log in at all.
+ */
+exports.adminDeleteUser = onCall(async (request) => {
+  const auth = request.auth;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "Login required.");
+  }
+
+  const callerSnap = await db.collection("users").doc(auth.uid).get();
+  const callerData = callerSnap.data();
+  if (
+    !callerSnap.exists ||
+    callerData.role !== "admin" ||
+    callerData.status !== "approved"
+  ) {
+    throw new HttpsError(
+      "permission-denied",
+      "Sirf approved admin hi kisi user ko delete kar sakta hai."
+    );
+  }
+
+  const { uid } = request.data;
+  if (!uid) {
+    throw new HttpsError("invalid-argument", "uid zaroori hai.");
+  }
+  if (uid === auth.uid) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Admin apna khud ka account is se delete nahi kar sakta."
+    );
+  }
+
+  await db.collection("users").doc(uid).collection("private").doc("contact").delete();
+  await db.collection("users").doc(uid).delete();
+
+  try {
+    await admin.auth().deleteUser(uid);
+  } catch (err) {
+    // Auth account already gone / never existed — Firestore cleanup above
+    // still succeeded, so don't fail the whole operation for this.
+    if (err.code !== "auth/user-not-found") {
+      console.error("adminDeleteUser: auth delete failed:", err.message);
+    }
+  }
+
+  await db.collection("audit_logs").add({
+    action: "admin_deleted_user",
+    performedBy: auth.uid,
+    targetUid: uid,
+    createdAt: admin.firestore.Timestamp.now(),
+  });
+
+  return { success: true };
+});
+
+/**
  * ✅ dailyEligibilityCheck (Scheduled function) — NEW (Phase 3)
  * ----------------------------------------------------------------------
  * Har roz 09:00 Asia/Karachi par chalta hai. Jin donors ka 90-din

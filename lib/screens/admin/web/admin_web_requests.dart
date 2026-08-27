@@ -236,9 +236,15 @@ class _PendingUsersTab extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                               ],
-                              if (d['phoneNumber'] != null)
+                              // ✅ FIX: blood_requests docs never had a
+                              // 'phoneNumber' field — the form saves it as
+                              // 'contactNumber' (see blood_request_form_screen.dart
+                              // and BloodRequestModel). This was always
+                              // silently showing nothing.
+                              if (d['contactNumber'] != null &&
+                                  d['contactNumber'].toString().isNotEmpty)
                                 Text(
-                                  d['phoneNumber'],
+                                  d['contactNumber'],
                                   style: const TextStyle(
                                       color: Colors.grey, fontSize: 12),
                                 ),
