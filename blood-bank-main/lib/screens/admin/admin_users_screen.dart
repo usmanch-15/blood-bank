@@ -100,6 +100,8 @@ class AdminUsersScreen extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 5),
                   Text(
@@ -108,9 +110,13 @@ class AdminUsersScreen extends StatelessWidget {
                       fontSize: 14,
                       color: AppColors.textSecondary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 5),
-                  Row(
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -130,8 +136,7 @@ class AdminUsersScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (user.bloodGroup != null) ...[
-                        const SizedBox(width: 10),
+                      if (user.bloodGroup != null)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -150,7 +155,6 @@ class AdminUsersScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                      ],
                     ],
                   ),
                 ],

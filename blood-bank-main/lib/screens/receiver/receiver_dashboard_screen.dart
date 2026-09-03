@@ -19,15 +19,23 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
     BloodRequestModel(
       id: '1',
       requesterId: 'user123',
-      requesterName: 'Usman',
-      requesterPhone: '03044009797',
+      // Schema note: BloodRequestModel has no requesterName / requesterPhone /
+      // quantity / notes fields. Mapped to the real schema used by the request
+      // form and FirestoreService (patientName / contactNumber / unitsRequired
+      // / reason), and filled the remaining required fields with sample values.
+      patientName: 'Usman',
+      patientAge: 30,
+      patientGender: 'Male',
       bloodGroup: 'O+',
-      quantity: 2,
+      unitsRequired: 2,
       hospitalName: 'City Hospital',
-      location: 'Lahore',
+      hospitalAddress: 'Lahore',
       urgency: 'urgent',
+      reason: 'Please deliver quickly',
+      contactNumber: '03044009797',
+      requiredBy: DateTime.now().add(const Duration(days: 1)),
       status: 'pending',
-      notes: 'Please deliver quickly',
+      location: 'Lahore',
       createdAt: DateTime.now(),
     ),
   ];
@@ -226,7 +234,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             ),
             const SizedBox(height: 14),
             Text(
-              '${request.bloodGroup} • ${request.quantity} Units',
+              '${request.bloodGroup} • ${request.unitsRequired} Units',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -237,7 +245,13 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
               children: [
                 const Icon(Icons.local_hospital, size: 16),
                 const SizedBox(width: 6),
-                Text(request.hospitalName),
+                Expanded(
+                  child: Text(
+                    request.hospitalName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 6),
@@ -245,7 +259,13 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
               children: [
                 const Icon(Icons.location_on, size: 16),
                 const SizedBox(width: 6),
-                Text(request.location),
+                Expanded(
+                  child: Text(
+                    request.location,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ],

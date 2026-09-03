@@ -47,11 +47,7 @@ class _BloodDriveAlertsScreenState extends State<BloodDriveAlertsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.event_note,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
+                  Icon(Icons.event_note, size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 16),
                   const Text('No blood drives scheduled'),
                   const SizedBox(height: 8),
@@ -80,8 +76,10 @@ class _BloodDriveAlertsScreenState extends State<BloodDriveAlertsScreen> {
   Widget _buildBloodDriveCard(dynamic drive) {
     final dateFormat = DateFormat('MMM dd, yyyy');
     final timeFormat = DateFormat('HH:mm');
-    final progress = (drive.currentDonations / drive.targetDonations)
-        .clamp(0.0, 1.0);
+    final progress = (drive.currentDonations / drive.targetDonations).clamp(
+      0.0,
+      1.0,
+    );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -142,20 +140,42 @@ class _BloodDriveAlertsScreenState extends State<BloodDriveAlertsScreen> {
             const SizedBox(height: 12),
 
             // Date and Time
-            Row(
+            // Wrap so the time group drops to a new line on narrow phones
+            // instead of overflowing; stays on one line on wider screens.
+            Wrap(
+              spacing: 20,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Icon(Icons.calendar_today, size: 16, color: AppColors.primaryRed),
-                const SizedBox(width: 8),
-                Text(
-                  dateFormat.format(drive.startDate ?? DateTime.now()),
-                  style: const TextStyle(fontSize: 13),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: AppColors.primaryRed,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      dateFormat.format(drive.startDate ?? DateTime.now()),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 20),
-                Icon(Icons.access_time, size: 16, color: AppColors.primaryRed),
-                const SizedBox(width: 8),
-                Text(
-                  '${timeFormat.format(drive.startDate ?? DateTime.now())} - ${timeFormat.format(drive.endDate ?? DateTime.now())}',
-                  style: const TextStyle(fontSize: 13),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: 16,
+                      color: AppColors.primaryRed,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${timeFormat.format(drive.startDate ?? DateTime.now())} - ${timeFormat.format(drive.endDate ?? DateTime.now())}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -166,14 +186,16 @@ class _BloodDriveAlertsScreenState extends State<BloodDriveAlertsScreen> {
               spacing: 8,
               children: (drive.bloodGroupsNeeded ?? ['O+', 'O-', 'A+'])
                   .take(4)
-                  .map((group) => Chip(
-                        label: Text(group),
-                        backgroundColor: AppColors.primaryRed.withOpacity(0.2),
-                        labelStyle: const TextStyle(
-                          color: AppColors.primaryRed,
-                          fontSize: 12,
-                        ),
-                      ))
+                  .map(
+                    (group) => Chip(
+                      label: Text(group),
+                      backgroundColor: AppColors.primaryRed.withOpacity(0.2),
+                      labelStyle: const TextStyle(
+                        color: AppColors.primaryRed,
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
             const SizedBox(height: 12),
@@ -187,11 +209,17 @@ class _BloodDriveAlertsScreenState extends State<BloodDriveAlertsScreen> {
                   children: [
                     const Text(
                       'Progress',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     Text(
                       '${drive.currentDonations ?? 0}/${drive.targetDonations ?? 100}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -202,7 +230,9 @@ class _BloodDriveAlertsScreenState extends State<BloodDriveAlertsScreen> {
                     value: progress,
                     minHeight: 8,
                     backgroundColor: Colors.grey[300],
-                    valueColor: const AlwaysStoppedAnimation(AppColors.primaryRed),
+                    valueColor: const AlwaysStoppedAnimation(
+                      AppColors.primaryRed,
+                    ),
                   ),
                 ),
               ],

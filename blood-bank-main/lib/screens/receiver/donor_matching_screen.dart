@@ -40,7 +40,9 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
         timestamp: DateTime.now(),
         accuracy: 0,
         altitude: 0,
+        altitudeAccuracy: 0,
         heading: 0,
+        headingAccuracy: 0,
         speed: 0,
         speedAccuracy: 0,
       );
@@ -189,6 +191,8 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -220,26 +224,40 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
             const SizedBox(height: 12),
             const Divider(),
             const SizedBox(height: 12),
+            // Buttons stay natural-width & evenly spaced on wide screens; on
+            // narrow phones Flexible lets each shrink so the row never overflows.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.message),
-                  label: const Text('Message'),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Opening chat...')),
-                    );
-                  },
+                Flexible(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.message),
+                    label: const Text(
+                      'Message',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Opening chat...')),
+                      );
+                    },
+                  ),
                 ),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.phone),
-                  label: const Text('Call'),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Initiating call...')),
-                    );
-                  },
+                Flexible(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.phone),
+                    label: const Text(
+                      'Call',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Initiating call...')),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),

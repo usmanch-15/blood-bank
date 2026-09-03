@@ -165,12 +165,16 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: color,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
           ),
           const SizedBox(height: 4),
@@ -240,9 +244,13 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                           ),
                         ),
                       ),
-                      Text(
-                        '${entry.value} units ($percentage%)',
-                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      Flexible(
+                        child: Text(
+                          '${entry.value} units ($percentage%)',
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),

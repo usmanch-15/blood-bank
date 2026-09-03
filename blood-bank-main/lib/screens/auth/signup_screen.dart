@@ -215,22 +215,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
           const SizedBox(height: 25),
 
           // Title
-          Text(
-            'Join Blood Connect',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              letterSpacing: 1.2,
-              shadows: [
-                Shadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              'Join Blood Connect',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 1.2,
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
 
@@ -655,8 +658,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            // Centered on wide screens; on very narrow phones "Sign In" wraps
+            // to the next line instead of overflowing the row.
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
                   "Already have an account? ",

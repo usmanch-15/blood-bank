@@ -284,12 +284,14 @@ class _MisuseReportsScreenState extends State<MisuseReportsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Resolve Report'),
-        content: TextField(
-          controller: notesController,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            hintText: 'Add resolution notes (optional)',
-            border: OutlineInputBorder(),
+        content: SingleChildScrollView(
+          child: TextField(
+            controller: notesController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Add resolution notes (optional)',
+              border: OutlineInputBorder(),
+            ),
           ),
         ),
         actions: [

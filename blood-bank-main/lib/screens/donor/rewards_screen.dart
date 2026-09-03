@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:share_plus/share_plus.dart';
+
 import '../../constants/app_colors.dart';
 import '../../services/firestore_service.dart';
 import '../../models/reward_model.dart';
@@ -136,15 +136,19 @@ class _RewardsScreenState extends State<RewardsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Total Points',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white,
+              const Flexible(
+                child: Text(
+                  'Total Points',
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(12),
@@ -161,21 +165,22 @@ class _RewardsScreenState extends State<RewardsScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            totalPoints.toString(),
-            style: const TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              totalPoints.toString(),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             _getTierDescription(tier),
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white,
-            ),
+            style: const TextStyle(fontSize: 14, color: Colors.white),
           ),
         ],
       ),
@@ -184,26 +189,41 @@ class _RewardsScreenState extends State<RewardsScreen> {
 
   /// Build tier progress card
   Widget _buildTierProgressCard(int currentPoints) {
-    const tiers = {
-      'bronze': 0,
-      'silver': 1000,
-      'gold': 3000,
-      'platinum': 5000,
-    };
+    const tiers = {'bronze': 0, 'silver': 1000, 'gold': 3000, 'platinum': 5000};
 
     return Column(
       children: [
-        _buildTierProgress('Bronze', 0, 1000, currentPoints,
-            currentPoints >= 0 && currentPoints < 1000),
+        _buildTierProgress(
+          'Bronze',
+          0,
+          1000,
+          currentPoints,
+          currentPoints >= 0 && currentPoints < 1000,
+        ),
         const SizedBox(height: 12),
-        _buildTierProgress('Silver', 1000, 3000, currentPoints,
-            currentPoints >= 1000 && currentPoints < 3000),
+        _buildTierProgress(
+          'Silver',
+          1000,
+          3000,
+          currentPoints,
+          currentPoints >= 1000 && currentPoints < 3000,
+        ),
         const SizedBox(height: 12),
-        _buildTierProgress('Gold', 3000, 5000, currentPoints,
-            currentPoints >= 3000 && currentPoints < 5000),
+        _buildTierProgress(
+          'Gold',
+          3000,
+          5000,
+          currentPoints,
+          currentPoints >= 3000 && currentPoints < 5000,
+        ),
         const SizedBox(height: 12),
-        _buildTierProgress('Platinum', 5000, 9999, currentPoints,
-            currentPoints >= 5000),
+        _buildTierProgress(
+          'Platinum',
+          5000,
+          9999,
+          currentPoints,
+          currentPoints >= 5000,
+        ),
       ],
     );
   }
@@ -233,19 +253,30 @@ class _RewardsScreenState extends State<RewardsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                tierName,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: isActive ? AppColors.primaryRed : AppColors.textSecondary,
+              Flexible(
+                child: Text(
+                  tierName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isActive
+                        ? AppColors.primaryRed
+                        : AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                '$min - $max points',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  '$min - $max points',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -277,11 +308,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.card_giftcard,
-            size: 64,
-            color: Colors.grey[300],
-          ),
+          Icon(Icons.card_giftcard, size: 64, color: Colors.grey[300]),
           const SizedBox(height: 16),
           const Text(
             'No Certificates Yet',
@@ -295,10 +322,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
           const Text(
             'Earn certificates by completing donations',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textLight,
-            ),
+            style: TextStyle(fontSize: 13, color: AppColors.textLight),
           ),
         ],
       ),
@@ -307,18 +331,20 @@ class _RewardsScreenState extends State<RewardsScreen> {
 
   /// Build certificates list
   List<Widget> _buildCertificatesList(List<Certificate> certificates) {
-    return certificates.map((cert) => Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: _buildCertificateCard(cert),
-    )).toList();
+    return certificates
+        .map(
+          (cert) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildCertificateCard(cert),
+          ),
+        )
+        .toList();
   }
 
   /// Build individual certificate card
   Widget _buildCertificateCard(Certificate cert) {
     return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -502,16 +528,22 @@ class _RewardsScreenState extends State<RewardsScreen> {
 
   /// Download certificate
   void _downloadCertificate(Certificate cert) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Certificate downloading...')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Certificate downloading...')));
   }
 
   /// Share certificate
   void _shareCertificate(Certificate cert) {
-    Share.share(
-      'I earned ${cert.title} certificate on Blood Bank! 🩸\n\n${cert.description}',
-      subject: 'Blood Bank Certificate - ${cert.title}',
+    // NOTE: The original code called Share.share(...) from the `share_plus`
+    // package, but share_plus is not a dependency and was never imported, so
+    // the project did not compile. To make the app build without adding a new
+    // dependency — and to match the existing placeholder style of
+    // _downloadCertificate above — this shows a SnackBar instead. To restore
+    // real sharing, add share_plus to pubspec.yaml, import it, and call
+    // Share.share(...) here again.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Sharing "${cert.title}" certificate...')),
     );
   }
 

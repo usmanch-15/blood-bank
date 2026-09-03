@@ -387,20 +387,23 @@ class _SplashScreenState extends State<SplashScreen>
                                   stops: const [0.3, 1.0],
                                 ).createShader(bounds);
                               },
-                              child: Text(
-                                'BLOOD HERO',
-                                style: TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 2.5,
-                                  height: 1,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.red[900]!.withOpacity(0.5),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'BLOOD HERO',
+                                  style: TextStyle(
+                                    fontSize: 48,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 2.5,
+                                    height: 1,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.red[900]!.withOpacity(0.5),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 5),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -525,13 +528,14 @@ class _SplashScreenState extends State<SplashScreen>
                       // Stats counters
                       FadeTransition(
                         opacity: _fadeAnimation,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 30,
+                          runSpacing: 12,
                           children: [
                             _buildStatCounter('LIVES SAVED', '1,234+'),
-                            const SizedBox(width: 30),
                             _buildStatCounter('DONORS', '5,678+'),
-                            const SizedBox(width: 30),
                             _buildStatCounter('ACTIVE', '24/7'),
                           ],
                         ),

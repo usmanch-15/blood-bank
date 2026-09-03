@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
+
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
@@ -43,52 +46,53 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
         title: const Text('Donation History'),
         backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
-        elevation: 0,
       ),
+
+      // 🔴 Firebase StreamBuilder commented
+      body: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.bloodtype_outlined,
+              size: 80,
+              color: AppColors.textLight,
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Firebase disabled',
+              style: TextStyle(
+                fontSize: 18,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Donation history will appear here',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textLight,
+              ),
+            ),
+          ],
+        ),
+      ),
+
+      /*
       body: StreamBuilder<List<DonationModel>>(
-        stream: _firestoreService.getDonationHistory(user!.uid),
+        stream: _firestoreService.getDonationsByDonor(user.uid),
         builder: (context, snapshot) {
-          // Loading state with shimmer
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: 5,
-              itemBuilder: (context, index) => Shimmer.fromColors(
-                baseColor: Colors.grey[300]!,
-                highlightColor: Colors.grey[100]!,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
-          // Error state
           if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: AppColors.error),
-                  const SizedBox(height: 16),
-                  const Text('Error loading donation history'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => setState(() {}),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          // Empty state
-          if (snapshot.data?.isEmpty ?? true) {
+          final donations = snapshot.data ?? [];
+
+          if (donations.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -119,8 +123,6 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
             );
           }
 
-          // List of donations
-          final donations = snapshot.data ?? [];
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: donations.length,
@@ -131,10 +133,11 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
           );
         },
       ),
+      */
     );
   }
 
-  /// Build a single donation card
+  /*
   Widget _buildDonationCard(DonationModel donation) {
     final dateFormat = DateFormat('MMM dd, yyyy');
 
@@ -231,4 +234,5 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
       ),
     );
   }
+  */
 }

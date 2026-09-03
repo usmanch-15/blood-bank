@@ -128,7 +128,7 @@ class AdminRequestsScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Requested by: ${request.requesterName}',
+                    'Patient: ${request.patientName}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -145,9 +145,13 @@ class AdminRequestsScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.bloodtype, size: 20, color: AppColors.primaryRed),
                 const SizedBox(width: 10),
-                Text(
-                  '${request.bloodGroup} - ${request.quantity} units',
-                  style: const TextStyle(fontSize: 16),
+                Expanded(
+                  child: Text(
+                    '${request.bloodGroup} - ${request.unitsRequired} units',
+                    style: const TextStyle(fontSize: 16),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -158,9 +162,13 @@ class AdminRequestsScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.access_time, size: 20),
                 const SizedBox(width: 10),
-                Text(
-                  dateFormat.format(request.createdAt),
-                  style: const TextStyle(fontSize: 14),
+                Expanded(
+                  child: Text(
+                    dateFormat.format(request.createdAt),
+                    style: const TextStyle(fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),

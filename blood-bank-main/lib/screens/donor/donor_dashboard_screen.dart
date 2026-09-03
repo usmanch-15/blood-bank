@@ -141,22 +141,28 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
             child: Icon(Icons.person, size: 36, color: AppColors.primaryRed),
           ),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                dummyUserData.name,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  dummyUserData.name,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Text(
-                'Blood Group: ${dummyUserData.bloodGroup}',
-                style: const TextStyle(color: Colors.white70),
-              ),
-            ],
+                Text(
+                  'Blood Group: ${dummyUserData.bloodGroup}',
+                  style: const TextStyle(color: Colors.white70),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -208,12 +214,15 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
           children: [
             Icon(icon, size: 36, color: color),
             const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: color,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
             ),
             Text(
@@ -249,12 +258,16 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
             color: isEligible ? AppColors.success : AppColors.warning,
           ),
           const SizedBox(width: 15),
-          Text(
-            isEligible ? 'Eligible to Donate' : 'Not Eligible Yet',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isEligible ? AppColors.success : AppColors.warning,
+          Expanded(
+            child: Text(
+              isEligible ? 'Eligible to Donate' : 'Not Eligible Yet',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isEligible ? AppColors.success : AppColors.warning,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

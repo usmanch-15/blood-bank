@@ -242,12 +242,15 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    '$_countdown',
-                    style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$_countdown',
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
