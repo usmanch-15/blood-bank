@@ -260,27 +260,29 @@ class _SignUpScreenState extends State<SignUpScreen>
                             Row(children: [
                               _buildMiniLogo(),
                               const SizedBox(width: 16),
-                              const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Create Account',
-                                    style: TextStyle(
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                      letterSpacing: -0.5,
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Create Account',
+                                      style: TextStyle(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                        letterSpacing: -0.5,
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'Join the lifesaving community',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF616161),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'Join the lifesaving community',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF616161),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ]),
                             const SizedBox(height: 32),
@@ -471,9 +473,13 @@ class _SignUpScreenState extends State<SignUpScreen>
                                   const SizedBox(height: 24),
 
                                   // Already have account
-                                  Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.center,
+                                  // Centered on wide screens; on very narrow
+                                  // phones "Sign In" wraps to the next line
+                                  // instead of overflowing the row.
+                                  Wrap(
+                                    alignment: WrapAlignment.center,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
                                     children: [
                                       const Text('Already have an account? ',
                                           style: TextStyle(

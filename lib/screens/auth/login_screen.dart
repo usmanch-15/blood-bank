@@ -253,14 +253,17 @@ class _LoginScreenState extends State<LoginScreen>
                       child: Column(children: [
                         _buildLogo(),
                         const SizedBox(height: 28),
-                        const Text(
-                          'Welcome Back',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: -0.5,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: const Text(
+                            'Welcome Back',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.5,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -624,7 +627,8 @@ class _LoginScreenState extends State<LoginScreen>
             borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(28),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
             const Icon(Icons.lock_reset_outlined,
                 color: Color(0xFFEF5350), size: 40),
             const SizedBox(height: 16),
@@ -711,6 +715,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ]),
           ]),
+          ),
         ),
       ),
     );

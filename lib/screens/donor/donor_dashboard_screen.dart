@@ -174,6 +174,8 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Row(
@@ -243,12 +245,16 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                         color: isEligible ? AppColors.success : AppColors.warning,
                       ),
                       const SizedBox(width: AppSpacing.md + 3),
-                      Text(
-                        isEligible ? 'Eligible to Donate' : 'Not Eligible Yet',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isEligible ? AppColors.success : AppColors.warning,
+                      Expanded(
+                        child: Text(
+                          isEligible ? 'Eligible to Donate' : 'Not Eligible Yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isEligible ? AppColors.success : AppColors.warning,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],

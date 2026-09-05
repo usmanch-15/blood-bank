@@ -494,6 +494,8 @@ class _DonorCard extends StatelessWidget {
                       fontSize: 15,
                       color: AppColors.textPrimary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (donor.location != null && donor.location!.isNotEmpty)
                     Padding(
