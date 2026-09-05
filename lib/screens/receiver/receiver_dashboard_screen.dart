@@ -324,8 +324,12 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     size: AppSpacing.iconSm, color: Colors.grey),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(request.hospitalName,
-                      style: const TextStyle(color: Colors.grey)),
+                  child: Text(
+                    request.hospitalName,
+                    style: const TextStyle(color: Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -336,8 +340,12 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     size: AppSpacing.iconSm, color: Colors.grey),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(request.location,
-                      style: const TextStyle(color: Colors.grey)),
+                  child: Text(
+                    request.location,
+                    style: const TextStyle(color: Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),

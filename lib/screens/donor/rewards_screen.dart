@@ -178,11 +178,15 @@ class _PointsCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Total Points',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
+              const Flexible(
+                child: Text(
+                  'Total Points',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
@@ -210,13 +214,16 @@ class _PointsCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            '$points',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 52,
-              fontWeight: FontWeight.bold,
-              height: 1,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$points',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 52,
+                fontWeight: FontWeight.bold,
+                height: 1,
+              ),
             ),
           ),
           const SizedBox(height: 4),
