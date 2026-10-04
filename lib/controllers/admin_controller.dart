@@ -19,27 +19,21 @@ class AdminController extends ChangeNotifier {
   int get totalRequests => _totalRequests;
   int get totalDonations => _totalDonations;
 
-  Future<void> loadStats(dynamic AppConstants) async {
+  Future<void> loadStats() async {
     _isLoading = true;
     notifyListeners();
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection(AppConstants.usersCollection)
-          .get();
-      _totalDonors =
-          snapshot.docs.where((d) => d.data()['isDonor'] == true).length;
-      _totalReceivers =
-          snapshot.docs.where((d) => d.data()['isReceiver'] == true).length;
-
-      final requests = await FirebaseFirestore.instance
-          .collection(AppConstants.bloodRequestsCollection)
-          .get();
-      _totalRequests = requests.size;
-
-      final donations = await FirebaseFirestore.instance
-          .collection(AppConstants.donationsCollection)
-          .get();
-      _totalDonations = donations.size;
+      final db = FirebaseFirestore.instance;
+      final counts = await Future.wait([
+        db.collection('users').where('isDonor',isEqualTo:true).count().get(),
+        db.collection('users').where('isReceiver',isEqualTo:true).count().get(),
+        db.collection('blood_requests').count().get(),
+        db.collection('donations').count().get(),
+      ]);
+      _totalDonors = counts[0].count ?? 0;
+      _totalReceivers = counts[1].count ?? 0;
+      _totalRequests = counts[2].count ?? 0;
+      _totalDonations = counts[3].count ?? 0;
     } finally {
       _isLoading = false;
       notifyListeners();

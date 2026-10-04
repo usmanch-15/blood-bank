@@ -27,12 +27,12 @@ async function checkEligibilityReminders() {
   // Donors become eligible 90 days after lastDonationDate. We check for
   // donors whose eligibility window opened in the last 24 hours (i.e.
   // ran this job daily), so each donor gets exactly one reminder.
-  const windowStart = now - MIN_DAYS_BETWEEN_DONATIONS * 24 * 60 * 60 * 1000;
-  const windowEnd = windowStart + 24 * 60 * 60 * 1000;
+  const windowEnd = now - MIN_DAYS_BETWEEN_DONATIONS * 24 * 60 * 60 * 1000;
+  const windowStart = windowEnd - 24 * 60 * 60 * 1000;
 
   const donorsSnap = await db
       .collection('users')
-      .where('role', '==', 'donor')
+      .where('isDonor', '==', true)
       .where('lastDonationDate', '>=', admin.firestore.Timestamp.fromMillis(windowStart))
       .where('lastDonationDate', '<', admin.firestore.Timestamp.fromMillis(windowEnd))
       .get();

@@ -47,7 +47,7 @@ function sleep(ms) {
  *   'adminAnnouncements'. If omitted, only the master switch is checked.
  */
 function isNotificationAllowed(userData, category) {
-  if (!userData) return false;
+  if (!userData || userData.status !== 'approved') return false;
   if (userData.notificationsEnabled === false) return false;
   if (!category) return true;
 
@@ -93,7 +93,8 @@ async function sendPushToUser(uid, { title, body, data = {} }) {
     return { uid, sent: false, reason: 'user-opted-out' };
   }
 
-  const token = userData.fcmToken;
+  const deviceRef = userRef.collection('private').doc('device');
+  const token = (await deviceRef.get()).data()?.fcmToken;
   if (!token) {
     return { uid, sent: false, reason: 'no-token' };
   }
@@ -104,7 +105,7 @@ async function sendPushToUser(uid, { title, body, data = {} }) {
     data: Object.fromEntries(
       Object.entries(data).map(([k, v]) => [k, String(v)])
     ),
-    android: { priority: 'high' },
+    android: { priority: 'high', notification: {channelId: 'blood_requests'} },
     apns: { headers: { 'apns-priority': '10' } },
   };
 
@@ -121,7 +122,7 @@ async function sendPushToUser(uid, { title, body, data = {} }) {
         err.code === 'messaging/registration-token-not-registered' ||
         err.code === 'messaging/invalid-registration-token'
       ) {
-        await userRef.update({
+        await deviceRef.update({
           fcmToken: admin.firestore.FieldValue.delete(),
           fcmUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });

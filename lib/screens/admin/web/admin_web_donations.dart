@@ -2,13 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/donation_model.dart';
 import '../../../constants/app_colors.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../models/donation_model.dart';
-import '../../../constants/app_colors.dart';
 import '../../../utils/paginated_query.dart';   // ← NEW
 class AdminWebDonations extends StatefulWidget {
-  const AdminWebDonations({Key? key}) : super(key: key);
+  const AdminWebDonations({super.key});
 
   @override
   State<AdminWebDonations> createState() => _AdminWebDonationsState();
@@ -209,7 +205,7 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                           Border.all(color: Colors.grey.shade200),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 10,
                               offset: const Offset(0, 2),
                             ),
@@ -222,7 +218,7 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                               children: [
                                 DataTable(
                                   headingRowColor:
-                                  MaterialStateProperty.all(
+                                  WidgetStateProperty.all(
                                       Colors.grey.shade50),
                                   headingTextStyle: TextStyle(
                                     fontWeight: FontWeight.w600,
@@ -475,9 +471,9 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
       padding:
       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -510,7 +506,7 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -553,7 +549,7 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

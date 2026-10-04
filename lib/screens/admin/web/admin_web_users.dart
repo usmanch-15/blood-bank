@@ -5,7 +5,7 @@ import '../../../services/firestore_service.dart';
 import '../../../constants/app_colors.dart';
 
 class AdminWebUsers extends StatefulWidget {
-  const AdminWebUsers({Key? key}) : super(key: key);
+  const AdminWebUsers({super.key});
 
   @override
   State<AdminWebUsers> createState() => _AdminWebUsersState();
@@ -92,7 +92,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                     border: Border.all(color: Colors.grey.shade200),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -131,7 +131,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                   border: Border.all(color: Colors.grey.shade200),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -361,7 +361,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                     border: Border.all(color: Colors.grey.shade200),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -371,7 +371,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                     borderRadius: BorderRadius.circular(12),
                     child: SingleChildScrollView(
                       child: DataTable(
-                        headingRowColor: MaterialStateProperty.all(
+                        headingRowColor: WidgetStateProperty.all(
                             Colors.grey.shade50),
                         headingTextStyle: TextStyle(
                           fontWeight: FontWeight.w600,
@@ -626,7 +626,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
         child: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: color, size: 18),
@@ -658,7 +658,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

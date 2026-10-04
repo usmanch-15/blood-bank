@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/auth_service.dart';
-import '../services/notification_service.dart';
 import 'donor/donor_dashboard_screen.dart';
 import 'receiver/receiver_dashboard_screen.dart';
 
@@ -44,6 +43,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
         CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
 
     Future.delayed(const Duration(milliseconds: 100), () {
+      if (!mounted) return;
       _fadeController.forward();
       _slideController.forward();
     });
@@ -65,25 +65,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
 
     try {
       User? user = _authService.currentUser;
-      if (user != null) {
-        // ✅ FIX: 'role' sirf current UI mode set karta hai (kaunsa dashboard
-        // khulega). isDonor / isReceiver capability flags additive hain —
-        // ek dafa true hone ke baad reset nahi hotay, is liye same account
-        // donor aur receiver dono ban sakta hai, aur role switch karne se
-        // donor search results se gayab nahi hota.
-        await _authService.updateUserData(user.uid, {
-          'role': role,
-          if (role == 'donor') 'isDonor': true,
-          if (role == 'receiver') 'isReceiver': true,
-        });
-
-        // ✅ FIX: pehle NotificationService.init() kahin bhi call hi nahi
-        // hota tha — is liye fcmToken kabhi save hi nahi hota tha aur push
-        // notifications kabhi device par pohanch hi nahi sakti thi.
-        await NotificationService().init();
+      if (user == null) throw StateError('Please sign in first.');
+      {
+        await _authService.switchMode(role);
       }
       if (!mounted) return;
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => role == 'donor'
@@ -129,7 +116,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      const Color(0xFFB71C1C).withOpacity(0.35),
+                      const Color(0xFFB71C1C).withValues(alpha: 0.35),
                       Colors.transparent,
                     ],
                   ),
@@ -146,7 +133,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      const Color(0xFF1565C0).withOpacity(0.25),
+                      const Color(0xFF1565C0).withValues(alpha: 0.25),
                       Colors.transparent,
                     ],
                   ),
@@ -229,10 +216,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                               decoration: BoxDecoration(
                                 border: Border.all(
                                     color: const Color(0xFFB71C1C)
-                                        .withOpacity(0.6)),
+                                        .withValues(alpha: 0.6)),
                                 borderRadius: BorderRadius.circular(30),
                                 color: const Color(0xFFB71C1C)
-                                    .withOpacity(0.08),
+                                    .withValues(alpha: 0.08),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -281,7 +268,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                             Text(
                               'Choose an option to continue.',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.45),
+                                color: Colors.white.withValues(alpha: 0.45),
                                 fontSize: 15,
                                 height: 1.5,
                               ),
@@ -332,18 +319,18 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                                 onPressed: _backToLogin,
                                 icon: Icon(Icons.arrow_back_rounded,
                                     size: 16,
-                                    color: Colors.white.withOpacity(0.55)),
+                                    color: Colors.white.withValues(alpha: 0.55)),
                                 label: Text(
                                   'Already registered?  Back to Login',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.55),
+                                    color: Colors.white.withValues(alpha: 0.55),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
                                   side: BorderSide(
-                                      color: Colors.white.withOpacity(0.12)),
+                                      color: Colors.white.withValues(alpha: 0.12)),
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 18, vertical: 12),
                                   shape: RoundedRectangleBorder(
@@ -432,13 +419,13 @@ class _RoleCardState extends State<_RoleCard> {
             color: const Color(0xFF13131A),
             border: Border.all(
               color: active
-                  ? widget.accentColor.withOpacity(0.55)
-                  : Colors.white.withOpacity(0.07),
+                  ? widget.accentColor.withValues(alpha: 0.55)
+                  : Colors.white.withValues(alpha: 0.07),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.glowColor.withOpacity(active ? 0.28 : 0.1),
+                color: widget.glowColor.withValues(alpha: active ? 0.28 : 0.1),
                 blurRadius: active ? 28 : 14,
                 offset: Offset(0, active ? 12 : 6),
               ),
@@ -457,12 +444,12 @@ class _RoleCardState extends State<_RoleCard> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      widget.accentColor.withOpacity(0.25),
-                      widget.glowColor.withOpacity(0.1),
+                      widget.accentColor.withValues(alpha: 0.25),
+                      widget.glowColor.withValues(alpha: 0.1),
                     ],
                   ),
                   border: Border.all(
-                    color: widget.accentColor.withOpacity(0.2),
+                    color: widget.accentColor.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Icon(widget.icon, color: widget.accentColor, size: 26),
@@ -480,7 +467,7 @@ class _RoleCardState extends State<_RoleCard> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: widget.accentColor.withOpacity(0.12),
+                        color: widget.accentColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -507,7 +494,7 @@ class _RoleCardState extends State<_RoleCard> {
                     Text(
                       widget.description,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.45),
+                        color: Colors.white.withValues(alpha: 0.45),
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -532,10 +519,10 @@ class _RoleCardState extends State<_RoleCard> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: widget.accentColor.withOpacity(active ? 0.18 : 0.1),
+                  color: widget.accentColor.withValues(alpha: active ? 0.18 : 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: widget.accentColor.withOpacity(0.3),
+                    color: widget.accentColor.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
@@ -568,7 +555,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.03)
+      ..color = Colors.white.withValues(alpha: 0.03)
       ..strokeWidth = 0.8;
 
     const spacing = 40.0;

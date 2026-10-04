@@ -51,9 +51,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         });
       },
       onAutoVerified: (credential) async {
-        // Kuch Android devices par SMS khud-ba-khud detect ho jata hai
-        if (!mounted) return;
-        Navigator.pop(context, true);
+        try {
+          await _authService.linkVerifiedPhone(credential);
+          if (mounted) Navigator.pop(context, true);
+        } catch (e) {
+          if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
+        }
       },
     );
   }
@@ -75,6 +78,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
         _isLoading = false;

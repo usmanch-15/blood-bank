@@ -39,7 +39,7 @@ class AppConstants {
 
   // Maps (flutter_map / OpenStreetMap — no API key needed)
   static const double defaultZoom = 14.0;
-  static const double nearbyRadius = 10.0; // 10 km radius
+  static const double nearbyRadius = 15.0; // SOS expands to 30 km when empty
 
   // ✅ NEW — donor geo-location field names on users/{uid}. Kept as
   // constants so every read/write site (donor_controller, geo_location_service,
@@ -50,8 +50,8 @@ class AppConstants {
 
   // ✅ NEW — support/contact info shown in Settings → Help & Support and
   // About. Change these to your real values before publishing the app.
-  static const String supportEmail = 'support@smartbloodbank.app';
+  static const String supportEmail = String.fromEnvironment('SUPPORT_EMAIL');
   static const String developerName = 'Muhammad Usman';
   static const String privacyPolicyContactNote =
-      'For privacy or terms questions, email us — we usually reply within a few days.';
+      'Contact the project administrator for privacy or account questions.';
 }

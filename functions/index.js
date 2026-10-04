@@ -1,11 +1,3 @@
-/**
- * Smart Blood Bank — Cloud Functions
- *
- * Deploy: firebase deploy --only functions
- * (Blaze plan required — Spark/free plan doesn't allow deploying functions
- *  that read/write other Google services like FCM. Blaze still has a large
- *  free-usage quota, so for an FYP-scale app this normally costs Rs 0.)
- */
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
@@ -21,119 +13,12 @@ const { checkSosRateLimit } = require("./rateLimiter");
 const { sendSmsFallback, twilioAuthToken } = require("./smsFallback");
 const { checkEligibilityReminders } = require("./eligibilityReminder");
 
-const MIN_DAYS_BETWEEN_DONATIONS = 90;
+const workflows = require('./secureWorkflows');
+const {nearbyDonors} = require('./nearbyDonors');
+exports.acceptDonation = onCall(workflows.acceptDonation);
+exports.confirmDonation = onCall(workflows.confirmDonation);
+exports.deleteAccount = onCall(request => workflows.deleteAccount(request));
 
-/**
- * ✅ confirmDonation (callable) — UNCHANGED
- * ----------------------------------------------------------------------
- * Pehle donation-confirmation ka koi wired flow hi nahi tha (createDonation
- * aur addRewardForDonation dono methods app mein kahin se call hi nahi
- * hotay thay). Ab ye Cloud Function receiver ya donor, kisi ke bhi app se
- * call ho sakti hai, aur SAFELY (Admin SDK) ye kaam karti hai:
- *   1. `donations` collection mein record banata hai
- *   2. Donor ke lastDonationDate / nextEligibleDate (90-din rule) / reward
- *      points update karta hai
- *   3. Receiver ki original blood_request ko 'fulfilled' mark karta hai
- *
- * Client-side Firestore rules jaan-boojh kar donor ke reward points ya
- * eligibility field ko doosre user (receiver) se seedha update karne nahi
- * detay — is se koi bhi kisi ke bhi points inflate nahi kar sakta. Ye
- * function hi is state ko badalne ka sirf tareeqa hai.
- */
-exports.confirmDonation = onCall(async (request) => {
-  const auth = request.auth;
-  if (!auth) {
-    throw new HttpsError("unauthenticated", "Login required.");
-  }
-
-  const { donorId, bloodGroup, requestId, location, points } = request.data;
-  if (!donorId || !bloodGroup) {
-    throw new HttpsError("invalid-argument", "donorId aur bloodGroup zaroori hain.");
-  }
-  const awardPoints = Number.isFinite(points) ? points : 50;
-
-  const donorRef = db.collection("users").doc(donorId);
-  const donorSnap = await donorRef.get();
-  if (!donorSnap.exists) {
-    throw new HttpsError("not-found", "Donor account nahi mila.");
-  }
-  const donorData = donorSnap.data();
-
-  // Sirf requester khud (jisne blood request banayi) ya khud donor confirm
-  // kar sakta hai — koi third-party random user nahi.
-  const isDonorSelf = auth.uid === donorId;
-  let isRequester = false;
-  if (requestId) {
-    const reqSnap = await db.collection("blood_requests").doc(requestId).get();
-    isRequester = reqSnap.exists && reqSnap.data().requesterId === auth.uid;
-  }
-  if (!isDonorSelf && !isRequester) {
-    throw new HttpsError(
-      "permission-denied",
-      "Sirf request karne wala receiver ya khud donor is donation ko confirm kar sakta hai."
-    );
-  }
-
-  const now = admin.firestore.Timestamp.now();
-  const nextEligible = admin.firestore.Timestamp.fromMillis(
-    now.toMillis() + MIN_DAYS_BETWEEN_DONATIONS * 24 * 60 * 60 * 1000
-  );
-
-  const donationRef = db.collection("donations").doc();
-  await donationRef.set({
-    donorId,
-    donorName: donorData.name || "",
-    bloodGroup,
-    donationDate: now,
-    location: location || donorData.location || null,
-    requestId: requestId || null,
-    pointsEarned: awardPoints,
-    confirmedBy: auth.uid,
-  });
-
-  await donorRef.update({
-    lastDonationDate: now,
-    nextEligibleDate: nextEligible,
-    isEligible: false,
-    rewardPoints: admin.firestore.FieldValue.increment(awardPoints),
-  });
-
-  if (requestId) {
-    await db.collection("blood_requests").doc(requestId).update({
-      status: "fulfilled",
-      fulfilledAt: now,
-      fulfilledByDonorId: donorId,
-    });
-  }
-
-  // Donor ko notify karo taake wo apni certificate generate kar sake
-  await db.collection("notifications").add({
-    userId: donorId,
-    title: "Donation Confirmed 🎉",
-    body: `Thank you for donating ${bloodGroup}! You earned ${awardPoints} points.`,
-    type: "donation_confirmed",
-    relatedId: donationRef.id,
-    createdAt: now,
-    isRead: false,
-  });
-
-  return { donationId: donationRef.id, nextEligibleDate: nextEligible.toMillis() };
-});
-
-/**
- * ✅ sendPushNotification (Firestore trigger) — UPDATED
- * ----------------------------------------------------------------------
- * Ye trigger kisi bhi `notifications/{id}` doc create par FCM push bhejta
- * hai. Ab jo naya code sendPushToUser()/sendPushToUsers() (notificationService.js)
- * use karta hai, wo khud apna push bhej chuka hota hai AUR notification doc
- * bhi banata hai — is liye us doc par `pushSentDirectly: true` flag lagaya
- * jata hai. Ye trigger us flag ko check karke aisi docs ko skip karta hai,
- * warna device par HAR push 2 dafa jaata (duplicate).
- *
- * Jo purana code seedha `notifications` collection mein `.add()` karta hai
- * (jaise confirmDonation upar), us par ye flag nahi hoga, so ye trigger
- * unke liye pehle jaisa hi normal kaam karega.
- */
 exports.sendPushNotification = onDocumentCreated(
   "notifications/{notificationId}",
   async (event) => {
@@ -142,12 +27,14 @@ exports.sendPushNotification = onDocumentCreated(
     if (data.pushSentDirectly) return; // already sent by notificationService — avoid duplicate push
 
     const userSnap = await db.collection("users").doc(data.userId).get();
-    const token = userSnap.data()?.fcmToken;
+    const token = (await db.doc(`users/${data.userId}/private/device`).get()).data()?.fcmToken;
+    if (userSnap.data()?.status !== 'approved' || userSnap.data()?.notificationsEnabled === false) return;
     if (!token) return; // user ne notification permission nahi di / token nahi mila
 
     try {
       await messaging.send({
         token,
+        android: {notification: {channelId: 'blood_requests'}},
         notification: {
           title: data.title || "Smart Blood Bank",
           body: data.body || "",
@@ -164,21 +51,6 @@ exports.sendPushNotification = onDocumentCreated(
   }
 );
 
-/**
- * ✅ notifyNearbyDonorsOnSOS (Firestore trigger) — REWRITTEN (Phase 3)
- * ----------------------------------------------------------------------
- * Naya flow:
- *   1. checkSosRateLimit() — agar receiver ne last 60 min mein 3+ SOS
- *      bheji hain, request ko 'rate_limited' mark karke donors ko notify
- *      hi nahi karta (spam prevention).
- *   2. Matching blood-group ke eligible+available donors dhoondta hai
- *      (query same as before).
- *   3. sendPushToUsers() call karta hai — reliable push (retry + dead
- *      token cleanup + notification-preference check), notificationService.js se.
- *   4. Jin donors tak push nahi pahunch payi (no-token ya sab retries fail),
- *      unhe SMS fallback try karta hai (agar Twilio configured hai aur
- *      unka phone number hai).
- */
 exports.notifyNearbyDonorsOnSOS = onDocumentCreated(
   { document: "sosRequests/{sosId}", secrets: [twilioAuthToken] },
   async (event) => {
@@ -195,17 +67,16 @@ exports.notifyNearbyDonorsOnSOS = onDocumentCreated(
       return; // spam request — donors ko notify nahi karna
     }
 
-    const donorsSnap = await db
-      .collection("users")
-      .where("isDonor", "==", true)
-      .where("bloodGroup", "==", sos.bloodGroup)
-      .where("isAvailable", "==", true)
-      .where("status", "==", "approved")
-      .get();
-
-    if (donorsSnap.empty) return;
-
-    const donorIds = donorsSnap.docs.map((d) => d.id);
+    const owner = (await db.doc(`users/${sos.receiverId}`).get()).data();
+    if (owner?.status !== 'approved') return;
+    let donorIds = await nearbyDonors(sos.latitude, sos.longitude, sos.bloodGroup, 15);
+    let radiusKm = 15;
+    if (!donorIds.length) {
+      radiusKm = 30;
+      donorIds = await nearbyDonors(sos.latitude, sos.longitude, sos.bloodGroup, radiusKm);
+    }
+    await sosRef.update({notifiedDonors: donorIds, radiusKm, status:'processed'});
+    if (!donorIds.length) return;
 
     const result = await sendPushToUsers(donorIds, {
       title: "🚨 SOS Blood Request",
@@ -230,17 +101,6 @@ exports.notifyNearbyDonorsOnSOS = onDocumentCreated(
   }
 );
 
-/**
- * ✅ onBroadcastCreated (Firestore trigger) — NEW (Phase 3)
- * ----------------------------------------------------------------------
- * AdminBroadcastScreen ek `broadcasts/{id}` doc banati hai (status: 'pending')
- * — pehle ise koi function pick hi nahi karta tha. Ab ye trigger:
- *   1. `audience` field ke hisaab se target users dhoondta hai
- *      (all / donors / receivers / specific bloodGroup)
- *   2. sendPushToUsers() se sabko push bhejta hai
- *   3. broadcast doc ko status: 'sent' + sentCount/totalRecipients ke
- *      saath update karta hai (AdminBroadcastScreen isi ka wada karta hai)
- */
 exports.onBroadcastCreated = onDocumentCreated(
   "broadcasts/{broadcastId}",
   async (event) => {
@@ -277,34 +137,24 @@ exports.onBroadcastCreated = onDocumentCreated(
   }
 );
 
-/**
- * ✅ getDonorContact (callable) — NEW
- * ----------------------------------------------------------------------
- * phoneNumber ab users/{uid} (top-level) par nahi likha jata — us doc ko
- * koi bhi signed-in user parh sakta tha, is liye phone number sab ko
- * dikh raha tha (security issue). Phone number ab sirf
- * users/{uid}/private/contact mein hai, jise sirf owner ya admin client-side
- * Firestore rules se parh sakte hain.
- *
- * Lekin receiver ko donor ko CALL karna hota hai — receiver na owner hai
- * na admin, is liye use number chahiye. Ye function wahi rasta hai:
- * receiver donorId ke saath is function ko call karta hai, Admin SDK
- * (jo rules bypass karta hai) private/contact se number nikaal ke deta
- * hai. Har call audit_logs mein likha jata hai — taake pata rahe kisne
- * kis donor ka number kab dekha (misuse detect karne ke liye).
- *
- * ⚠️ Abhi koi rate-limit nahi hai is function par — agar aage koi user
- * isko loop mein call karke sab donors ke number scrape kare, to koi
- * rok nahi. Agar production mein jaana hai to checkSosRateLimit() jaisa
- * hi ek per-user rate limit yahan bhi lagana chahiye.
- */
 exports.getDonorContact = onCall(async (request) => {
   const auth = request.auth;
   if (!auth) {
     throw new HttpsError("unauthenticated", "Login required.");
   }
 
-  const { donorId } = request.data;
+  const callerData = (await db.doc(`users/${auth.uid}`).get()).data();
+  if (callerData?.status !== 'approved') throw new HttpsError('permission-denied','Active account required.');
+  if (callerData.isReceiver !== true) throw new HttpsError('permission-denied','Switch to receiver mode before requesting donor contact.');
+  const contactLimit = db.doc(`rate_limits/contact_${auth.uid}`);
+  await db.runTransaction(async tx => {
+    const data = (await tx.get(contactLimit)).data();
+    const recent = (data?.timestamps || []).filter(time => time > Date.now() - 3600000);
+    if (recent.length >= 20) throw new HttpsError('resource-exhausted','Contact lookup limit reached. Try again later.');
+    tx.set(contactLimit, {timestamps: [...recent, Date.now()]});
+  });
+  const { donorId } = request.data || {};
+  if (typeof donorId !== 'string' || donorId.includes('/')) throw new HttpsError('invalid-argument','Invalid donor.');
   if (!donorId) {
     throw new HttpsError("invalid-argument", "donorId zaroori hai.");
   }
@@ -314,7 +164,7 @@ exports.getDonorContact = onCall(async (request) => {
     throw new HttpsError("not-found", "Donor account nahi mila.");
   }
   const donorData = donorSnap.data();
-  if (donorData.isDonor !== true || donorData.status !== "approved") {
+  if (donorData.isDonor !== true || donorData.status !== "approved" || donorData.isAvailable !== true) {
     // Sirf approved donors ka number diya jaye — random pending/rejected
     // accounts ya receivers ka number is function se kabhi na mile.
     throw new HttpsError(
@@ -346,95 +196,34 @@ exports.getDonorContact = onCall(async (request) => {
   return { phoneNumber };
 });
 
-/**
- * ✅ adminDeleteUser (callable) — NEW SECURITY FIX
- * ----------------------------------------------------------------------
- * Bug found: AdminController.deleteUser() (client) only ever called
- * `.collection('users').doc(uid).delete()` — that deletes the FIRESTORE
- * profile doc, but the person's FIREBASE AUTH account (email+password
- * login) was never touched, because client SDKs cannot delete an
- * arbitrary other user's Auth account — only Admin SDK (server-side) can.
- *
- * The real-world impact: after an admin "deletes" a user, that person
- * could still log in with email+password. Worse, `signInWithEmailPassword`
- * in auth_service.dart only runs the pending/rejected status check
- * `if (doc.exists)` — since the Firestore doc is gone, that whole check
- * was skipped, so a deleted user logged in with ZERO restrictions.
- *
- * Fix: this callable Cloud Function (Admin SDK, admin-only) now does the
- * full cleanup in one atomic-ish step:
- *   1. Verifies the caller is an approved admin (same check as isAdmin()
- *      in firestore.rules, done here in JS since rules don't gate
- *      Cloud Function calls).
- *   2. Deletes users/{uid}/private/contact (phone/CNIC).
- *   3. Deletes users/{uid}.
- *   4. Deletes the actual Firebase Auth account via admin.auth().deleteUser
- *      — this is the step that was always missing, and is the only way
- *      to guarantee the person can no longer log in at all.
- */
-exports.adminDeleteUser = onCall(async (request) => {
-  const auth = request.auth;
-  if (!auth) {
-    throw new HttpsError("unauthenticated", "Login required.");
-  }
+exports.adminDeleteUser = onCall(request => workflows.deleteAccount(request, true));
 
-  const callerSnap = await db.collection("users").doc(auth.uid).get();
-  const callerData = callerSnap.data();
-  if (
-    !callerSnap.exists ||
-    callerData.role !== "admin" ||
-    callerData.status !== "approved"
-  ) {
-    throw new HttpsError(
-      "permission-denied",
-      "Sirf approved admin hi kisi user ko delete kar sakta hai."
-    );
-  }
-
-  const { uid } = request.data;
-  if (!uid) {
-    throw new HttpsError("invalid-argument", "uid zaroori hai.");
-  }
-  if (uid === auth.uid) {
-    throw new HttpsError(
-      "failed-precondition",
-      "Admin apna khud ka account is se delete nahi kar sakta."
-    );
-  }
-
-  await db.collection("users").doc(uid).collection("private").doc("contact").delete();
-  await db.collection("users").doc(uid).delete();
-
-  try {
-    await admin.auth().deleteUser(uid);
-  } catch (err) {
-    // Auth account already gone / never existed — Firestore cleanup above
-    // still succeeded, so don't fail the whole operation for this.
-    if (err.code !== "auth/user-not-found") {
-      console.error("adminDeleteUser: auth delete failed:", err.message);
-    }
-  }
-
-  await db.collection("audit_logs").add({
-    action: "admin_deleted_user",
-    performedBy: auth.uid,
-    targetUid: uid,
-    createdAt: admin.firestore.Timestamp.now(),
-  });
-
-  return { success: true };
-});
-
-/**
- * ✅ dailyEligibilityCheck (Scheduled function) — NEW (Phase 3)
- * ----------------------------------------------------------------------
- * Har roz 09:00 Asia/Karachi par chalta hai. Jin donors ka 90-din
- * eligibility window aaj khula hai, unhe "You're eligible to donate
- * again!" push bhejta hai (logic eligibilityReminder.js mein hai).
- */
 exports.dailyEligibilityCheck = onSchedule(
   { schedule: "every day 09:00", timeZone: "Asia/Karachi" },
   async () => {
     await checkEligibilityReminders();
   }
 );
+exports.notifyRequest = onCall(async request => {
+  if (!request.auth) throw new HttpsError('unauthenticated','Sign in first.');
+  const requestId = request.data?.requestId;
+  if (typeof requestId !== 'string' || requestId.includes('/')) throw new HttpsError('invalid-argument','Request required.');
+  const ref = db.doc(`blood_requests/${requestId}`);
+  const [req, user] = await Promise.all([ref.get(), db.doc(`users/${request.auth.uid}`).get()]);
+  const r=req.data();
+  if (!r || r.requesterId !== request.auth.uid || user.data()?.status !== 'approved' || !['pending','accepted'].includes(r.status)) {
+    throw new HttpsError('permission-denied','An active request belonging to you is required.');
+  }
+  const ids = await nearbyDonors(r.latitude,r.longitude,r.bloodGroup,50);
+  const requested = request.data.userIds;
+  const recipients = Array.isArray(requested) ? ids.filter(uid=>requested.includes(uid)) : ids;
+  for (const uid of recipients) {
+    try {
+      await db.doc(`notifications/request_${requestId}_${uid}`).create({
+        userId:uid, title:'Blood donation request', body:`${r.bloodGroup} blood needed at ${r.hospitalName || 'a nearby hospital'}. Open the app for details.`,
+        type:'blood_request',relatedId:requestId,isRead:false,createdAt:admin.firestore.Timestamp.now(),
+      });
+    } catch(e) { if(e.code !== 6) throw e; }
+  }
+  return {count:recipients.length};
+});

@@ -1,7 +1,10 @@
+import '../../utils/eligibility_checker.dart';
+import '../../utils/feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../services/auth_service.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../utils/app_animations.dart';
@@ -24,7 +27,7 @@ import '../settings/settings_screen.dart'; // ✅ NEW — was never reachable an
 /// screen was completely unreachable. Now this file imports the real
 /// RewardsScreen and no longer defines a duplicate.
 ///
-/// ✅ ALSO FIXED — the "Contact: <number>" button on each request card had
+/// ✅ ALSO FIXED — the "Contact: number" button on each request card had
 /// `onPressed: () {}` (did nothing at all when tapped). Now it opens the
 /// phone dialer.
 class DonorDashboardScreen extends StatefulWidget {
@@ -41,6 +44,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
   Map<String, dynamic>? _userData;
   int _donationCount = 0;
   bool _isLoading = true;
+  String? _loadError;
 
   @override
   void initState() {
@@ -49,6 +53,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
   }
 
   Future<void> _loadUserData() async {
+    setState(() { _isLoading = true; _loadError = null; });
     try {
       final uid = _auth.currentUser?.uid;
       if (uid == null) return;
@@ -70,12 +75,12 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _loadError = AppFeedback.message(e); });
     }
   }
 
   Future<void> _logout() async {
-    await _auth.signOut();
+    await AuthService().signOut();
     if (mounted) Navigator.of(context).pushReplacementNamed('/login');
   }
 
@@ -98,28 +103,29 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
       );
     }
 
+    if (_loadError != null) return Scaffold(appBar: AppBar(title: const Text('Donor Dashboard')), body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_loadError!), TextButton(onPressed: _loadUserData, child: const Text('Retry'))])));
     final name = _userData?['name'] ?? 'Donor';
     final bloodGroup = _userData?['bloodGroup'] ?? '—';
     final rewardPoints = _userData?['rewardPoints'] ?? 0;
-    final isEligible = _userData?['isEligible'] ?? true;
+    final isEligible = EligibilityChecker.isEligibleForDonation((_userData?['lastDonationDate'] as Timestamp?)?.toDate());
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_back_ios),
+          onPressed: () => Navigator.pushReplacementNamed(context, '/role-select'),
         ),
-        title: const Text(
+        title: Text(
           'Donor Dashboard',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: Icon(Icons.logout),
             onPressed: _logout,
           ),
         ],
@@ -155,7 +161,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                         backgroundColor: Colors.white,
                         child: Text(
                           name.isNotEmpty ? name[0].toUpperCase() : 'D',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
                             color: AppColors.primaryRed,
@@ -169,7 +175,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                           children: [
                             Text(
                               name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
@@ -180,7 +186,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                const Text(
+                                Text(
                                   'Blood Group: ',
                                   style: TextStyle(color: Colors.white70),
                                 ),
@@ -230,8 +236,8 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                   padding: const EdgeInsets.all(AppSpacing.lg + 2),
                   decoration: BoxDecoration(
                     color: isEligible
-                        ? AppColors.success.withOpacity(0.1)
-                        : AppColors.warning.withOpacity(0.1),
+                        ? AppColors.success.withValues(alpha: 0.1)
+                        : AppColors.warning.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                     border: Border.all(
                       color: isEligible ? AppColors.success : AppColors.warning,
@@ -264,12 +270,12 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
               const SizedBox(height: AppSpacing.xxl + 1),
 
               // ── Available Blood Requests ──
-              const Text(
+              Text(
                 'Blood Requests Near You',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 4),
@@ -282,7 +288,8 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('blood_requests')
-                    .where('status', isEqualTo: 'pending')
+                    .where('status', whereIn: ['pending', 'accepted'])
+                    .limit(100)
                     .snapshots(),
                 builder: (context, snap) {
                   if (snap.connectionState == ConnectionState.waiting) {
@@ -302,8 +309,10 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                   // we filter those out client-side (Firestore doesn't
                   // support a "not equal to me" + other filters combo
                   // cleanly without a composite index for this shape).
+                  if (snap.hasError) return Text(AppFeedback.message(snap.error!));
                   final docs = (snap.data?.docs ?? [])
                       .where((doc) => !declinedIds.contains(doc.id))
+                      .where((doc) => (doc.data() as Map<String, dynamic>)['status'] == 'pending' || (doc.data() as Map<String, dynamic>)['acceptedDonorId'] == myUid)
                       .where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
                     return data['requesterId'] != myUid;
@@ -358,22 +367,22 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                                 // Patient name
                                 if (d['patientName'] != null)
                                   Row(children: [
-                                    const Icon(Icons.person_outline,
+                                    Icon(Icons.person_outline,
                                         size: AppSpacing.iconSm, color: Colors.grey),
                                     const SizedBox(width: 6),
                                     Text(d['patientName'],
-                                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                                        style: TextStyle(fontWeight: FontWeight.w600)),
                                   ]),
                                 const SizedBox(height: 4),
                                 // Hospital
                                 Row(children: [
-                                  const Icon(Icons.local_hospital_outlined,
+                                  Icon(Icons.local_hospital_outlined,
                                       size: AppSpacing.iconSm, color: Colors.grey),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
                                       d['hospitalName'] ?? 'Unknown',
-                                      style: const TextStyle(color: Colors.grey),
+                                      style: TextStyle(color: Colors.grey),
                                     ),
                                   ),
                                 ]),
@@ -382,23 +391,23 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                                 if (d['location'] != null &&
                                     d['location'].toString().isNotEmpty)
                                   Row(children: [
-                                    const Icon(Icons.location_on_outlined,
+                                    Icon(Icons.location_on_outlined,
                                         size: AppSpacing.iconSm, color: Colors.grey),
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(d['location'],
-                                          style: const TextStyle(color: Colors.grey)),
+                                          style: TextStyle(color: Colors.grey)),
                                     ),
                                   ]),
                                 const SizedBox(height: 4),
                                 // Units
                                 Row(children: [
-                                  const Icon(Icons.bloodtype_outlined,
+                                  Icon(Icons.bloodtype_outlined,
                                       size: AppSpacing.iconSm, color: Colors.grey),
                                   const SizedBox(width: 6),
                                   Text(
                                     '${d['unitsRequired'] ?? d['quantity'] ?? 1} units required',
-                                    style: const TextStyle(color: Colors.grey),
+                                    style: TextStyle(color: Colors.grey),
                                   ),
                                 ]),
                                 // Contact number — ✅ FIX: now actually opens the dialer
@@ -408,12 +417,12 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                                   SizedBox(
                                     width: double.infinity,
                                     child: OutlinedButton.icon(
-                                      icon: const Icon(Icons.call, size: AppSpacing.iconSm),
+                                      icon: Icon(Icons.call, size: AppSpacing.iconSm),
                                       label: Text('Contact: ${d['contactNumber']}'),
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppColors.primaryRed,
                                         side: BorderSide(
-                                            color: AppColors.primaryRed.withOpacity(0.4)),
+                                            color: AppColors.primaryRed.withValues(alpha: 0.4)),
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
                                             BorderRadius.circular(AppSpacing.radiusSm + 2)),
@@ -434,12 +443,12 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
 
               const SizedBox(height: AppSpacing.xxl + 1),
 
-              const Text(
+              Text(
                 'Quick Actions',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg - 1),
@@ -490,7 +499,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
               _buildActionTile(
                 title: 'Settings',
                 icon: Icons.settings_outlined,
-                color: AppColors.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -517,11 +526,11 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.15),
+          backgroundColor: color.withValues(alpha: 0.15),
           child: Icon(icon, color: color),
         ),
         title: Text(title),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 18),
+        trailing: Icon(Icons.arrow_forward_ios, size: 18),
         onTap: onTap,
       ),
     );

@@ -2,8 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../constants/app_colors.dart';
+import '../services/auth_service.dart';
+import '../utils/account_policy.dart';
 import '../constants/app_spacing.dart'; // ✅ light-touch polish
 
 class SplashScreen extends StatefulWidget {
@@ -117,22 +117,9 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (user != null) {
         try {
-          final doc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get();
-
+          final data = await AuthService().initializeSession();
           if (!mounted) return;
-
-          final role = doc.data()?['role'] as String?;
-
-          if (role == 'donor') {
-            Navigator.pushReplacementNamed(context, '/donor');
-          } else if (role == 'receiver') {
-            Navigator.pushReplacementNamed(context, '/receiver');
-          } else {
-            Navigator.pushReplacementNamed(context, '/role-select');
-          }
+          Navigator.pushReplacementNamed(context, AccountPolicy.route(data));
         } catch (e) {
           if (mounted) {
             Navigator.pushReplacementNamed(context, '/login');
@@ -228,7 +215,7 @@ class _SplashScreenState extends State<SplashScreen>
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.redAccent.withOpacity(0.5),
+                                color: Colors.redAccent.withValues(alpha: 0.5),
                                 blurRadius: particle.size,
                                 spreadRadius: particle.size / 2,
                               ),
@@ -251,8 +238,8 @@ class _SplashScreenState extends State<SplashScreen>
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: [
-                            Colors.redAccent.withOpacity(0.3),
-                            Colors.red.withOpacity(0.1),
+                            Colors.redAccent.withValues(alpha: 0.3),
+                            Colors.red.withValues(alpha: 0.1),
                             Colors.transparent,
                           ],
                           stops: const [0.1, 0.5, 1.0],
@@ -280,8 +267,8 @@ class _SplashScreenState extends State<SplashScreen>
                                   shape: BoxShape.circle,
                                   gradient: RadialGradient(
                                     colors: [
-                                      Colors.white.withOpacity(0.8),
-                                      Colors.white.withOpacity(0.1),
+                                      Colors.white.withValues(alpha: 0.8),
+                                      Colors.white.withValues(alpha: 0.1),
                                       Colors.transparent,
                                     ],
                                     stops: const [0.1, 0.5, 1.0],
@@ -304,13 +291,13 @@ class _SplashScreenState extends State<SplashScreen>
                                   boxShadow: [
                                     BoxShadow(
                                       color:
-                                      Colors.red[900]!.withOpacity(0.6),
+                                      Colors.red[900]!.withValues(alpha: 0.6),
                                       blurRadius: 40,
                                       spreadRadius: 10,
                                       offset: const Offset(0, 20),
                                     ),
                                     BoxShadow(
-                                      color: Colors.white.withOpacity(0.3),
+                                      color: Colors.white.withValues(alpha: 0.3),
                                       blurRadius: 20,
                                       spreadRadius: -10,
                                       offset: const Offset(-10, -10),
@@ -413,7 +400,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     shadows: [
                                       Shadow(
                                         color:
-                                        Colors.red[900]!.withOpacity(0.5),
+                                        Colors.red[900]!.withValues(alpha: 0.5),
                                         blurRadius: 20,
                                         offset: const Offset(0, 5),
                                       ),
@@ -433,7 +420,7 @@ class _SplashScreenState extends State<SplashScreen>
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       letterSpacing: 5,
-                                      color: Colors.white.withOpacity(0.8),
+                                      color: Colors.white.withValues(alpha: 0.8),
                                     ),
                                   ),
                                   Positioned(
@@ -477,7 +464,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 Container(
                                   height: 4,
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
+                                    color: Colors.white.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -509,7 +496,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 2,
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -579,7 +566,7 @@ class _SplashScreenState extends State<SplashScreen>
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.white.withOpacity(0.1),
+                            Colors.white.withValues(alpha: 0.1),
                           ],
                         ),
                       ),
@@ -614,7 +601,7 @@ class _SplashScreenState extends State<SplashScreen>
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.redAccent.withOpacity(0.5),
+                              color: Colors.redAccent.withValues(alpha: 0.5),
                               blurRadius: 20,
                               spreadRadius: 5,
                             ),
@@ -670,7 +657,7 @@ class _SplashScreenState extends State<SplashScreen>
             fontSize: 10,
             fontWeight: FontWeight.w600,
             letterSpacing: 1,
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
           ),
         ),
       ],
@@ -702,7 +689,7 @@ class _WavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
 
     final path = Path();

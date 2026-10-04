@@ -1,3 +1,4 @@
+import '../../widgets/unsaved_changes_guard.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
@@ -47,6 +48,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   DateTime? _requiredByDate;
 
   bool _isLoading = false;
+  bool _dirty = false;
   String? _currentLocation;
   double? _currentLat;
   double? _currentLng;
@@ -75,6 +77,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
           location.latitude,
           location.longitude,
         );
+        if (!mounted) return;
         setState(() {
           _currentLocation = address;
           _currentLat = location.latitude;
@@ -138,12 +141,13 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         // password signup, no phone-auth linking) — so this was always
         // saving an empty string. The number the receiver actually typed
         // into this form is `_contactNumberController`, so use that.
-        requesterPhone: _contactNumberController.text.trim(),
+        requesterPhone: AppValidators.normalizePhone(_contactNumberController.text),
         patientName: _patientNameController.text.trim(),
         patientAge: age,
         patientGender: _selectedGender,
         bloodGroup: _selectedBloodGroup,
         unitsRequired: units,
+        quantity: units,
         hospitalName: _hospitalNameController.text.trim(),
         hospitalAddress: _hospitalAddressController.text.trim(),
         urgency: _selectedUrgency,
@@ -190,6 +194,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
       }
 
       if (mounted) {
+        setState(() { _dirty = false; _isLoading = false; });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Request submitted successfully!'),
@@ -231,16 +236,19 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+    return UnsavedChangesGuard(dirty: _dirty, busy: _isLoading,
+      onDiscard: () => setState(() => _dirty = false),
+      child: Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Blood Request Form', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Blood Request Form', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
       body: Form(
         key: _formKey,
+          onChanged: () { if (!_dirty) setState(() => _dirty = true); },
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
@@ -254,7 +262,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   gradient: AppColors.primaryGradient,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.info_outline, color: Colors.white, size: 22),
                     SizedBox(width: AppSpacing.sm + 2),
@@ -294,11 +302,11 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
 
               _sectionTitle('Blood Requirement'),
               const SizedBox(height: AppSpacing.sm + 2),
-              const Text('Blood Group', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              Text('Blood Group', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: AppSpacing.sm),
               _bloodGroupSelector(),
               const SizedBox(height: AppSpacing.lg),
-              const Text('Urgency Level', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              Text('Urgency Level', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: AppSpacing.sm),
               _urgencySelector(),
               const SizedBox(height: AppSpacing.md),
@@ -350,7 +358,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                 child: InputDecorator(
                   decoration: InputDecoration(
                     labelText: 'Required By Date',
-                    prefixIcon: const Icon(Icons.calendar_today_outlined, size: AppSpacing.iconSm + 4),
+                    prefixIcon: Icon(Icons.calendar_today_outlined, size: AppSpacing.iconSm + 4),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
@@ -386,7 +394,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                     width: 22, height: 22,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                      : const Text('Submit Request',
+                      : Text('Submit Request',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
@@ -395,12 +403,12 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   Widget _sectionTitle(String text) => Text(
     text,
-    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
   );
 
   Widget _genderSelector() {
@@ -414,9 +422,9 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
               label: Text(g),
               selected: selected,
               onSelected: (_) => setState(() => _selectedGender = g),
-              selectedColor: AppColors.primaryRed.withOpacity(0.15),
+              selectedColor: AppColors.primaryRed.withValues(alpha: 0.15),
               labelStyle: TextStyle(
-                color: selected ? AppColors.primaryRed : AppColors.textSecondary,
+                color: selected ? AppColors.primaryRed : Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
               ),
               side: BorderSide(color: selected ? AppColors.primaryRed : Colors.grey.shade300),
@@ -439,14 +447,14 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
             decoration: BoxDecoration(
               gradient: selected ? AppColors.primaryGradient : null,
-              color: selected ? null : Colors.white,
+              color: selected ? null : Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
               border: Border.all(color: selected ? Colors.transparent : Colors.grey.shade300),
             ),
             child: Text(
               bg,
               style: TextStyle(
-                color: selected ? Colors.white : AppColors.textPrimary,
+                color: selected ? Colors.white : Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
               ),
             ),

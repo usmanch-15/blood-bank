@@ -54,8 +54,8 @@ void main() {
       expect(AppValidators.validatePassword('abc123'), isNotNull);
     });
 
-    test('password 8+ chars passes', () {
-      expect(AppValidators.validatePassword('securePass1'), isNull);
+    test('password meeting the configured policy passes', () {
+      expect(AppValidators.validatePassword('securePass1!'), isNull);
     });
 
     // Blood group

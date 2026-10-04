@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminWebLogin extends StatefulWidget {
-  const AdminWebLogin({Key? key}) : super(key: key);
+  const AdminWebLogin({super.key});
 
   @override
   State<AdminWebLogin> createState() => _AdminWebLoginState();
@@ -243,7 +243,7 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                           }
                           await FirebaseAuth.instance
                               .sendPasswordResetEmail(email: email);
-                          if (mounted) {
+                          if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Password reset email bhej di ✅'),

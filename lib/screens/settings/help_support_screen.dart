@@ -56,6 +56,10 @@ class HelpSupportScreen extends StatelessWidget {
 
   Future<void> _contactUs(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
+    if (AppConstants.supportEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Support email is not configured. Contact the project administrator.')));
+      return;
+    }
     final subject = Uri.encodeComponent('Smart Blood Bank — Support Request');
     final body = Uri.encodeComponent(
       'Describe your issue here:\n\n\n'
@@ -164,7 +168,7 @@ class HelpSupportScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),

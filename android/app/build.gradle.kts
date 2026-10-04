@@ -1,5 +1,6 @@
 plugins {
     id("com.android.application")
+    id("com.google.firebase.crashlytics")
     id("com.google.gms.google-services")
     id("dev.flutter.flutter-gradle-plugin")
 }

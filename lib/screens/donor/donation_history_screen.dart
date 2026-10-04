@@ -139,7 +139,7 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: AppColors.primaryRed.withOpacity(0.1),
+                color: AppColors.primaryRed.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

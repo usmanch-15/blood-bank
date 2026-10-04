@@ -1,12 +1,9 @@
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/user_model.dart';
 import '../models/blood_request_model.dart';
 import '../models/donation_model.dart';
-import '../models/reward_model.dart';
 import '../models/notification_model.dart';
-import '../models/misuse_report_model.dart';
 
 import '../constants/app_constants.dart';
 import '../core/errors/app_exceptions.dart';
@@ -61,24 +58,11 @@ class FirestoreService {
         .map((snap) {
       final users = snap.docs
           .map((d) =>
-          UserModel.fromFirestore(d.data() as Map<String, dynamic>, d.id))
+          UserModel.fromFirestore(d.data(), d.id))
           .toList();
       users.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return users;
     });
-  }
-
-  Future<void> addRewardPoints(String uid, int points) async {
-    try {
-      await _firestore
-          .collection(AppConstants.usersCollection)
-          .doc(uid)
-          .update({
-        'rewardPoints': FieldValue.increment(points),
-      });
-    } catch (e) {
-      throw FirestoreException('Error updating reward points: $e');
-    }
   }
 
   // ==================== BLOOD REQUEST ====================
@@ -98,24 +82,17 @@ class FirestoreService {
   // (and the donor themselves) can see who was alerted and when.
   Future<void> updateNotifiedDonors(
       String requestId, List<String> donorIds) async {
-    try {
-      await _firestore
-          .collection(AppConstants.bloodRequestsCollection)
-          .doc(requestId)
-          .update({'notifiedDonors': donorIds});
-    } catch (e) {
-      throw FirestoreException('Error updating notified donors: $e');
-    }
+    // Notification recipient records are server-owned.
   }
 
   Stream<List<BloodRequestModel>> getAllBloodRequests() {
     return _firestore
         .collection(AppConstants.bloodRequestsCollection)
-        .orderBy('createdAt', descending: true)
+        .orderBy('createdAt', descending: true).limit(100)
         .snapshots()
         .map((snap) => snap.docs
         .map((d) => BloodRequestModel.fromFirestore(
-      d.data() as Map<String, dynamic>,
+      d.data(),
       d.id,
     ))
         .toList());
@@ -128,7 +105,7 @@ class FirestoreService {
           .doc(id)
           .update({
         'status': status,
-        'fulfilledAt': status == 'fulfilled' ? FieldValue.serverTimestamp() : null,
+        if (status == 'cancelled') 'cancelledAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
       throw FirestoreException('Error updating request: $e');
@@ -137,35 +114,18 @@ class FirestoreService {
 
   // ==================== DONATION ====================
 
-  Future<String> createDonation(DonationModel donation) async {
-    try {
-      final doc = await _firestore
-          .collection(AppConstants.donationsCollection)
-          .add(donation.toFirestore());
-
-      await addRewardPoints(donation.donorId, donation.pointsEarned);
-
-      await updateUser(donation.donorId, {
-        'lastDonationDate': FieldValue.serverTimestamp(),
-      });
-
-      return doc.id;
-    } catch (e) {
-      throw FirestoreException('Error creating donation: $e');
-    }
-  }
-
   // ✅ FIX — same composite-index trap as getUsersByStatus above
   // (where + orderBy on different fields). Sort client-side instead.
   Stream<List<DonationModel>> getDonationHistory(String donorId) {
     return _firestore
         .collection(AppConstants.donationsCollection)
         .where('donorId', isEqualTo: donorId)
+        .orderBy('donationDate', descending: true).limit(100)
         .snapshots()
         .map((snap) {
       final donations = snap.docs
           .map((d) => DonationModel.fromFirestore(
-          d.data() as Map<String, dynamic>, d.id))
+          d.data(), d.id))
           .toList();
       donations.sort((a, b) => b.donationDate.compareTo(a.donationDate));
       return donations;
@@ -181,7 +141,7 @@ class FirestoreService {
         .snapshots()
         .map((snapshot) => snapshot.docs
         .map((doc) => BloodDriveModel.fromFirestore(
-      doc.data() as Map<String, dynamic>,
+      doc.data(),
       doc.id,
     ))
         .toList());
@@ -193,20 +153,20 @@ class FirestoreService {
     try {
       final donations = await _firestore
           .collection(AppConstants.donationsCollection)
-          .get();
+          .count().get();
 
       final requests = await _firestore
           .collection(AppConstants.bloodRequestsCollection)
-          .get();
+          .count().get();
 
       // ✅ FIX 3: Correct fulfillment rate — avoid division-by-zero properly
-      final fulfillmentRate = requests.size == 0
+      final fulfillmentRate = (requests.count ?? 0) == 0
           ? '0.00'
-          : (donations.size / requests.size * 100).toStringAsFixed(2);
+          : ((donations.count ?? 0) / (requests.count ?? 0) * 100).toStringAsFixed(2);
 
       return {
-        'totalDonations': donations.size,
-        'totalRequests': requests.size,
+        'totalDonations': (donations.count ?? 0),
+        'totalRequests': (requests.count ?? 0),
         'fulfillmentRate': fulfillmentRate,
       };
     } catch (e) {
@@ -214,25 +174,4 @@ class FirestoreService {
     }
   }
 
-  // ==================== HELPERS ====================
-
-  // ✅ FIX 4: Use shared haversine util instead of duplicate logic
-  // (import utils/haversine.dart and call haversineDistance() from there)
-  double _calculateDistance(
-      double lat1, double lon1, double lat2, double lon2) {
-    const r = 6371;
-    final dLat = _deg(lat2 - lat1);
-    final dLon = _deg(lon2 - lon1);
-
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_deg(lat1)) *
-            cos(_deg(lat2)) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
-
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return r * c;
-  }
-
-  double _deg(double d) => d * (3.14159265359 / 180);
 }

@@ -16,7 +16,7 @@
 library;
 
 class LegalContent {
-  static const String lastUpdated = 'August 2026';
+  static const String lastUpdated = 'October 2026';
 
   // ═══════════════════════════ TERMS OF SERVICE ═══════════════════════════
   static const String termsOfService = '''
@@ -34,7 +34,7 @@ This app is not a substitute for professional medical advice, diagnosis, or trea
 
 3. ACCOUNT ELIGIBILITY & APPROVAL
 
-New accounts are reviewed before activation ("pending" status). We may approve, reject, or later suspend any account at our discretion — for example, if we receive credible reports of misuse, fraud, or abusive behavior through the in-app reporting feature.
+New accounts are active immediately. Email verification is encouraged but is not currently required for access. We may suspend accounts — for example, if we receive credible reports of misuse, fraud, or abusive behavior through the in-app reporting feature.
 
 4. YOUR RESPONSIBILITIES
 
@@ -46,7 +46,7 @@ You agree to:
 
 5. LOCATION & EMERGENCY (SOS) FEATURES
 
-If you enable location sharing, your approximate location is used to match you with nearby donors/requests. SOS alerts notify nearby eligible donors of urgent blood needs. Response to an SOS alert is voluntary — we cannot guarantee any donor will respond, or how quickly.
+If you enable location sharing, coordinates rounded to two decimal places are visible to signed-in users. This reduces precision but is not anonymity. Your approximate location is used to match you with nearby donors/requests. SOS alerts notify nearby eligible donors of urgent blood needs. Response to an SOS alert is voluntary — we cannot guarantee any donor will respond, or how quickly.
 
 6. ACCOUNT SUSPENSION & TERMINATION
 
@@ -84,13 +84,13 @@ This policy explains what data Smart Blood Bank collects, why, and who can see i
 
   • To match compatible donors with blood requests.
   • To send SOS alerts, donation confirmations, and reward updates.
-  • To let admins review pending accounts and investigate misuse reports.
+  • To let admins manage accounts and investigate misuse reports.
   • As a fallback, if a push notification can't be delivered for an urgent SOS request, we may send an SMS through a third-party provider (Twilio) using your phone number.
 
 3. WHO CAN SEE YOUR PHONE NUMBER
 
 Your phone number is not visible on your public profile and cannot be read directly by other users. It is only shared in two situations:
-  • You (the account owner) or an admin can view/edit it directly.
+  • You (the account owner) or an admin can view it; changes require phone verification.
   • When a receiver taps "Call Donor," the app requests your number through a controlled server-side function, which checks that you are an approved donor and logs the request (who looked up whose number, and when) for accountability. Your number is not otherwise exposed in any list, search, or export.
 
 4. THIRD-PARTY SERVICES
@@ -99,7 +99,7 @@ We use Google Firebase (authentication, database, storage, push notifications, c
 
 5. DATA RETENTION & DELETION
 
-If you delete your account (Settings → Delete Account), your account is immediately disabled and hidden from other users. Some records (e.g. completed donation history, audit logs) may be retained for a period for accountability, fraud-prevention, and legal-compliance purposes, even after account deletion.
+Deleting an account requires a recent sign-in. The server disables the account, removes its profile, private contact and device data, owned requests and donation records, linked notifications and reports, uploaded profile images and certificates, and its sign-in account. If cleanup fails, the account remains disabled and the project administrator must retry cleanup. Other users may already have downloaded shared information; those copies cannot be recalled.
 
 6. YOUR CHOICES
 

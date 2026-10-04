@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import '../utils/validators.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart'; // ✅ NEW — confirmDonation Cloud Function
@@ -23,12 +25,14 @@ class DonorController extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection(AppConstants.usersCollection)
-          .doc(uid)
-          .get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection(AppConstants.usersCollection)
+              .doc(uid)
+              .get();
       if (doc.exists) {
         _donor = DonorModel.fromFirestore(doc.data()!, doc.id);
+        _isAvailable = doc.data()?['isAvailable'] == true;
         await _checkAndUpdateEligibility(uid);
       }
     } finally {
@@ -42,10 +46,6 @@ class DonorController extends ChangeNotifier {
     final eligible = AppDateUtils.isEligible(_donor!.lastDonationDate);
     if (eligible != _donor!.isEligible) {
       _donor = _donor!.copyWith(isEligible: eligible);
-      await FirebaseFirestore.instance
-          .collection(AppConstants.usersCollection)
-          .doc(uid)
-          .update({'isEligible': eligible});
     }
   }
 
@@ -53,14 +53,17 @@ class DonorController extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection(AppConstants.donationsCollection)
-          .where('donorId', isEqualTo: uid)
-          .orderBy('donationDate', descending: true)
-          .get();
-      _donationHistory = snapshot.docs
-          .map((d) => DonationModel.fromFirestore(d.data(), d.id))
-          .toList();
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection(AppConstants.donationsCollection)
+              .where('donorId', isEqualTo: uid)
+              .orderBy('donationDate', descending: true)
+              .limit(100)
+              .get();
+      _donationHistory =
+          snapshot.docs
+              .map((d) => DonationModel.fromFirestore(d.data(), d.id))
+              .toList();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -90,39 +93,64 @@ class DonorController extends ChangeNotifier {
     double? latitude,
     double? longitude,
     String? location,
+    String? address,
+    String? cnic,
   }) async {
     final userRef = FirebaseFirestore.instance
         .collection(AppConstants.usersCollection)
         .doc(uid);
 
+    if (name != null && AppValidators.validateName(name) != null) {
+      throw ArgumentError(AppValidators.validateName(name));
+    }
+    if (phoneNumber != null) {
+      throw StateError('Use phone verification to change your number.');
+    }
+    if (latitude != null || longitude != null) {
+      final data = (await userRef.get()).data();
+      if (data?['locationSharingEnabled'] != true) {
+        throw StateError('Enable location sharing in Settings first.');
+      }
+    }
     final publicUpdates = <String, dynamic>{
       if (name != null) 'name': name,
       if (bloodGroup != null) 'bloodGroup': bloodGroup,
       if (location != null) 'location': location,
+      if (address != null) 'address': address,
       if (latitude != null)
         AppConstants.fieldLatitude: LocationHelper.roundForPrivacy(latitude),
       if (longitude != null)
-        AppConstants.fieldLongitude:
-        LocationHelper.roundForPrivacy(longitude),
+        AppConstants.fieldLongitude: LocationHelper.roundForPrivacy(longitude),
       if (latitude != null || longitude != null)
         AppConstants.fieldLocationUpdatedAt: FieldValue.serverTimestamp(),
     };
-    if (publicUpdates.isNotEmpty) {
-      await userRef.update(publicUpdates);
+    final batch = FirebaseFirestore.instance.batch();
+    if (publicUpdates.isNotEmpty) batch.update(userRef, publicUpdates);
+    if (cnic != null) {
+      batch.set(userRef.collection('private').doc('contact'), {
+        'cnic': cnic,
+      }, SetOptions(merge: true));
     }
-
-    if (phoneNumber != null && phoneNumber.trim().isNotEmpty) {
-      await userRef.collection('private').doc('contact').set(
-        {'phoneNumber': phoneNumber.trim()},
-        SetOptions(merge: true),
-      );
-    }
+    await batch.commit();
 
     await loadDonor(uid);
   }
 
-  void toggleAvailability() {
-    _isAvailable = !_isAvailable;
+  Future<void> toggleAvailability() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Please sign in.');
+    final next = !_isAvailable;
+    await FirebaseFirestore.instance.doc('users/$uid').update({
+      'isAvailable': next,
+    });
+    _isAvailable = next;
+    notifyListeners();
+  }
+
+  Future<void> acceptRequest(String requestId) async {
+    await FirebaseFunctions.instance.httpsCallable('acceptDonation').call({
+      'requestId': requestId,
+    });
     notifyListeners();
   }
 
@@ -156,8 +184,9 @@ class DonorController extends ChangeNotifier {
     String? requestId,
   }) async {
     try {
-      final callable =
-      FirebaseFunctions.instance.httpsCallable('confirmDonation');
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'confirmDonation',
+      );
       await callable.call({
         'donorId': donorId,
         'bloodGroup': bloodGroup,
@@ -187,8 +216,8 @@ class DonorController extends ChangeNotifier {
         .collection(AppConstants.usersCollection)
         .doc(donorId)
         .update({
-      'declinedRequestIds': FieldValue.arrayUnion([requestId]),
-    });
+          'declinedRequestIds': FieldValue.arrayUnion([requestId]),
+        });
     notifyListeners();
   }
 }

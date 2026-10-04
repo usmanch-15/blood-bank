@@ -55,7 +55,7 @@ class NotificationHistoryScreen extends StatelessWidget {
                 leading: CircleAvatar(
                   backgroundColor: isRead
                       ? Colors.grey.shade300
-                      : AppColors.primaryRed.withOpacity(0.15),
+                      : AppColors.primaryRed.withValues(alpha: 0.15),
                   child: Icon(
                     _iconForType(type),
                     color: isRead ? Colors.grey : AppColors.primaryRed,

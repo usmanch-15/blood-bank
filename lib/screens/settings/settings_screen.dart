@@ -1,3 +1,5 @@
+import '../../widgets/change_password_form.dart';
+import '../donor/donor_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -206,123 +208,9 @@ class _ProfileTile extends StatelessWidget {
   }
 
   Future<void> _openEditProfileSheet(BuildContext context) async {
-    final nameCtrl = TextEditingController(text: data['name']?.toString());
-    // ✅ phoneNumber is no longer in `data` (top-level doc) — fetch it
-    // from the private subcollection before opening the sheet.
-    final currentPhone = await settingsService.getPhoneOnce();
-    final phoneCtrl = TextEditingController(text: currentPhone ?? '');
-    final addressCtrl =
-    TextEditingController(text: data['address']?.toString());
-    String bloodGroup = data['bloodGroup']?.toString() ?? 'O+';
-    const bloodGroups = [
-      'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-',
-    ];
-
-    if (!context.mounted) return;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
-          ),
-          child: StatefulBuilder(
-            builder: (sheetContext, setSheetState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Edit Profile',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Name',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: phoneCtrl,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'Phone Number',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: bloodGroup,
-                    decoration: const InputDecoration(
-                      labelText: 'Blood Group',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: bloodGroups
-                        .map((g) => DropdownMenuItem(value: g, child: Text(g)))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) setSheetState(() => bloodGroup = v);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: addressCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Address',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryRed,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () async {
-                      try {
-                        await settingsService.updateProfile(
-                          name: nameCtrl.text,
-                          phoneNumber: phoneCtrl.text,
-                          bloodGroup: bloodGroup,
-                          address: addressCtrl.text,
-                        );
-                        if (sheetContext.mounted) {
-                          Navigator.pop(sheetContext);
-                        }
-                      } catch (e) {
-                        if (sheetContext.mounted) {
-                          ScaffoldMessenger.of(sheetContext).showSnackBar(
-                            SnackBar(content: Text('Failed to save: $e')),
-                          );
-                        }
-                      }
-                    },
-                    child: const Text(
-                      'Save Changes',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    );
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => DonorProfileScreen(userData: Map.of(data))));
   }
 }
-
-// ═══════════════════════════ NOTIFICATIONS ═══════════════════════════
 
 class _NotificationsTile extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -461,7 +349,7 @@ class _LocationSharingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final locationEnabled = data['locationSharingEnabled'] != false;
+    final locationEnabled = data['locationSharingEnabled'] == true;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -783,106 +671,10 @@ class _AccountSecurityTile extends StatelessWidget {
     );
   }
 
-  void _openChangePasswordSheet(BuildContext context) {
-    final currentCtrl = TextEditingController();
-    final newCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
-    String? error;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
-          ),
-          child: StatefulBuilder(
-            builder: (sheetContext, setSheetState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Change Password',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: currentCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Current Password',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: newCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'New Password',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: confirmCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Confirm New Password',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 8),
-                    Text(error!, style: const TextStyle(color: Colors.red)),
-                  ],
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryRed,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () async {
-                      if (newCtrl.text != confirmCtrl.text) {
-                        setSheetState(
-                              () => error = 'New passwords do not match.',
-                        );
-                        return;
-                      }
-                      try {
-                        await settingsService.changePassword(
-                          currentPassword: currentCtrl.text,
-                          newPassword: newCtrl.text,
-                        );
-                        if (sheetContext.mounted) {
-                          Navigator.pop(sheetContext);
-                          onSnack('Password changed successfully.');
-                        }
-                      } catch (e) {
-                        setSheetState(
-                              () => error = 'Failed to change password: $e',
-                        );
-                      }
-                    },
-                    child: const Text(
-                      'Update Password',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    );
+  Future<void> _openChangePasswordSheet(BuildContext context) async {
+    final saved = await showModalBottomSheet<bool>(context: context, isScrollControlled: true,
+      builder: (_) => ChangePasswordForm(onSave: (current, next) =>
+        settingsService.changePassword(currentPassword: current, newPassword: next)));
+    if (saved == true) onSnack('Password changed successfully.');
   }
 }

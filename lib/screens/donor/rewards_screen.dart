@@ -17,6 +17,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
         context.read<RewardController>().loadReward(uid);
@@ -84,6 +85,15 @@ class _RewardsScreenState extends State<RewardsScreen> {
           }
 
           final reward = controller.reward;
+          if (controller.error != null) {
+            return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(controller.error!),
+              TextButton(onPressed: () {
+                final uid = FirebaseAuth.instance.currentUser?.uid;
+                if (uid != null) controller.loadReward(uid);
+              }, child: const Text('Retry')),
+            ]));
+          }
           final points = controller.totalPoints;
           final tier = controller.tier;
           final config = _tiers[tier] ?? _tiers['bronze']!;
@@ -167,7 +177,7 @@ class _PointsCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryRed.withOpacity(0.3),
+            color: AppColors.primaryRed.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -193,7 +203,7 @@ class _PointsCard extends StatelessWidget {
                 padding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -266,7 +276,7 @@ class _TierProgressCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -307,12 +317,12 @@ class _TierProgressCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isActive
-                          ? tc.color.withOpacity(0.15)
+                          ? tc.color.withValues(alpha: 0.15)
                           : Colors.grey[100],
                       border: Border.all(
                         color: isCurrent
                             ? tc.color
-                            : (isActive ? tc.color.withOpacity(0.4) : Colors.grey[300]!),
+                            : (isActive ? tc.color.withValues(alpha: 0.4) : Colors.grey[300]!),
                         width: isCurrent ? 2 : 1,
                       ),
                     ),
@@ -387,9 +397,6 @@ class _TierProgressCard extends StatelessWidget {
 class _HowToEarnCard extends StatelessWidget {
   final _perks = const [
     _Perk(icon: Icons.bloodtype, label: 'Donate Blood', points: '+50 pts'),
-    _Perk(icon: Icons.check_circle, label: 'Complete Profile', points: '+20 pts'),
-    _Perk(icon: Icons.campaign, label: 'Refer a Friend', points: '+30 pts'),
-    _Perk(icon: Icons.event, label: 'Attend Blood Drive', points: '+25 pts'),
   ];
 
   @override
@@ -401,7 +408,7 @@ class _HowToEarnCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -433,7 +440,7 @@ class _HowToEarnCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryRed.withOpacity(0.08),
+                      color: AppColors.primaryRed.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(p.icon,
@@ -449,7 +456,7 @@ class _HowToEarnCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.1),
+                      color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -485,10 +492,10 @@ class _CertificateCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primaryRed.withOpacity(0.15)),
+        border: Border.all(color: AppColors.primaryRed.withValues(alpha: 0.15)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -538,6 +545,23 @@ class _CertificateCard extends StatelessWidget {
               ],
             ),
           ),
+          if (certificate.imageUrl == null)
+            IconButton(
+              tooltip: 'Generate certificate',
+              icon: context.watch<RewardController>().generating(certificate.id)
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.description_outlined),
+              onPressed: context.watch<RewardController>().generating(certificate.id) ? null : () async {
+                try {
+                  await context.read<RewardController>().generateCertificate(certificate.id);
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Unable to create the certificate. Please try again.')));
+                  }
+                }
+              },
+            ),
           if (certificate.imageUrl != null)
             IconButton(
               icon: const Icon(Icons.download,
@@ -575,7 +599,7 @@ class _EmptyCertificates extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -587,11 +611,11 @@ class _EmptyCertificates extends StatelessWidget {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: AppColors.primaryRed.withOpacity(0.08),
+              color: AppColors.primaryRed.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.card_membership,
-                size: 34, color: AppColors.primaryRed.withOpacity(0.6)),
+                size: 34, color: AppColors.primaryRed.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 14),
           const Text(

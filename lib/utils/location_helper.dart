@@ -18,9 +18,10 @@ class LocationHelper {
     }
     if (permission == LocationPermission.deniedForever) return null;
 
-    return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 15)));
+    } catch (_) { return null; }
   }
 
   static Future<String?> getAddressFromCoordinates(

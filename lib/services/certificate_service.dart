@@ -1,7 +1,5 @@
-import 'dart:io';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
-import 'package:path_provider/path_provider.dart';
 import 'storage_service.dart';
 
 class CertificateService {
@@ -85,12 +83,8 @@ class CertificateService {
       ),
     );
 
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$donationId.pdf');
-    await file.writeAsBytes(await pdf.save());
-
     return await _storageService.uploadCertificate(
-      file: file,
+      bytes: await pdf.save(),
       donorId: donorId,
       donationId: donationId,
     );

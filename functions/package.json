@@ -8,12 +8,20 @@
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "test": "node --test test/policy.test.js",
+    "test:emulator": "node --test --test-concurrency=1 test/emulator.test.js",
+    "check": "node --check index.js && node --check secureWorkflows.js && node --check nearbyDonors.js"
   },
   "dependencies": {
     "firebase-admin": "^12.6.0",
     "firebase-functions": "^6.0.1",
     "twilio": "^5.3.0"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.10.0",
+    "firebase-tools": "^14.27.0"
+  }
 }

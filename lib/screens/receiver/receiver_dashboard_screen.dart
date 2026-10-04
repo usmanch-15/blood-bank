@@ -1,3 +1,4 @@
+import '../../utils/feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -52,7 +53,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
     final name = _userData?['name'] ?? 'User';
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // ── AppBar ──
@@ -64,11 +65,11 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             title: Row(
               children: [
                 GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.arrow_back, color: AppColors.primaryRed),
+                  onTap: () => Navigator.pushReplacementNamed(context, '/role-select'),
+                  child: Icon(Icons.arrow_back, color: AppColors.primaryRed),
                 ),
                 const SizedBox(width: AppSpacing.md),
-                const Text(
+                Text(
                   'Receiver Dashboard',
                   style: TextStyle(
                     color: AppColors.primaryRed,
@@ -81,7 +82,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             // in the receiver flow before this.
             actions: [
               IconButton(
-                icon: const Icon(Icons.settings_outlined,
+                icon: Icon(Icons.settings_outlined,
                     color: AppColors.primaryRed),
                 tooltip: 'Settings',
                 onPressed: () {
@@ -106,7 +107,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       gradient: LinearGradient(
                         colors: [
                           AppColors.secondaryBlue,
-                          AppColors.primaryRed.withOpacity(0.8),
+                          AppColors.primaryRed.withValues(alpha: 0.8),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
@@ -123,14 +124,14 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       children: [
                         Text(
                           'Welcome, $name',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Create a request or use SOS for emergencies',
                           style: TextStyle(fontSize: 14, color: Colors.white70),
                         ),
@@ -145,8 +146,8 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                 SlideInAnimation(
                   delay: const Duration(milliseconds: 80),
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.warning, size: 28),
-                    label: const Text(
+                    icon: Icon(Icons.warning, size: 28),
+                    label: Text(
                       'SOS EMERGENCY',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
@@ -205,25 +206,27 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
 
                 const SizedBox(height: AppSpacing.xxl + 6),
 
-                const Text(
+                Text(
                   'My Requests',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
                 // ── Real Firebase Requests (StreamBuilder) — unchanged query ──
                 uid.isEmpty
-                    ? const Center(child: Text('Not logged in'))
+                    ? Center(child: Text('Not logged in'))
                     : StreamBuilder<QuerySnapshot>(
                   stream: _firestore
                       .collection('blood_requests')
-                      .where('requesterId', isEqualTo: uid)
+.where('requesterId', isEqualTo: uid)
+                      .orderBy('createdAt', descending: true).limit(100)
                       .snapshots(),
                   builder: (context, snap) {
                     if (snap.connectionState == ConnectionState.waiting) {
                       return const LoadingShimmerList(itemCount: 2);
                     }
 
+                    if (snap.hasError) return Text(AppFeedback.message(snap.error!));
                     final docs = snap.data?.docs ?? [];
 
                     if (docs.isEmpty) {
@@ -267,11 +270,11 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.15),
+          backgroundColor: color.withValues(alpha: 0.15),
           child: Icon(icon, color: color),
         ),
         title: Text(title),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 18),
+        trailing: Icon(Icons.arrow_forward_ios, size: 18),
       ),
     );
   }
@@ -306,7 +309,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     const SizedBox(width: AppSpacing.sm),
                     Text(
                       '${request.unitsRequired ?? request.quantity} Units',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -320,13 +323,13 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             const SizedBox(height: AppSpacing.sm + 2),
             Row(
               children: [
-                const Icon(Icons.local_hospital_outlined,
+                Icon(Icons.local_hospital_outlined,
                     size: AppSpacing.iconSm, color: Colors.grey),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     request.hospitalName,
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Colors.grey),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -336,13 +339,13 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.location_on_outlined,
+                Icon(Icons.location_on_outlined,
                     size: AppSpacing.iconSm, color: Colors.grey),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     request.location,
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Colors.grey),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -353,9 +356,25 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
               const SizedBox(height: AppSpacing.sm),
               UrgencyBadge(urgency: request.urgency),
             ],
+            if (['pending', 'accepted'].contains(request.status))
+              TextButton.icon(icon: Icon(Icons.cancel_outlined), label: Text('Cancel request'),
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+                    title: Text('Cancel this request?'), actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Keep request')),
+                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Cancel request')),
+                    ]));
+                  if (confirmed != true) return;
+                  try {
+                    await FirebaseFirestore.instance.doc('blood_requests/${request.id}').update({
+                      'status': 'cancelled', 'cancelledAt': FieldValue.serverTimestamp()});
+                  } catch (e) {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to cancel: $e')));
+                  }
+                }),
             // ── Find Donors (unchanged: DonorMatchingScreen with requestId,
             // needed for confirmDonation Cloud Function authorization) ──
-            if (request.status != 'fulfilled') ...[
+            if (['pending', 'accepted'].contains(request.status)) ...[
               const SizedBox(height: AppSpacing.sm + 2),
               Align(
                 alignment: Alignment.centerRight,
@@ -371,8 +390,8 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.search, size: 16),
-                  label: const Text('Find Donors'),
+                  icon: Icon(Icons.search, size: 16),
+                  label: Text('Find Donors'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primaryRed,
                     side: const BorderSide(color: AppColors.primaryRed),

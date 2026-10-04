@@ -8,21 +8,21 @@ class AppException implements Exception {
 }
 
 class NetworkException extends AppException {
-  NetworkException([String message = 'No internet connection'])
-      : super(message, code: 'NETWORK_ERROR');
+  NetworkException([super.message = 'No internet connection'])
+      : super(code: 'NETWORK_ERROR');
 }
 
 class FirestoreException extends AppException {
-  FirestoreException([String message = 'Database error'])
-      : super(message, code: 'FIRESTORE_ERROR');
+  FirestoreException([super.message = 'Database error'])
+      : super(code: 'FIRESTORE_ERROR');
 }
 
 class AuthException extends AppException {
-  AuthException([String message = 'Authentication failed'])
-      : super(message, code: 'AUTH_ERROR');
+  AuthException([super.message = 'Authentication failed'])
+      : super(code: 'AUTH_ERROR');
 }
 
 class LocationException extends AppException {
-  LocationException([String message = 'Location access denied'])
-      : super(message, code: 'LOCATION_ERROR');
+  LocationException([super.message = 'Location access denied'])
+      : super(code: 'LOCATION_ERROR');
 }

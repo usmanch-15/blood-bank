@@ -66,12 +66,12 @@ class CustomTextField extends StatelessWidget {
         helperText: helperText,
         helperMaxLines: 2,
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, size: AppSpacing.iconSm + 4, color: AppColors.textSecondary)
+            ? Icon(prefixIcon, size: AppSpacing.iconSm + 4, color: Theme.of(context).colorScheme.onSurfaceVariant)
             : null,
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-          borderSide: const BorderSide(color: AppColors.textLight),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
@@ -91,12 +91,12 @@ class CustomTextField extends StatelessWidget {
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         filled: true,
         fillColor: enabled
-            ? (isFilled ? Colors.grey[50] : Colors.transparent)
-            : Colors.grey[100],
+            ? (isFilled ? Theme.of(context).colorScheme.surfaceContainerLow : Colors.transparent)
+            : Theme.of(context).colorScheme.surfaceContainerHighest,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.lg,

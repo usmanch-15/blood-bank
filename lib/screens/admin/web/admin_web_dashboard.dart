@@ -58,7 +58,7 @@ class _T {
 }
 
 class AdminWebDashboard extends StatefulWidget {
-  const AdminWebDashboard({Key? key}) : super(key: key);
+  const AdminWebDashboard({super.key});
 
   @override
   State<AdminWebDashboard> createState() => _AdminWebDashboardState();
@@ -277,7 +277,7 @@ class _Sidebar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(10),
-                  hoverColor: _T.inkPanel.withOpacity(0.6),
+                  hoverColor: _T.inkPanel.withValues(alpha: 0.6),
                   onTap: () => onTap(i),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -328,7 +328,7 @@ class _Sidebar extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: _T.crimson.withOpacity(0.18),
+                  backgroundColor: _T.crimson.withValues(alpha: 0.18),
                   child: Text(
                     initial,
                     style: const TextStyle(
@@ -421,7 +421,7 @@ class _TopBar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: _T.emerald.withOpacity(0.09),
+              color: _T.emerald.withValues(alpha: 0.09),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -513,7 +513,7 @@ Widget _statusPill(String status, {Map<String, Color>? overrides}) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
     decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(20),
     ),
     child: Row(
@@ -535,7 +535,7 @@ Widget _statusPill(String status, {Map<String, Color>? overrides}) {
 
 // ─── Dashboard Home ─────────────────────────────────────────────────────
 class _DashboardHome extends StatelessWidget {
-  const _DashboardHome({Key? key}) : super(key: key);
+  const _DashboardHome();
 
   Future<Map<String, int>> _fetchStats() async {
     final db = FirebaseFirestore.instance;
@@ -694,7 +694,7 @@ class _StatCard extends StatelessWidget {
         border: Border.all(color: _T.hairline),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -707,7 +707,7 @@ class _StatCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 19),
@@ -805,7 +805,7 @@ class _PanelRow extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: leadingColor.withOpacity(0.1),
+            backgroundColor: leadingColor.withValues(alpha: 0.1),
             child: Text(
               leadingText,
               style: TextStyle(

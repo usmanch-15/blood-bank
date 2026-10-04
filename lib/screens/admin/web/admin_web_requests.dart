@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminWebRequests extends StatefulWidget {
-  const AdminWebRequests({Key? key}) : super(key: key);
+  const AdminWebRequests({super.key});
 
   @override
   State<AdminWebRequests> createState() => _AdminWebRequestsState();
@@ -72,13 +72,14 @@ class _AdminWebRequestsState extends State<AdminWebRequests>
 // TAB 1: Pending User Approvals
 // ════════════════════════════════════════════════════════════════
 class _PendingUsersTab extends StatelessWidget {
-  const _PendingUsersTab({Key? key}) : super(key: key);
+  const _PendingUsersTab();
 
   Future<void> _approveUser(String uid, BuildContext context) async {
     await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .update({'status': 'approved'});
+    if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -117,6 +118,7 @@ class _PendingUsersTab extends StatelessWidget {
           .collection('users')
           .doc(uid)
           .update({'status': 'rejected'});
+      if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -314,7 +316,7 @@ class _PendingUsersTab extends StatelessWidget {
 // TAB 2: Blood Requests (aapka purana content yahan)
 // ════════════════════════════════════════════════════════════════
 class _BloodRequestsTab extends StatelessWidget {
-  const _BloodRequestsTab({Key? key}) : super(key: key);
+  const _BloodRequestsTab();
 
   @override
   Widget build(BuildContext context) {

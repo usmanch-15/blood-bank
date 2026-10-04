@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -121,6 +122,7 @@ class PushNavigationService {
   }
 
   void _navigateForType(String? type) {
+    if (FirebaseAuth.instance.currentUser == null) return;
     final navigator = rootNavigatorKey.currentState;
     if (navigator == null) return;
 

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../constants/app_colors.dart';
 import '../../controllers/receiver_controller.dart';
 import '../../utils/location_helper.dart';
 
@@ -115,6 +113,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
     // Start countdown
     Future.doWhile(() async {
       await Future.delayed(const Duration(seconds: 1));
+      if (!mounted || !_isSosActive) return false;
       if (_countdown > 0) {
         setState(() {
           _countdown--;
@@ -187,8 +186,8 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
               Expanded(
                 child: Text(
                   matchedCount > 0
-                      ? 'SOS Alert sent to $matchedCount nearby donor(s)!'
-                      : 'SOS Alert saved, but no eligible donors were found nearby yet. We will keep trying.',
+                      ? 'SOS saved. $matchedCount nearby donors found; server delivery is pending.'
+                      : 'SOS Alert saved, but no eligible donors were found nearby yet. Try again later or contact emergency services.',
                 ),
               ),
             ],
@@ -253,7 +252,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                       _selectedBloodGroup = group;
                     });
                   },
-                  selectedColor: Colors.red.withOpacity(0.2),
+                  selectedColor: Colors.red.withValues(alpha: 0.2),
                   backgroundColor: Colors.grey[100],
                   labelStyle: TextStyle(
                     color: isSelected ? Colors.red : Colors.black,
@@ -299,7 +298,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _selectedUrgency,
+              initialValue: _selectedUrgency,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -344,7 +343,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.red, width: 2),
               ),
@@ -388,7 +387,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
               padding: const EdgeInsets.all(20),
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.green, width: 2),
               ),
@@ -427,7 +426,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                 color: _isSosActive ? Colors.red.shade700 : Colors.red,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.red.withOpacity(_isSosActive ? 0.5 : 0.3),
+                    color: Colors.red.withValues(alpha: _isSosActive ? 0.5 : 0.3),
                     blurRadius: _isSosActive ? 30 : 20,
                     spreadRadius: _isSosActive ? 10 : 5,
                   ),
@@ -457,7 +456,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                       child: Text(
                         'Tap to cancel',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 12,
                         ),
                       ),
@@ -583,7 +582,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.red, width: 1),
               ),
@@ -680,7 +679,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                           ? null
                           : () async {
                         await _fetchRealLocation();
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(

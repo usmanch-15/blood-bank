@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../../constants/app_constants.dart';
 import '../../services/auth_service.dart';
@@ -148,12 +147,12 @@ class _SignUpScreenState extends State<SignUpScreen>
               height: 78,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFFFB300).withOpacity(0.1),
+                color: const Color(0xFFFFB300).withValues(alpha: 0.1),
                 border: Border.all(
-                    color: const Color(0xFFFFB300).withOpacity(0.3),
+                    color: const Color(0xFFFFB300).withValues(alpha: 0.3),
                     width: 2),
               ),
-              child: const Icon(Icons.hourglass_top_rounded,
+              child: const Icon(Icons.check_circle_outline_rounded,
                   size: 38, color: Color(0xFFFFB300)),
             ),
             const SizedBox(height: 22),
@@ -168,7 +167,7 @@ class _SignUpScreenState extends State<SignUpScreen>
             ),
             const SizedBox(height: 14),
             const Text(
-              'Your account is pending admin approval.\n\nYou will be able to login once your account is approved.',
+              'Your account is ready. You can sign in now.\n\nEmail verification is optional; check your inbox for the verification link.',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 14,
@@ -303,13 +302,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     icon: Icons.person_outline,
                                     textInputAction: TextInputAction.next,
                                     autofillHints: const [AutofillHints.name],
-                                    validator: (v) {
-                                      if (v == null || v.isEmpty)
-                                        return 'Name required';
-                                      if (v.length < 3)
-                                        return 'Min 3 characters';
-                                      return null;
-                                    },
+                                    validator: AppValidators.validateName,
                                   ),
                                   const SizedBox(height: 18),
 
@@ -324,14 +317,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     TextInputType.emailAddress,
                                     textInputAction: TextInputAction.next,
                                     autofillHints: const [AutofillHints.email],
-                                    validator: (v) {
-                                      if (v == null || v.trim().isEmpty)
-                                        return 'Email required';
-                                      if (!v.contains('@') ||
-                                          !v.contains('.'))
-                                        return 'Enter valid email';
-                                      return null;
-                                    },
+                                    validator: AppValidators.validateEmail,
                                   ),
                                   const SizedBox(height: 18),
 
@@ -347,13 +333,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     autofillHints: const [
                                       AutofillHints.telephoneNumber
                                     ],
-                                    validator: (v) {
-                                      if (v == null || v.isEmpty)
-                                        return 'Phone required';
-                                      if (v.length < 11)
-                                        return 'Enter valid number';
-                                      return null;
-                                    },
+                                    validator: AppValidators.validatePhone,
                                   ),
                                   const SizedBox(height: 18),
 
@@ -420,13 +400,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                         size: 20,
                                       ),
                                     ),
-                                    validator: (v) {
-                                      if (v == null || v.isEmpty)
-                                        return 'Password required';
-                                      if (v.length < 6)
-                                        return 'Min 6 characters';
-                                      return null;
-                                    },
+                                    validator: AppValidators.validatePassword,
                                   ),
                                   const SizedBox(height: 18),
 
@@ -455,10 +429,12 @@ class _SignUpScreenState extends State<SignUpScreen>
                                       ),
                                     ),
                                     validator: (v) {
-                                      if (v == null || v.isEmpty)
+                                      if (v == null || v.isEmpty) {
                                         return 'Confirm your password';
-                                      if (v != _passwordController.text)
+                                      }
+                                      if (v != _passwordController.text) {
                                         return 'Passwords do not match';
+                                      }
                                       return null;
                                     },
                                   ),
@@ -522,7 +498,7 @@ class _SignUpScreenState extends State<SignUpScreen>
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-            colors: [color.withOpacity(opacity), Colors.transparent]),
+            colors: [color.withValues(alpha: opacity), Colors.transparent]),
       ),
     );
   }
@@ -571,7 +547,7 @@ class _SignUpScreenState extends State<SignUpScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFB71C1C).withOpacity(0.45),
+            color: const Color(0xFFB71C1C).withValues(alpha: 0.45),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -659,7 +635,7 @@ class _SignUpScreenState extends State<SignUpScreen>
 
   Widget _buildDropdown() {
     return DropdownButtonFormField<String>(
-      value: _selectedBloodGroup,
+      initialValue: _selectedBloodGroup,
       dropdownColor: const Color(0xFF1E1E1E),
       style: const TextStyle(color: Colors.white, fontSize: 15),
       icon: const Icon(Icons.keyboard_arrow_down_rounded,
@@ -711,10 +687,10 @@ class _SignUpScreenState extends State<SignUpScreen>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFB71C1C).withOpacity(0.08),
+        color: const Color(0xFFB71C1C).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: const Color(0xFFB71C1C).withOpacity(0.2)),
+            color: const Color(0xFFB71C1C).withValues(alpha: 0.2)),
       ),
       child: const Row(
         children: [
@@ -763,7 +739,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                 : [
               BoxShadow(
                 color:
-                const Color(0xFFB71C1C).withOpacity(0.5),
+                const Color(0xFFB71C1C).withValues(alpha: 0.5),
                 blurRadius: 20,
                 offset: const Offset(0, 6),
               ),

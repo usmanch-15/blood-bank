@@ -1,3 +1,6 @@
+import '../utils/account_policy.dart';
+import '../utils/validators.dart';
+import 'notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -16,7 +19,7 @@ class AuthService {
     try {
       final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
-        password: password.trim(),
+        password: password,
       );
 
       // ✅ CHANGE: email verification is no longer required to log in.
@@ -26,48 +29,14 @@ class AuthService {
       // gate at all" requirement. If verification is ever required again,
       // reinstate a check here using credential.user!.emailVerified.
 
-      // Firestore se status check karo
-      final doc = await _firestore
-          .collection('users')
-          .doc(credential.user!.uid)
-          .get();
-
-      // ⚠️ SECURITY FIX: previously this whole block was `if (doc.exists)`,
-      // so a MISSING doc (e.g. an admin-deleted user, or any other way the
-      // doc could vanish while the Auth account survives) skipped every
-      // check below and fell straight through to `return credential` —
-      // i.e. login succeeded with zero restrictions. A real account
-      // always has a users/{uid} doc created at signup, so a missing doc
-      // now blocks login instead of silently allowing it.
-      if (!doc.exists) {
-        await _auth.signOut();
-        throw 'account-not-found';
-      }
-
-      final status = doc.data()?['status'] ?? 'pending';
-
-      if (status == 'pending') {
-        await _auth.signOut();
-        throw 'pending';
-      }
-
-      if (status == 'rejected') {
-        await _auth.signOut();
-        throw 'rejected';
-      }
-
-      if (status == 'deleted') {
-        await _auth.signOut();
-        throw 'account-not-found';
-      }
+      await initializeSession();
 
       // ✅ admin approval is no longer required before login, so this is
       // now how admins see real activity: a timestamp of each user's most
       // recent successful login, shown in AdminWebUsers.
-      await _firestore
-          .collection('users')
-          .doc(credential.user!.uid)
-          .update({'lastLoginAt': FieldValue.serverTimestamp()});
+      await _firestore.collection('users').doc(credential.user!.uid).update({
+        'lastLoginAt': FieldValue.serverTimestamp(),
+      });
 
       return credential;
     } on FirebaseAuthException catch (e) {
@@ -75,7 +44,7 @@ class AuthService {
     }
   }
 
-  // ✅ Signup — status 'pending' ke saath save karo
+  // Signup creates an approved ordinary account; admin is never a signup role.
   Future<UserCredential> signupWithEmail({
     required String email,
     required String password,
@@ -85,14 +54,16 @@ class AuthService {
     String? bloodGroup,
     String? cnic, // ✅ NEW
   }) async {
+    if (!const ['donor', 'receiver'].contains(role)) {
+      throw ArgumentError('Choose donor or receiver.');
+    }
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
-        password: password.trim(),
+        password: password,
       );
 
-      final userRef =
-      _firestore.collection('users').doc(credential.user!.uid);
+      final userRef = _firestore.collection('users').doc(credential.user!.uid);
 
       // Firestore mein user data save karo — status: approved
       // ✅ CHANGE: admin approval step removed — new signups get full
@@ -110,6 +81,10 @@ class AuthService {
         'email': email.trim(),
         'name': name.trim(),
         'role': role,
+        'isDonor': role == 'donor',
+        'isReceiver': role == 'receiver',
+        'isAvailable': role == 'donor',
+        'locationSharingEnabled': false,
         'bloodGroup': bloodGroup,
         'status': 'approved',
         'isEligible': true,
@@ -130,16 +105,19 @@ class AuthService {
           (cnic != null && cnic.trim().isNotEmpty)) {
         await userRef.collection('private').doc('contact').set({
           if (phoneNumber != null && phoneNumber.trim().isNotEmpty)
-            'phoneNumber': phoneNumber.trim(),
-          if (cnic != null && cnic.trim().isNotEmpty)
-            'cnic': cnic.trim(),
+            'phoneNumber': AppValidators.normalizePhone(phoneNumber),
+          if (cnic != null && cnic.trim().isNotEmpty) 'cnic': cnic.trim(),
         }, SetOptions(merge: true));
       }
 
       // Verification email bhejo — sirf record ke liye, ab login isko
       // require nahi karta (signInWithEmailPassword mein check hata diya
       // gaya hai).
-      await credential.user!.sendEmailVerification();
+      try {
+        await credential.user!.sendEmailVerification();
+      } on FirebaseAuthException {
+        // Account creation succeeded; verification is optional.
+      }
 
       // Signup ke baad sign out — user login screen se khud login karega.
       // Ab koi verification/approval wait nahi, login turant kaam karega.
@@ -162,7 +140,7 @@ class AuthService {
     try {
       final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
-        password: password.trim(),
+        password: password,
       );
       await credential.user!.reload();
       if (!credential.user!.emailVerified) {
@@ -247,19 +225,60 @@ class AuthService {
       throw Exception('Pehle login karein, phir phone verify karein.');
     }
 
-    try {
+    await linkVerifiedPhone(credential);
+  }
+
+  Future<void> linkVerifiedPhone(PhoneAuthCredential credential) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('Sign in before verifying your phone.');
+    if (user.providerData.any((p) => p.providerId == 'phone')) {
+      await user.updatePhoneNumber(credential);
+    } else {
       await user.linkWithCredential(credential);
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'credential-already-in-use' ||
-          e.code == 'provider-already-linked') {
-        // Number pehle se hi is account se linked hai — treat as success
-        return;
-      }
-      if (e.code == 'invalid-verification-code') {
-        throw Exception('Code galat hai. Dobara check karein.');
-      }
-      throw Exception(_handleAuthError(e));
     }
+    await user.getIdToken(true);
+    await user.reload();
+    final phone = _auth.currentUser?.phoneNumber;
+    if (phone == null) throw StateError('Phone verification did not complete.');
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('private')
+        .doc('contact')
+        .set({'phoneNumber': phone}, SetOptions(merge: true));
+  }
+
+  Future<Map<String, dynamic>> initializeSession() async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('Please sign in.');
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 15));
+      final data = doc.data();
+      if (!AccountPolicy.isActive(data)) {
+        throw StateError('This account is unavailable or suspended.');
+      }
+      await NotificationService().init();
+      return data!;
+    } catch (_) {
+      await _auth.signOut();
+      rethrow;
+    }
+  }
+
+  Future<void> switchMode(String mode) async {
+    final data = await initializeSession();
+    if (!AccountPolicy.canSwitchMode(data['role'] as String?, mode)) {
+      throw StateError('This account cannot switch to that mode.');
+    }
+    await updateUserData(_auth.currentUser!.uid, {
+      'role': mode,
+      if (mode == 'donor') 'isDonor': true,
+      if (mode == 'receiver') 'isReceiver': true,
+    });
   }
 
   // ✅ Password reset
@@ -273,6 +292,7 @@ class AuthService {
 
   // ✅ Logout
   Future<void> signOut() async {
+    await NotificationService().clearDeviceToken();
     await _auth.signOut();
   }
 

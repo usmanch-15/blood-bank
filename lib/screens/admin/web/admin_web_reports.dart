@@ -4,7 +4,7 @@ import '../../../models/misuse_report_model.dart';
 import '../../../constants/app_colors.dart';
 
 class AdminWebReports extends StatefulWidget {
-  const AdminWebReports({Key? key}) : super(key: key);
+  const AdminWebReports({super.key});
 
   @override
   State<AdminWebReports> createState() => _AdminWebReportsState();
@@ -262,7 +262,7 @@ class _AdminWebReportsState extends State<AdminWebReports>
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -276,7 +276,7 @@ class _AdminWebReportsState extends State<AdminWebReports>
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: typeColor.withOpacity(0.1),
+            color: typeColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child:
@@ -402,7 +402,7 @@ class _AdminWebReportsState extends State<AdminWebReports>
       label: Text(label, style: const TextStyle(fontSize: 12)),
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
-        side: BorderSide(color: color.withOpacity(0.5)),
+        side: BorderSide(color: color.withValues(alpha: 0.5)),
         padding:
         const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         shape: RoundedRectangleBorder(
@@ -415,7 +415,7 @@ class _AdminWebReportsState extends State<AdminWebReports>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -431,7 +431,7 @@ class _AdminWebReportsState extends State<AdminWebReports>
       padding:
       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -582,7 +582,7 @@ class _AdminWebReportsState extends State<AdminWebReports>
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

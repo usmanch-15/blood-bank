@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../constants/app_constants.dart';
 
@@ -6,25 +6,25 @@ class StorageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Future<String> uploadCertificate({
-    required File file,
+    required Uint8List bytes,
     required String donorId,
     required String donationId,
   }) async {
     final ref = _storage
         .ref()
         .child('${AppConstants.certificatesPath}/$donorId/$donationId.pdf');
-    final task = await ref.putFile(file);
+    final task = await ref.putData(bytes, SettableMetadata(contentType: 'application/pdf'));
     return await task.ref.getDownloadURL();
   }
 
   Future<String> uploadProfileImage({
-    required File file,
+    required Uint8List bytes,
     required String userId,
   }) async {
     final ref = _storage
         .ref()
         .child('${AppConstants.profileImagesPath}/$userId/avatar.jpg');
-    final task = await ref.putFile(file);
+    final task = await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
     return await task.ref.getDownloadURL();
   }
 

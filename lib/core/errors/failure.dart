@@ -4,25 +4,21 @@ abstract class Failure {
 }
 
 class NetworkFailure extends Failure {
-  const NetworkFailure([String message = 'No internet connection'])
-      : super(message);
+  const NetworkFailure([super.message = 'No internet connection']);
 }
 
 class ServerFailure extends Failure {
-  const ServerFailure([String message = 'Server error occurred'])
-      : super(message);
+  const ServerFailure([super.message = 'Server error occurred']);
 }
 
 class AuthFailure extends Failure {
-  const AuthFailure([String message = 'Authentication failed'])
-      : super(message);
+  const AuthFailure([super.message = 'Authentication failed']);
 }
 
 class LocationFailure extends Failure {
-  const LocationFailure([String message = 'Could not get location'])
-      : super(message);
+  const LocationFailure([super.message = 'Could not get location']);
 }
 
 class CacheFailure extends Failure {
-  const CacheFailure([String message = 'Local data error']) : super(message);
+  const CacheFailure([super.message = 'Local data error']);
 }

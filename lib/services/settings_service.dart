@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'notification_service.dart';
+import '../utils/validators.dart';
 import '../constants/app_constants.dart';
 
 class SettingsService {
@@ -47,6 +49,8 @@ class SettingsService {
     String? bloodGroup,
     String? address,
   }) async {
+    if (name != null && AppValidators.validateName(name) != null) throw ArgumentError(AppValidators.validateName(name));
+    if (phoneNumber != null) throw StateError('Use phone verification to change your number.');
     final data = <String, dynamic>{};
     if (name != null) data['name'] = name.trim();
     if (bloodGroup != null) data['bloodGroup'] = bloodGroup;
@@ -108,44 +112,12 @@ class SettingsService {
   }
 
   Future<void> logout() async {
-    try {
-      final uid = _uid;
-      if (uid != null) {
-        await _firestore
-            .collection(AppConstants.usersCollection)
-            .doc(uid)
-            .update({
-          'fcmToken': FieldValue.delete(),
-          'fcmUpdatedAt': FieldValue.serverTimestamp(),
-        });
-      }
-      await FirebaseMessaging.instance.deleteToken();
-    } catch (_) {}
+    await NotificationService().clearDeviceToken();
     await _auth.signOut();
   }
-
   Future<void> deleteAccount() async {
-    final uid = _uid;
-    if (uid == null) {
-      throw Exception('No user is currently logged in.');
-    }
-
-    await _firestore.collection(AppConstants.usersCollection).doc(uid).update({
-      'status': 'deleted',
-      'isAvailable': false,
-      'fcmToken': FieldValue.delete(),
-      'deletedAt': FieldValue.serverTimestamp(),
-    });
-
-    try {
-      await FirebaseMessaging.instance.deleteToken();
-      await _auth.currentUser?.delete();
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'requires-recent-login') {
-        rethrow;
-      }
-    }
-
+    await FirebaseFunctions.instance.httpsCallable('deleteAccount').call();
+    await NotificationService().clearDeviceToken();
     await _auth.signOut();
   }
 
@@ -211,7 +183,7 @@ class SettingsService {
     buffer.writeln('SMART BLOOD BANK — MY DATA EXPORT');
     buffer.writeln('Generated: ${DateTime.now().toIso8601String()}');
     buffer.writeln('User ID: $uid');
-    buffer.writeln('${'=' * 50}');
+    buffer.writeln('=' * 50);
 
     buffer.writeln('\nPROFILE');
     buffer.writeln('-' * 20);

@@ -1,3 +1,5 @@
+import 'dart:async';
+import '../utils/account_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
@@ -7,6 +9,7 @@ import '../models/user_model.dart';
 class AuthController extends ChangeNotifier {
   final AuthService _authService = AuthService();
 
+  late final StreamSubscription<User?> _authSubscription;
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
@@ -29,7 +32,9 @@ class AuthController extends ChangeNotifier {
   /// silently wrong. Listening to FirebaseAuth.authStateChanges() means
   /// this stays correct no matter which screen performed the sign-in.
   AuthController() {
-    FirebaseAuth.instance.authStateChanges().listen(_onAuthStateChanged);
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
+      _onAuthStateChanged,
+    );
   }
 
   Future<void> _onAuthStateChanged(User? firebaseUser) async {
@@ -40,8 +45,12 @@ class AuthController extends ChangeNotifier {
     }
     try {
       final data = await _authService.getUserData(firebaseUser.uid);
-      if (data != null) {
-        _currentUser = UserModel.fromFirestore(data, firebaseUser.uid);
+      if (FirebaseAuth.instance.currentUser?.uid != firebaseUser.uid) return;
+      if (AccountPolicy.isActive(data)) {
+        _currentUser = UserModel.fromFirestore(data!, firebaseUser.uid);
+        notifyListeners();
+      } else {
+        _currentUser = null;
         notifyListeners();
       }
     } catch (e) {
@@ -51,15 +60,30 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  void _setLoading(bool val) { _isLoading = val; notifyListeners(); }
-  void _setError(String? msg) { _errorMessage = msg; notifyListeners(); }
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
+
+  void _setLoading(bool val) {
+    _isLoading = val;
+    notifyListeners();
+  }
+
+  void _setError(String? msg) {
+    _errorMessage = msg;
+    notifyListeners();
+  }
 
   Future<bool> login(String email, String password) async {
     _setLoading(true);
     _setError(null);
     try {
       final credential = await _authService.signInWithEmailPassword(
-          email: email, password: password);
+        email: email,
+        password: password,
+      );
       final data = await _authService.getUserData(credential.user!.uid);
       if (data != null) {
         _currentUser = UserModel.fromFirestore(data, credential.user!.uid);

@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../constants/app_colors.dart';
 
 class AdminWebAnalytics extends StatefulWidget {
-  const AdminWebAnalytics({Key? key}) : super(key: key);
+  const AdminWebAnalytics({super.key});
 
   @override
   State<AdminWebAnalytics> createState() => _AdminWebAnalyticsState();
@@ -56,7 +56,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
       // Users breakdown
       int donors = 0, receivers = 0, pending = 0;
       for (final doc in usersSnap.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         if (data['isDonor'] == true) donors++;
         if (data['isReceiver'] == true) receivers++;
         if (data['status'] == 'pending') pending++;
@@ -66,7 +66,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
       final bgDonations = <String, int>{};
       int totalPts = 0;
       for (final doc in donationsSnap.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final bg = data['bloodGroup'] as String? ?? 'Unknown';
         bgDonations[bg] = (bgDonations[bg] ?? 0) + 1;
         totalPts += (data['pointsEarned'] as int? ?? 0);
@@ -76,7 +76,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
       int pendingReq = 0, fulfilledReq = 0;
       final bgRequests = <String, int>{};
       for (final doc in requestsSnap.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final status = data['status'] as String? ?? '';
         if (status == 'pending') pendingReq++;
         if (status == 'fulfilled') fulfilledReq++;
@@ -306,7 +306,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
               border: Border.all(color: Colors.grey.shade200),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -317,7 +317,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(k['icon'] as IconData, color: color, size: 24),
@@ -375,7 +375,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -618,7 +618,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
+        color: color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(

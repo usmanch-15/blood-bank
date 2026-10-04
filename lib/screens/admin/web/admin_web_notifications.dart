@@ -4,7 +4,7 @@ import '../../../models/notification_model.dart';
 import '../../../constants/app_colors.dart';
 
 class AdminWebNotifications extends StatefulWidget {
-  const AdminWebNotifications({Key? key}) : super(key: key);
+  const AdminWebNotifications({super.key});
 
   @override
   State<AdminWebNotifications> createState() =>
@@ -57,7 +57,7 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
         .snapshots()
         .map((snap) => snap.docs
         .map((d) => NotificationModel.fromFirestore(
-        d.data() as Map<String, dynamic>, d.id))
+        d.data(), d.id))
         .toList());
   }
 
@@ -172,7 +172,7 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                 border: Border.all(color: Colors.grey.shade200),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -423,7 +423,7 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                 border: Border.all(color: Colors.grey.shade200),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -604,7 +604,7 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                     border: Border.all(color: Colors.grey.shade200),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -637,7 +637,7 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: typeColor.withOpacity(0.1),
+          color: typeColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(_notifTypeIcon(n.type), color: typeColor, size: 20),
@@ -663,7 +663,7 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                 padding: const EdgeInsets.symmetric(
                     horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: typeColor.withOpacity(0.1),
+                  color: typeColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(

@@ -135,7 +135,7 @@ class CustomIconButton extends StatelessWidget {
         tooltip: tooltip,
         icon: Icon(icon, color: resolvedColor, size: size * 0.5),
         style: IconButton.styleFrom(
-          backgroundColor: resolvedColor.withOpacity(0.1),
+          backgroundColor: resolvedColor.withValues(alpha: 0.1),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           ),
@@ -175,7 +175,7 @@ class ProfileCard extends StatelessWidget {
         contentPadding: const EdgeInsets.all(AppSpacing.md),
         leading: CircleAvatar(
           radius: 26,
-          backgroundColor: AppColors.primaryRed.withOpacity(0.15),
+          backgroundColor: AppColors.primaryRed.withValues(alpha: 0.15),
           backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty ? NetworkImage(avatarUrl!) : null,
           child: (avatarUrl == null || avatarUrl!.isEmpty)
               ? Text(

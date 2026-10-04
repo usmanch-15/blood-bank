@@ -1,421 +1,102 @@
-# 🩸 Smart Blood Bank Mobile Application
+﻿# Smart Blood Bank
 
-<div align="center">
+Flutter/Firebase Final Year Project, COMSATS University Islamabad, Vehari Campus.
+Muhammad Usman (SP23-BCS-046), Muhammad Hassan (SP23-BCS-038). Supervisor: Sir Najeeb Ullah Khan.
 
-![Flutter](https://img.shields.io/badge/Flutter-3.19+-02569B?style=for-the-badge&logo=flutter&logoColor=white)
-![Dart](https://img.shields.io/badge/Dart-3.3+-0175C2?style=for-the-badge&logo=dart&logoColor=white)
-![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
-![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-green?style=for-the-badge)
+This is the existing donor/receiver application and admin interface, using Provider, Firebase Authentication, Firestore, Storage and Cloud Functions. No production deployment or data migration was performed during this reliability pass.
 
-**A Final Year Project – COMSATS University Islamabad, Vehari Campus**  
-Department of Computer Science | Session: Spring 2023–2027
+## Implemented scope
 
-*Muhammad Usman (SP23-BCS-046) | Muhammad Hassan (SP23-BCS-038)*  
-*Supervisor: Sir Najeeb Ullah Khan*
+- Email/password authentication, recovery, shared account-status checks and restored sessions.
+- Donor/receiver switching with additive capability flags; admin remains privileged.
+- Profile validation, persisted availability, opt-in approximate location, phone credential linking.
+- Blood requests, cancellation, donor acceptance and assigned-donor confirmation.
+- Atomic server awards: 50 points once per request, with a 90-day donation interval.
+- Indexed geographic matching by compatibility, availability, consent and eligibility. SOS searches 15 km and expands to 30 km only if no match exists at 15 km.
+- Donation history, rewards and PDF certificates from confirmed records. These client-rendered acknowledgements are not signed medical credentials.
+- Notification inbox, Android FCM handling, settings and authenticated account cleanup.
+- Existing admin management screens; no public admin signup.
 
-</div>
+Android is the main device target. Web compiles, but a complete browser walkthrough was not available in this environment. Web push is skipped pending VAPID/service-worker setup. iOS and desktop are not certified. OTP, maps, push/SMS and download behavior need external/device verification.
 
----
+Chat, ratings, CNIC verification, blood drives, full localization, hospital integration and expanded admin features remain future work. CNIC is optional unverified input. No completion percentage is claimed.
 
-## 📋 Overview
+## Local setup and checks
 
-The **Smart Blood Bank Mobile Application** is a cross-platform mobile solution built with **Flutter** and **Firebase** that connects blood donors and receivers on a single, verified, real-time platform. It replaces slow manual methods (phone calls, WhatsApp groups) with instant geolocation-based donor matching, SOS emergency alerts, and automated eligibility tracking.
+Use committed lockfiles. Local Flutter checks used 3.47.5. Backend runtime is Node 20; use JDK 17 for Android and JDK 21 for Firebase emulator tooling.
 
-> **Problem:** Hospitals in Pakistan still rely on informal methods to find blood donors during emergencies — causing dangerous delays.  
-> **Solution:** A unified app where donors register, receivers request blood, and the system automatically finds and notifies the nearest eligible donor within minutes.
-
----
-
-## ✨ Features
-
-### 🔐 Authentication Module
-- Email/Password login with Firebase Authentication
-- OTP-based phone number verification
-- Role selection: **Donor**, **Receiver**, or **Admin**
-- Admin approval workflow (status: pending → approved)
-- Password reset via email
-
-### 🩸 Donor Module
-- Register blood group, location, and profile details
-- Automatic eligibility check (90-day minimum between donations)
-- View complete donation history with dates and locations
-- Reward points earned per donation
-- Auto-generated downloadable PDF donation certificates
-- Toggle availability (Available / Unavailable)
-
-### 🏥 Receiver Module
-- Submit structured blood requests (blood group, urgency, hospital, units)
-- **SOS Emergency Alert** — instantly notifies all nearby eligible donors
-- Auto-expands search radius from 15 km → 30 km if no donors found
-- Real-time request status tracking
-
-### 🛡️ Admin Module
-- View and manage all registered users
-- Approve, suspend, or delete accounts
-- Monitor all blood requests and donations
-- Dashboard statistics: total donors, receivers, requests, donations
-
-### 🗺️ Mapping Module
-- Google Maps integration for live donor locations
-- Haversine formula-based distance calculation
-- Distance Matrix API for estimated travel time (ETA)
-
-### 🔔 Notification Module
-- Firebase Cloud Messaging (FCM) push notifications
-- SOS emergency alerts to nearby donors
-- Eligibility reminders (when donor becomes eligible again)
-- Blood drive announcements
-
----
-
-## 🏗️ Project Structure
-
-```
-smart_blood_bank/
-├── lib/
-│   ├── app/                    # App config: routes, theme, strings
-│   ├── constants/              # AppConstants, AppColors, AppTheme
-│   ├── controllers/            # Business logic (Provider pattern)
-│   │   ├── auth_controller.dart
-│   │   ├── donor_controller.dart
-│   │   ├── receiver_controller.dart
-│   │   ├── admin_controller.dart
-│   │   ├── notification_controller.dart
-│   │   └── reward_controller.dart
-│   ├── models/                 # Firestore data models
-│   │   ├── user_model.dart
-│   │   ├── donor_model.dart
-│   │   ├── receiver_model.dart
-│   │   ├── donation_model.dart
-│   │   ├── blood_request_model.dart
-│   │   ├── sos_request_model.dart
-│   │   ├── notification_model.dart
-│   │   └── reward_model.dart
-│   ├── modules/                # Feature-specific widgets
-│   │   ├── auth/widgets/
-│   │   ├── donor/widgets/
-│   │   ├── receiver/widgets/
-│   │   ├── notifications/widgets/
-│   │   └── rewards/widgets/
-│   ├── screens/                # All UI screens
-│   │   ├── auth/               # Login, Signup, OTP
-│   │   ├── donor/              # Dashboard, Profile, History, Eligibility, Rewards
-│   │   ├── receiver/           # Dashboard, Blood Request, SOS
-│   │   ├── admin/              # Dashboard, Users, Requests, Analytics
-│   │   ├── maps/               # Nearby Donors Map
-│   │   └── notification/       # Notification list
-│   ├── services/               # Firebase & external API services
-│   │   ├── auth_service.dart
-│   │   ├── firestore_service.dart
-│   │   ├── notification_service.dart
-│   │   ├── geo_location_service.dart
-│   │   ├── storage_service.dart
-│   │   ├── certificate_service.dart
-│   │   └── maps_service.dart
-│   ├── utils/                  # Helper utilities
-│   │   ├── date_utils.dart     # Eligibility calculation (90-day rule)
-│   │   └── location_helper.dart # Haversine distance formula
-│   ├── widgets/                # Shared reusable widgets
-│   └── main.dart
-├── assets/
-│   ├── images/
-│   ├── icons/
-│   └── fonts/
-├── test/
-│   ├── unit/
-│   └── widget/
-├── android/
-├── ios/
-└── pubspec.yaml
-```
-
----
-
-## 🛠️ Tech Stack
-
-| Technology | Version | Purpose |
-|---|---|---|
-| Flutter | 3.19+ | Cross-platform mobile UI framework |
-| Dart | 3.3+ | Programming language |
-| Firebase Authentication | Latest | Email/password & OTP login |
-| Firebase Firestore | Latest | Cloud NoSQL database |
-| Firebase Cloud Messaging | Latest | Push notifications |
-| Firebase Storage | Latest | PDF certificate storage |
-| Google Maps API | v2 | Live maps & geolocation |
-| Provider | Latest | State management |
-| Geolocator | Latest | Device GPS access |
-| PDF package | Latest | Certificate generation |
-
----
-
-## 🚀 Setup & Installation
-
-### Prerequisites
-
-- Flutter SDK (latest stable) — [Install Flutter](https://flutter.dev/docs/get-started/install)
-- Dart SDK (included with Flutter)
-- Android Studio or VS Code with Flutter extension
-- A Firebase account — [Firebase Console](https://console.firebase.google.com)
-- Google Cloud account for Maps API
-
----
-
-### Step 1 – Clone the Project
-
-```bash
-git clone https://github.com/your-username/smart_blood_bank.git
-cd smart_blood_bank
-```
-
----
-
-### Step 2 – Firebase Setup
-
-#### 2.1 Create Firebase Project
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Click **Add Project** → Enter project name
-3. Enable **Google Analytics** (optional)
-
-#### 2.2 Enable Firebase Services
-In your Firebase project, enable:
-- **Authentication** → Sign-in method → Email/Password ✅
-- **Cloud Firestore** → Create database → Start in test mode
-- **Cloud Messaging** (FCM) ✅
-- **Storage** ✅
-
-#### 2.3 Add Android App
-1. In Firebase Console → Project Settings → Add App → Android
-2. Package name: `com.yourname.smartbloodbank`
-3. Download `google-services.json`
-4. Place it in: `android/app/google-services.json`
-
-#### 2.4 Add iOS App (optional)
-1. In Firebase Console → Add App → iOS
-2. Bundle ID: `com.yourname.smartbloodbank`
-3. Download `GoogleService-Info.plist`
-4. Place it in: `ios/Runner/GoogleService-Info.plist`
-
-#### 2.5 Update `android/build.gradle`
-```gradle
-dependencies {
-    classpath 'com.google.gms:google-services:4.4.0'
-}
-```
-
-#### 2.6 Update `android/app/build.gradle`
-```gradle
-apply plugin: 'com.google.gms.google-services'
-```
-
----
-
-### Step 3 – Firestore Security Rules
-
-In Firebase Console → Firestore → Rules, paste:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    match /blood_requests/{requestId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /donations/{donationId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /notifications/{notifId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /rewards/{rewardId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /sosRequests/{sosId} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}
-```
-
----
-
-### Step 4 – Google Maps API Setup
-
-#### 4.1 Get API Key
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Enable **Maps SDK for Android** and **Maps SDK for iOS**
-3. Enable **Distance Matrix API**
-4. Create an API Key → Copy it
-
-#### 4.2 Add to AndroidManifest.xml
-
-Open `android/app/src/main/AndroidManifest.xml` and add inside `<application>`:
-
-```xml
-<meta-data
-    android:name="com.google.android.geo.API_KEY"
-    android:value="YOUR_GOOGLE_MAPS_API_KEY_HERE"/>
-```
-
-#### 4.3 Add Location Permissions
-
-Inside `<manifest>` tag (before `<application>`):
-
-```xml
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-<uses-permission android:name="android.permission.INTERNET"/>
-```
-
----
-
-### Step 5 – Install Dependencies & Run
-
-```bash
-# Install all packages
+```powershell
 flutter pub get
-
-# Run in debug mode
-flutter run
-
-# Run on specific device
-flutter run -d <device-id>
-
-# List available devices
-flutter devices
+npm.cmd ci --prefix functions
+flutter analyze
+flutter test
+npm.cmd --prefix functions run check
+npm.cmd --prefix functions test
+functions\node_modules\.bin\firebase.cmd emulators:exec --project demo-blood-bank --only firestore,auth,storage "npm.cmd --prefix functions run test:emulator"
 ```
 
----
+Tests use isolated Auth, Firestore and Storage emulators. Callable handler bodies run directly with test auth contexts; these tests do not verify callable HTTP transport, scheduled triggers or actual FCM delivery.
 
-## 📦 Build for Production
+Start the full local demo environment in one terminal:
 
-### Android APK
-```bash
-flutter build apk --release
-```
-Output: `build/app/outputs/flutter-apk/app-release.apk`
-
-### Android App Bundle (Play Store)
-```bash
-flutter build appbundle --release
-```
-Output: `build/app/outputs/bundle/release/app-release.aab`
-
-### iOS (macOS only)
-```bash
-flutter build ios --release
+```powershell
+functions\node_modules\.bin\firebase.cmd emulators:start --project demo-blood-bank --only auth,firestore,functions,storage
 ```
 
----
+Then run a debug client:
 
-## 👥 User Roles & Access
+```powershell
+flutter run -d chrome --web-port 5195 --dart-define=USE_FIREBASE_EMULATORS=true
+# Android emulator: also pass --dart-define=FIREBASE_EMULATOR_HOST=10.0.2.2
+```
 
-| Role | Access | How to Get |
-|---|---|---|
-| **Donor** | Donate blood, view history, rewards | Sign up → Select "Donor" |
-| **Receiver** | Request blood, SOS alert | Sign up → Select "Receiver" |
-| **Admin** | Manage all users & requests | Manually set `role: admin` in Firestore |
+Emulator mode sets demo Firebase options and connects to Auth 9099, Firestore 8080, Functions 5001 and Storage 9199. Release builds reject emulator mode. Do not omit the flag when intending local data. Physical devices need a reachable development-machine host/firewall configuration.
 
-> **Note:** New accounts start with `status: pending`. Admin must approve them before they can log in.
+## Firebase setup and controlled rollout
 
-### How to Create First Admin:
-1. Sign up with any email
-2. Go to Firebase Console → Firestore → `users` collection
-3. Find your user document
-4. Update: `role: "admin"` and `status: "approved"`
-5. Login again
+Use a reviewed development project first. Verify lib/firebase_options.dart, Android google-services.json and application ID com.usmanch.bloodbank. Enable Email/Password Authentication, Firestore, Storage and Functions. Phone authentication requires registered Android fingerprints and provider configuration. Keep Admin SDK credentials outside source control. Never use permissive test rules in a deployed project.
 
----
+A project owner must authorize rollout; none of these deployment steps were executed:
 
-## 🗄️ Firestore Database Collections
+1. Back up Firestore and schedule a controlled schema/client cutover in staging.
+2. Review functions/migrateProfiles.js. Explicitly set GOOGLE_CLOUD_PROJECT and operator Application Default Credentials. Run `node functions/migrateProfiles.js` for a dry run. Only after reviewing the target and backup, run with `--apply`. It moves public contact/token fields to private documents, adds capability/availability defaults, and clears coordinates without consent. It does not change statuses or admin roles.
+3. Deploy firestore.indexes.json in staging and wait for indexes to finish. Geographic capability/availability/status/consent/latitude, donor history, requests and notifications need the supplied indexes.
+4. Deploy reviewed firestore.rules, storage.rules and functions with the matching client. Always specify the intended Firebase project explicitly. Test migration and rollback before production.
+5. Resolve remaining dependency advisories in dependency-audit.json through a tested major upgrade before production. Compatible patches were applied; a forced major upgrade was not performed.
 
-| Collection | Key Fields |
-|---|---|
-| `users` | uid, name, email, phoneNumber, role, bloodGroup, latitude, longitude, isEligible, status, rewardPoints |
-| `blood_requests` | id, requesterId, bloodGroup, urgency, hospitalName, location, status, createdAt |
-| `donations` | id, donorId, donorName, bloodGroup, donationDate, location, pointsEarned |
-| `notifications` | id, userId, title, body, type, createdAt, isRead |
-| `rewards` | id, donorId, totalPoints, tier, certificates |
-| `sosRequests` | id, receiverId, bloodGroup, latitude, longitude, triggerTime, isResolved |
+Callables include acceptDonation, confirmDonation, deleteAccount, adminDeleteUser, getDonorContact and notifyRequest. Trigger functions handle notifications, SOS, broadcasts and eligibility reminders. Confirmation validates active users, assignment, compatibility and interval in a transaction. Retries do not award points twice.
 
----
+### Account policy and first admin
 
-## ✅ Feature Status
+Signup creates status approved, zero rewards and no previous donation. Pending approval is not the signup policy. Verification email sending is best effort; email verification is currently not a login gate. Login and restored sessions require approved status and a recognized role. Rules also reject inactive accounts.
 
-| Feature | Status |
-|---|---|
-| Email/Password Authentication | ✅ Complete |
-| OTP Phone Verification | ✅ Complete |
-| Donor Profile Management | ✅ Complete |
-| Donation History | ✅ Complete |
-| Eligibility Check (90-day rule) | ✅ Complete |
-| Reward Points & Certificates | ✅ Complete |
-| Blood Request Form | ✅ Complete |
-| SOS Emergency Alert | ✅ Complete |
-| Admin Dashboard | ✅ Complete |
-| User Approval Workflow | ✅ Complete |
-| Google Maps Integration | 🔄 Requires API Key |
-| Push Notifications (FCM) | 🔄 Requires FCM Setup |
-| Urdu Language Support | 🔜 Planned |
-| Hospital Integration | 🔜 Future Work |
+A trusted Firebase project owner must verify the intended administrator's identity and Auth UID, create an ordinary account, and update only that exact users/{uid} document to role admin and status approved using the console or a controlled Admin SDK operation. Restrict IAM and protect operator accounts with MFA. Never expose credentials or add a client promotion endpoint. Sign out/in and verify ordinary users cannot self-promote. Admins cannot switch into donor/receiver modes.
 
----
+### Privacy and cleanup
 
-## ⚠️ Important Notes
+Display/matching data is in users/{uid}; phone/CNIC in private/contact and tokens in private/device. Signup can record an unverified phone; later changes require linked Auth phone credentials. The profile editor prevents direct phone editing. Contact access uses an authorized, rate-limited callable and audit entry.
 
-- **Firebase config files** (`google-services.json`, `GoogleService-Info.plist`) are NOT included in the repo for security. Add your own.
-- **Google Maps API Key** must be configured before mapping features work.
-- **Internet connection** is required for all Firebase operations.
-- **Location permission** must be granted by the user for donor matching.
-- API keys should never be committed to version control — use environment variables.
+Shared coordinates are rounded to two decimals. Distance checks use those approximate coordinates, so boundary results can differ from true GPS distances. The latitude-band index pages in batches of 200, then applies spherical distance filtering. Dense bands can still require many reads. Existing history/list screens display up to 100 recent records; full history pagination remains a limitation.
 
----
+Self-deletion requires authentication within five minutes. Cleanup disables the account first, removes related records/private data/tokens/known uploads, reopens assigned open requests and removes Auth/profile data. It is not a cross-service transaction: a failure can leave a disabled account requiring an administrator to retry cleanup. Provider backups and delivered messages are outside this cleanup; no instant universal-erasure claim is made.
 
-## 📁 Key Files Reference
+### External integrations
 
-| File | Purpose |
-|---|---|
-| `lib/main.dart` | App entry point |
-| `lib/constants/app_constants.dart` | Blood groups, collection names, radii |
-| `lib/services/auth_service.dart` | All Firebase Auth operations |
-| `lib/services/geo_location_service.dart` | GPS + nearby donor search |
-| `lib/utils/date_utils.dart` | 90-day eligibility calculation |
-| `lib/utils/location_helper.dart` | Haversine distance formula |
-| `lib/controllers/` | All business logic (Provider) |
-| `lib/models/` | Firestore data models |
+- App Check: register Android Play Integrity or Web reCAPTCHA v3, enable ENABLE_APP_CHECK, and supply RECAPTCHA_SITE_KEY for Web. Register debug tokens only in development. Inspect metrics before enabling server enforcement; the client flag does not enforce server policy. https://firebase.google.com/docs/app-check/flutter/default-providers
+- Crashlytics: Android release collection requires ENABLE_CRASHLYTICS=true, correct Firebase configuration and a verified test crash. Debug/emulator collection is disabled. https://firebase.google.com/docs/crashlytics/flutter/get-started
+- Push: verify Android notification permission, blood_requests channel, token refresh, foreground/background delivery and tap navigation on a device. Queuing is not proof of delivery.
+- Optional SMS: configure genuine TWILIO_SID, TWILIO_PHONE and Secret Manager TWILIO_AUTH_TOKEN. Linked verified phone and notification preferences are required. No SMS was sent in this pass.
+- Maps: configure restricted platform API keys and billing as applicable. Do not embed server secrets in Flutter.
+- Support: supply a real managed mailbox with --dart-define=SUPPORT_EMAIL=...; no fabricated address is provided.
 
----
+## Android build
 
-## 📚 Academic Context
+```powershell
+flutter config --jdk-dir="<installed JDK 17 directory>"
+flutter doctor -v
+flutter build apk --debug
+```
 
-This application was developed as a **Final Year Project** for the degree of **Bachelor of Science in Computer Science** at COMSATS University Islamabad, Vehari Campus.
+The local attempt failed with Java 25.0.3 and Gradle 8.13 incompatibility; no APK was validated. CI specifies JDK 17 and uploads a debug demo APK. Existing release configuration uses debug signing: configure a private release keystore before distribution. Java compatibility: https://docs.gradle.org/current/userguide/compatibility.html
 
-The project covers concepts from:
-- Software Engineering (Agile SDLC, UML diagrams)
-- Database Management Systems (Firestore NoSQL)
-- Mobile Application Development (Flutter)
-- Data Structures & Algorithms (Haversine formula, geo-matching)
-- Human-Computer Interaction (Material Design UI)
-
----
-
-## 📄 License
-
-This project is developed for **educational purposes** as a Final Year Project. Not intended for commercial use.
-
----
-
-<div align="center">
-
-Made with ❤️ for saving lives | COMSATS University Islamabad, Vehari Campus
-
-</div>
+See [verification and demo checklist](docs/verification.md) for actual results and blockers. Educational use only; this application does not replace clinical screening or emergency services.

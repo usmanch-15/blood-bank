@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/auth_service.dart';
-import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart'; // ✅ light-touch polish
-import '../../constants/app_theme.dart';
-import '../role_selection_screen.dart';
-import '../admin/admin_config.dart';
-import '../admin/web/admin_web_dashboard.dart';
+import '../../utils/account_policy.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -76,24 +72,8 @@ class _LoginScreenState extends State<LoginScreen>
       final userData = await _authService.getUserData(userCredential.user!.uid);
       if (!mounted) return;
 
-      final role = userData?['role'];
-      final status = userData?['status'];
-
-      if (role == 'admin' && status == 'approved') {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const AdminWebDashboard()),
-              (route) => false,
-        );
-        return;
-      }
-
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
-            (route) => false,
-      );
+      Navigator.pushNamedAndRemoveUntil(
+        context, AccountPolicy.route(userData!), (route) => false);
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
       if (!mounted) return;
@@ -168,10 +148,10 @@ class _LoginScreenState extends State<LoginScreen>
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.12),
+                color: iconColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: iconColor.withOpacity(0.3), width: 2),
+                    color: iconColor.withValues(alpha: 0.3), width: 2),
               ),
               child: Icon(icon, size: 36, color: iconColor),
             ),
@@ -299,10 +279,12 @@ class _LoginScreenState extends State<LoginScreen>
                               textInputAction: TextInputAction.next,
                               autofillHints: const [AutofillHints.email],
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty)
+                                if (v == null || v.trim().isEmpty) {
                                   return 'Email required';
-                                if (!v.contains('@'))
+                                }
+                                if (!v.contains('@')) {
                                   return 'Enter valid email';
+                                }
                                 return null;
                               },
                             ),
@@ -329,10 +311,12 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               ),
                               validator: (v) {
-                                if (v == null || v.isEmpty)
+                                if (v == null || v.isEmpty) {
                                   return 'Password required';
-                                if (v.length < 6)
+                                }
+                                if (v.length < 6) {
                                   return 'Min 6 characters';
+                                }
                                 return null;
                               },
                             ),
@@ -362,20 +346,20 @@ class _LoginScreenState extends State<LoginScreen>
                               Expanded(
                                   child: Divider(
                                       color:
-                                      Colors.white.withOpacity(0.07))),
+                                      Colors.white.withValues(alpha: 0.07))),
                               Padding(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14),
                                 child: Text('or',
                                     style: TextStyle(
                                         color:
-                                        Colors.white.withOpacity(0.25),
+                                        Colors.white.withValues(alpha: 0.25),
                                         fontSize: 13)),
                               ),
                               Expanded(
                                   child: Divider(
                                       color:
-                                      Colors.white.withOpacity(0.07))),
+                                      Colors.white.withValues(alpha: 0.07))),
                             ]),
                             const SizedBox(height: 24),
 
@@ -423,7 +407,7 @@ class _LoginScreenState extends State<LoginScreen>
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          colors: [color.withOpacity(opacity), Colors.transparent],
+          colors: [color.withValues(alpha: opacity), Colors.transparent],
         ),
       ),
     );
@@ -440,10 +424,10 @@ class _LoginScreenState extends State<LoginScreen>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                  color: const Color(0xFFB71C1C).withOpacity(0.2),
+                  color: const Color(0xFFB71C1C).withValues(alpha: 0.2),
                   width: 1),
               gradient: RadialGradient(colors: [
-                const Color(0xFFB71C1C).withOpacity(0.12),
+                const Color(0xFFB71C1C).withValues(alpha: 0.12),
                 Colors.transparent,
               ]),
             ),
@@ -460,7 +444,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFB71C1C).withOpacity(0.55),
+                  color: const Color(0xFFB71C1C).withValues(alpha: 0.55),
                   blurRadius: 28,
                   offset: const Offset(0, 8),
                 ),
@@ -582,7 +566,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ? []
                 : [
               BoxShadow(
-                color: const Color(0xFFB71C1C).withOpacity(0.5),
+                color: const Color(0xFFB71C1C).withValues(alpha: 0.5),
                 blurRadius: 20,
                 offset: const Offset(0, 6),
               ),

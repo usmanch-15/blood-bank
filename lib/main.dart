@@ -1,3 +1,4 @@
+import 'services/firebase_runtime.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -11,9 +12,9 @@ import 'services/push_navigation_service.dart'; // ✅ NEW — FCM foreground/ta
 import 'controllers/auth_controller.dart';
 import 'controllers/donor_controller.dart';
 import 'controllers/receiver_controller.dart';
+import 'controllers/reward_controller.dart';
 import 'controllers/admin_controller.dart';
 import 'controllers/notification_controller.dart';
-import 'controllers/reward_controller.dart';
 import 'controllers/theme_controller.dart'; // ✅ NEW — manual Light/Dark/System switch
 
 import 'screens/splash_screen.dart';
@@ -36,8 +37,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+    options: const bool.fromEnvironment('USE_FIREBASE_EMULATORS')
+      ? const FirebaseOptions(apiKey: 'demo-key', appId: '1:123456789:web:demo',
+          messagingSenderId: '123456789', projectId: 'demo-blood-bank',
+          storageBucket: 'demo-blood-bank.appspot.com')
+      : DefaultFirebaseOptions.currentPlatform,
   );
+
+  await configureFirebaseRuntime();
 
   // ✅ NEW — must be registered before runApp(), so FCM can deliver
   // background messages to this handler even when the app is killed.
@@ -61,9 +68,9 @@ class BloodBankApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => DonorController()),
         ChangeNotifierProvider(create: (_) => ReceiverController()),
+        ChangeNotifierProvider(create: (_) => RewardController()),
         ChangeNotifierProvider(create: (_) => AdminController()),
         ChangeNotifierProvider(create: (_) => NotificationController()),
-        ChangeNotifierProvider(create: (_) => RewardController()),
         ChangeNotifierProvider(create: (_) => ThemeController()), // ✅ NEW
       ],
       child: Consumer<ThemeController>(

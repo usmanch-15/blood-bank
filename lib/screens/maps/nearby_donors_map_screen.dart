@@ -3,11 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
-import '../../models/donor_model.dart';
 import '../../services/geo_location_service.dart';
 import '../../services/notification_service.dart';
 import '../../utils/eligibility_checker.dart';
@@ -196,19 +194,6 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
       final receiverName =
           FirebaseAuth.instance.currentUser?.displayName ?? 'A patient';
 
-      // Log who was notified for this request, so the receiver dashboard
-      // can later show "notified 12 donors" and donors aren't spammed
-      // twice for the same request.
-      if (widget.requestId != null) {
-        await FirebaseFirestore.instance
-            .collection('blood_requests')
-            .doc(widget.requestId)
-            .update({
-          'notifiedDonorIds': targets.map((d) => d.donor.uid).toList(),
-          'lastNotifiedAt': FieldValue.serverTimestamp(),
-        });
-      }
-
       await _notificationService.sendToUsers(
         userIds: targets.map((d) => d.donor.uid).toList(),
         title: widget.bloodGroup != null
@@ -276,7 +261,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: AppColors.primaryRed.withOpacity(0.1),
+                    backgroundColor: AppColors.primaryRed.withValues(alpha: 0.1),
                     backgroundImage: donor.profileImageUrl != null
                         ? NetworkImage(donor.profileImageUrl!)
                         : null,
@@ -448,7 +433,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(AppSpacing.radiusSm + 2),
         ),
         child: Row(
@@ -554,8 +539,8 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                   point: center,
                   radius: _radiusKm * 1000, // meters
                   useRadiusInMeter: true,
-                  color: AppColors.primaryRed.withOpacity(0.08),
-                  borderColor: AppColors.primaryRed.withOpacity(0.4),
+                  color: AppColors.primaryRed.withValues(alpha: 0.08),
+                  borderColor: AppColors.primaryRed.withValues(alpha: 0.4),
                   borderStrokeWidth: 1.5,
                 ),
               ],
@@ -665,7 +650,7 @@ class _DonorCountBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -677,7 +662,7 @@ class _DonorCountBanner extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primaryRed.withOpacity(0.1),
+              color: AppColors.primaryRed.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.people_alt_rounded,
@@ -762,7 +747,7 @@ class _BottomControlPanel extends StatelessWidget {
                         style: TextStyle(fontSize: 12.5, color: Colors.grey[700])),
                     Switch(
                       value: eligibleOnly,
-                      activeColor: AppColors.primaryRed,
+                      activeThumbColor: AppColors.primaryRed,
                       onChanged: onEligibleToggle,
                     ),
                   ],
@@ -774,7 +759,7 @@ class _BottomControlPanel extends StatelessWidget {
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: AppColors.primaryRed,
               thumbColor: AppColors.primaryRed,
-              overlayColor: AppColors.primaryRed.withOpacity(0.15),
+              overlayColor: AppColors.primaryRed.withValues(alpha: 0.15),
               inactiveTrackColor: Colors.grey[200],
             ),
             child: Slider(

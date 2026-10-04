@@ -150,7 +150,7 @@ class CustomButton extends StatelessWidget {
             elevation: AppSpacing.elevationLow,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(borderRadius.toDouble()),
-              side: BorderSide(color: AppColors.primaryRed.withOpacity(0.3)),
+              side: BorderSide(color: AppColors.primaryRed.withValues(alpha: 0.3)),
             ),
           ),
           child: content,

@@ -76,8 +76,8 @@ class _EligibilityStatusScreenState extends State<EligibilityStatusScreen> {
                     ),
                     elevation: 0,
                     color: isEligible
-                        ? AppColors.success.withOpacity(0.1)
-                        : AppColors.warning.withOpacity(0.1),
+                        ? AppColors.success.withValues(alpha: 0.1)
+                        : AppColors.warning.withValues(alpha: 0.1),
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(

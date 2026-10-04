@@ -33,9 +33,10 @@ class ReceiverController extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final ref = FirebaseFirestore.instance
-          .collection(AppConstants.bloodRequestsCollection)
-          .doc();
+      final ref =
+          FirebaseFirestore.instance
+              .collection(AppConstants.bloodRequestsCollection)
+              .doc();
       await ref.set({
         'id': ref.id,
         'requesterId': receiverId,
@@ -106,18 +107,7 @@ class ReceiverController extends ChangeNotifier {
         'longitude': position.longitude,
         'triggerTime': FieldValue.serverTimestamp(),
         'isResolved': false,
-        'notifiedDonors': _nearbyDonors.map((d) => d.uid).toList(),
       });
-
-      if (_nearbyDonors.isNotEmpty) {
-        await _notifService.sendToUsers(
-          userIds: _nearbyDonors.map((d) => d.uid).toList(),
-          title: '🚨 URGENT: Blood Needed!',
-          body: 'Emergency $bloodGroup blood required near you!',
-          type: 'blood_request',
-          relatedId: ref.id,
-        );
-      }
 
       _sosSent = true;
     } finally {
@@ -127,14 +117,17 @@ class ReceiverController extends ChangeNotifier {
   }
 
   Future<void> loadMyRequests(String receiverId) async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection(AppConstants.bloodRequestsCollection)
-        .where('requesterId', isEqualTo: receiverId)
-        .orderBy('createdAt', descending: true)
-        .get();
-    _myRequests = snapshot.docs
-        .map((d) => BloodRequestModel.fromFirestore(d.data(), d.id))
-        .toList();
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection(AppConstants.bloodRequestsCollection)
+            .where('requesterId', isEqualTo: receiverId)
+            .orderBy('createdAt', descending: true)
+            .limit(100)
+            .get();
+    _myRequests =
+        snapshot.docs
+            .map((d) => BloodRequestModel.fromFirestore(d.data(), d.id))
+            .toList();
     notifyListeners();
   }
 }

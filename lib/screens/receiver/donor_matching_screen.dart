@@ -1,7 +1,7 @@
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../models/donor_model.dart';
@@ -187,13 +187,13 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
         ],
       ),
     );
-    if (confirm != true) return;
+    if (confirm != true || !mounted) return;
 
     try {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Confirming donation...')),
       );
-      await DonorController().confirmDonation(
+      await context.read<DonorController>().confirmDonation(
         donorId: donorModel.uid,
         bloodGroup: donorModel.bloodGroup ?? _selectedBloodGroup ?? '',
         requestId: widget.requestId,
@@ -267,7 +267,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -306,7 +306,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                     // Blood group dropdown
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedBloodGroup,
+                        initialValue: _selectedBloodGroup,
                         decoration: InputDecoration(
                           labelText: 'I need (blood group)',
                           labelStyle: const TextStyle(fontSize: 13),
@@ -340,7 +340,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                                 color: AppColors.textSecondary)),
                         Switch(
                           value: _eligibleOnly,
-                          activeColor: AppColors.primaryRed,
+                          activeThumbColor: AppColors.primaryRed,
                           onChanged: (v) => setState(() => _eligibleOnly = v),
                         ),
                       ],
@@ -368,7 +368,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryRed.withOpacity(0.1),
+                      color: AppColors.primaryRed.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -448,7 +448,7 @@ class _DonorCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -522,8 +522,8 @@ class _DonorCard extends StatelessWidget {
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: eligible
-                              ? AppColors.success.withOpacity(0.1)
-                              : AppColors.warning.withOpacity(0.1),
+                              ? AppColors.success.withValues(alpha: 0.1)
+                              : AppColors.warning.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -559,7 +559,7 @@ class _DonorCard extends StatelessWidget {
                     icon: const Icon(Icons.phone, color: AppColors.success),
                     tooltip: 'Call Donor',
                     style: IconButton.styleFrom(
-                      backgroundColor: AppColors.success.withOpacity(0.08),
+                      backgroundColor: AppColors.success.withValues(alpha: 0.08),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -573,7 +573,7 @@ class _DonorCard extends StatelessWidget {
                           color: AppColors.primaryRed),
                       tooltip: 'Mark Donation Complete',
                       style: IconButton.styleFrom(
-                        backgroundColor: AppColors.primaryRed.withOpacity(0.08),
+                        backgroundColor: AppColors.primaryRed.withValues(alpha: 0.08),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),

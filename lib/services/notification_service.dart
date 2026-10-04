@@ -1,49 +1,66 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../constants/app_constants.dart';
 
 class NotificationService {
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final NotificationService _instance = NotificationService._();
+  factory NotificationService() => _instance;
+  NotificationService._();
+  StreamSubscription<String>? _refresh;
+  String? _initializedUid;
 
   Future<void> init() async {
-    // Request notification permission
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      final token = await _messaging.getToken();
-      if (token != null) await _saveDeviceToken(token);
-
-      // Refresh token automatically when it changes
-      _messaging.onTokenRefresh.listen(_saveDeviceToken);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid == _initializedUid || kIsWeb) return;
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized &&
+          settings.authorizationStatus != AuthorizationStatus.provisional) {
+        return;
+      }
+      final token = await messaging.getToken().timeout(
+        const Duration(seconds: 8),
+      );
+      if (FirebaseAuth.instance.currentUser?.uid != uid) return;
+      if (token != null) await _save(uid, token);
+      await _refresh?.cancel();
+      _refresh = messaging.onTokenRefresh.listen((token) async {
+        if (FirebaseAuth.instance.currentUser?.uid != uid) return;
+        try {
+          await _save(uid, token);
+        } catch (e) {
+          debugPrint('Token refresh failed: $e');
+        }
+      });
+      _initializedUid = uid;
+    } catch (e) {
+      debugPrint('Notifications unavailable: $e');
     }
   }
 
-  // ✅ FIXED: properly saves FCM token to the logged-in user's Firestore doc
-  Future<void> _saveDeviceToken(String token) async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
+  Future<void> _save(String uid, String token) => FirebaseFirestore.instance
+      .doc('users/$uid/private/device')
+      .set({'fcmToken': token, 'fcmUpdatedAt': FieldValue.serverTimestamp()});
 
-    await _firestore
-        .collection(AppConstants.usersCollection)
-        .doc(userId)
-        .update({'fcmToken': token, 'fcmUpdatedAt': FieldValue.serverTimestamp()});
-  }
-
-  // ✅ Call this on logout to remove the token
   Future<void> clearDeviceToken() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
-
-    await _firestore
-        .collection(AppConstants.usersCollection)
-        .doc(userId)
-        .update({'fcmToken': FieldValue.delete()});
+    await _refresh?.cancel();
+    _refresh = null;
+    _initializedUid = null;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    try {
+      if (uid != null) {
+        await FirebaseFirestore.instance
+            .doc('users/$uid/private/device')
+            .delete();
+      }
+      if (!kIsWeb) await FirebaseMessaging.instance.deleteToken();
+    } catch (e) {
+      debugPrint('Token cleanup unavailable: $e');
+    }
   }
 
   Future<void> sendToUser({
@@ -52,19 +69,13 @@ class NotificationService {
     required String body,
     String type = 'general',
     String? relatedId,
-  }) async {
-    await _firestore
-        .collection(AppConstants.notificationsCollection)
-        .add({
-      'userId': userId,
-      'title': title,
-      'body': body,
-      'type': type,
-      'relatedId': relatedId,
-      'createdAt': FieldValue.serverTimestamp(),
-      'isRead': false,
-    });
-  }
+  }) => sendToUsers(
+    userIds: [userId],
+    title: title,
+    body: body,
+    type: type,
+    relatedId: relatedId,
+  );
 
   Future<void> sendToUsers({
     required List<String> userIds,
@@ -73,28 +84,16 @@ class NotificationService {
     String type = 'general',
     String? relatedId,
   }) async {
-    final batch = _firestore.batch();
-    for (final uid in userIds) {
-      final ref = _firestore
-          .collection(AppConstants.notificationsCollection)
-          .doc();
-      batch.set(ref, {
-        'userId': uid,
-        'title': title,
-        'body': body,
-        'type': type,
-        'relatedId': relatedId,
-        'createdAt': FieldValue.serverTimestamp(),
-        'isRead': false,
-      });
+    if (relatedId == null) {
+      throw StateError('Create a blood request before notifying donors.');
     }
-    await batch.commit();
+    await FirebaseFunctions.instance.httpsCallable('notifyRequest').call({
+      'requestId': relatedId,
+      'userIds': userIds,
+    });
   }
 
-  Future<void> markAsRead(String notificationId) async {
-    await _firestore
-        .collection(AppConstants.notificationsCollection)
-        .doc(notificationId)
-        .update({'isRead': true});
-  }
+  Future<void> markAsRead(String id) => FirebaseFirestore.instance
+      .doc('notifications/$id')
+      .update({'isRead': true});
 }

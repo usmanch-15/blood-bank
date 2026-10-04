@@ -47,3 +47,8 @@ app.*.map.json
 functions/node_modules/
 functions/.env
 functions/.env.*
+
+.npm-cache/
+.firebase/
+.firebase-cache/
+analysis-results.txt
