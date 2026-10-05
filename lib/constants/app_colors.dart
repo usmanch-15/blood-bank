@@ -34,6 +34,12 @@ class AppColors {
     end: Alignment.bottomRight,
   );
 
+  static const LinearGradient darkGradient = LinearGradient(
+    colors: [primaryDarkRed, Color(0xFF5A0000)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   // Additional Colors for Onboarding
   static const Color onboardingRed = Color(0xFFD32F2F); // Added for onboarding
 
