@@ -23,7 +23,7 @@ Chat, ratings, CNIC verification, blood drives, full localization, hospital inte
 
 ## Local setup and checks
 
-Use committed lockfiles. Local Flutter checks used 3.47.5. Backend runtime is Node 20; use JDK 17 for Android and JDK 21 for Firebase emulator tooling.
+Use committed lockfiles. Local Flutter checks used 3.47.5. Backend runtime is Node 22; use JDK 17 for Android and JDK 21 for Firebase emulator tooling.
 
 ```powershell
 flutter pub get
