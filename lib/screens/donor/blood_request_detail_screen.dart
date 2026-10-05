@@ -154,9 +154,11 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_requestMissing || _requestError != null) return Scaffold(
-      appBar: AppBar(title: const Text('Request details')),
-      body: Center(child: Text(_requestError ?? 'This request is no longer available.')));
+    if (_requestMissing || _requestError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Request details')),
+        body: Center(child: Text(_requestError ?? 'This request is no longer available.')));
+    }
     final d = _data;
     final urgency = d['urgency'] ?? 'Normal';
     final status = d['status'] ?? 'pending';

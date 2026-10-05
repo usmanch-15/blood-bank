@@ -430,7 +430,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                         onPressed: () async {
                           try {
                             if (!await launchUrl(Uri.parse('https://www.openstreetmap.org/directions?from=${_center!.latitude}%2C${_center!.longitude}&to=${donor.latitude}%2C${donor.longitude}'),
-                              mode: LaunchMode.externalApplication)) throw StateError('Could not open directions.');
+                              mode: LaunchMode.externalApplication)) {
+                              throw StateError('Could not open directions.');
+                            }
                           } catch (e) {
                             if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open directions: $e')));
                           }
