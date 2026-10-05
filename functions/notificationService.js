@@ -24,7 +24,7 @@
  *   true` on the doc we create so the old trigger knows to skip it.
  */
 
-const admin = require('firebase-admin');
+const admin = require('./firebaseAdmin');
 if (!admin.apps.length) {
   admin.initializeApp();
 }
@@ -54,7 +54,9 @@ function isNotificationAllowed(userData, category) {
   const prefs = userData.notificationPrefs || {};
   // Default to true if the specific preference field doesn't exist yet
   // (so users who haven't touched Settings still get notified).
-  return prefs[category] !== false;
+  const preference = category === 'donation_confirmed' ? 'rewardUpdates'
+    : category === 'sos' ? 'sosAlerts' : category;
+  return prefs[preference] !== false;
 }
 
 /**
@@ -62,7 +64,7 @@ function isNotificationAllowed(userData, category) {
  * cleanup. Always writes a notification doc regardless of push success,
  * so the user can see it in-app even if the push itself failed.
  */
-async function sendPushToUser(uid, { title, body, data = {} }) {
+async function sendPushToUser(uid, { title, body, data = {}, record = true }) {
   const userRef = db.collection('users').doc(uid);
   const userSnap = await userRef.get();
 
@@ -78,7 +80,7 @@ async function sendPushToUser(uid, { title, body, data = {} }) {
   // the in-app notification history should still show it.
   // pushSentDirectly=true tells the legacy sendPushNotification trigger
   // (in index.js) to NOT send a second push for this same doc.
-  await db.collection('notifications').add({
+  if (record) await db.collection('notifications').add({
     userId: uid,
     title,
     body,
@@ -122,9 +124,12 @@ async function sendPushToUser(uid, { title, body, data = {} }) {
         err.code === 'messaging/registration-token-not-registered' ||
         err.code === 'messaging/invalid-registration-token'
       ) {
-        await deviceRef.update({
-          fcmToken: admin.firestore.FieldValue.delete(),
-          fcmUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        await db.runTransaction(async tx => {
+          const current = (await tx.get(deviceRef)).data();
+          if (current?.fcmToken === token) tx.update(deviceRef, {
+            fcmToken: admin.firestore.FieldValue.delete(),
+            fcmUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
         });
         console.warn(`Removed dead FCM token for user ${uid}`);
         return { uid, sent: false, reason: 'dead-token-cleaned' };

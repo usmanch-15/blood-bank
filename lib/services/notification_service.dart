@@ -14,7 +14,12 @@ class NotificationService {
 
   Future<void> init() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null || uid == _initializedUid || kIsWeb) return;
+    if (uid == null ||
+        uid == _initializedUid ||
+        kIsWeb ||
+        const bool.fromEnvironment('USE_FIREBASE_EMULATORS')) {
+      return;
+    }
     try {
       final messaging = FirebaseMessaging.instance;
       final settings = await messaging.requestPermission();
@@ -57,9 +62,15 @@ class NotificationService {
             .doc('users/$uid/private/device')
             .delete();
       }
-      if (!kIsWeb) await FirebaseMessaging.instance.deleteToken();
     } catch (e) {
       debugPrint('Token cleanup unavailable: $e');
+    }
+    try {
+      if (!kIsWeb && !const bool.fromEnvironment('USE_FIREBASE_EMULATORS')) {
+        await FirebaseMessaging.instance.deleteToken();
+      }
+    } catch (e) {
+      debugPrint('Device token invalidation unavailable: $e');
     }
   }
 

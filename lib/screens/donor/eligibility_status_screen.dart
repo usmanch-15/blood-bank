@@ -45,7 +45,7 @@ class _EligibilityStatusScreenState extends State<EligibilityStatusScreen> {
         elevation: 0,
       ),
       body: StreamBuilder<UserModel?>(
-        stream: _firestoreService.getUser(user!.uid).asStream(),
+        stream: _firestoreService.watchUser(user!.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -56,12 +56,15 @@ class _EligibilityStatusScreenState extends State<EligibilityStatusScreen> {
           }
 
           final userModel = snapshot.data!;
-          final isEligible =
-              EligibilityChecker.isEligibleForDonation(userModel.lastDonationDate);
-          final daysLeft =
-              EligibilityChecker.daysUntilEligible(userModel.lastDonationDate);
-          final message =
-              EligibilityChecker.getEligibilityMessage(userModel.lastDonationDate);
+          final isEligible = EligibilityChecker.isEligibleForDonation(
+            userModel.lastDonationDate,
+          );
+          final daysLeft = EligibilityChecker.daysUntilEligible(
+            userModel.lastDonationDate,
+          );
+          final message = EligibilityChecker.getEligibilityMessage(
+            userModel.lastDonationDate,
+          );
 
           return SingleChildScrollView(
             child: Padding(
@@ -75,9 +78,10 @@ class _EligibilityStatusScreenState extends State<EligibilityStatusScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     elevation: 0,
-                    color: isEligible
-                        ? AppColors.success.withValues(alpha: 0.1)
-                        : AppColors.warning.withValues(alpha: 0.1),
+                    color:
+                        isEligible
+                            ? AppColors.success.withValues(alpha: 0.1)
+                            : AppColors.warning.withValues(alpha: 0.1),
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(
@@ -86,9 +90,10 @@ class _EligibilityStatusScreenState extends State<EligibilityStatusScreen> {
                             width: 100,
                             height: 100,
                             decoration: BoxDecoration(
-                              color: isEligible
-                                  ? AppColors.success
-                                  : AppColors.warning,
+                              color:
+                                  isEligible
+                                      ? AppColors.success
+                                      : AppColors.warning,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -99,13 +104,16 @@ class _EligibilityStatusScreenState extends State<EligibilityStatusScreen> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            isEligible ? 'Eligible to Donate' : 'Not Eligible Yet',
+                            isEligible
+                                ? 'Eligible to Donate'
+                                : 'Not Eligible Yet',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: isEligible
-                                  ? AppColors.success
-                                  : AppColors.warning,
+                              color:
+                                  isEligible
+                                      ? AppColors.success
+                                      : AppColors.warning,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -138,10 +146,12 @@ class _EligibilityStatusScreenState extends State<EligibilityStatusScreen> {
                   _buildInfoCard(
                     icon: Icons.calendar_today,
                     title: 'Last Donation',
-                    value: userModel.lastDonationDate != null
-                        ? DateFormat('MMM dd, yyyy')
-                            .format(userModel.lastDonationDate!)
-                        : 'Never',
+                    value:
+                        userModel.lastDonationDate != null
+                            ? DateFormat(
+                              'MMM dd, yyyy',
+                            ).format(userModel.lastDonationDate!)
+                            : 'Never',
                   ),
                   const SizedBox(height: 12),
 
@@ -149,13 +159,14 @@ class _EligibilityStatusScreenState extends State<EligibilityStatusScreen> {
                   _buildInfoCard(
                     icon: Icons.check_circle,
                     title: 'Next Eligible Date',
-                    value: userModel.lastDonationDate != null
-                        ? DateFormat('MMM dd, yyyy').format(
-                            userModel.lastDonationDate!.add(
-                              const Duration(days: 90),
-                            ),
-                          )
-                        : 'Now',
+                    value:
+                        userModel.lastDonationDate != null
+                            ? DateFormat('MMM dd, yyyy').format(
+                              userModel.lastDonationDate!.add(
+                                const Duration(days: 90),
+                              ),
+                            )
+                            : 'Now',
                   ),
                   const SizedBox(height: 12),
 
@@ -192,20 +203,11 @@ class _EligibilityStatusScreenState extends State<EligibilityStatusScreen> {
                     true,
                   ),
                   const SizedBox(height: 8),
-                  _buildCriteriaItem(
-                    'Age: 18 - 65 years',
-                    true,
-                  ),
+                  _buildCriteriaItem('Age: 18 - 65 years', true),
                   const SizedBox(height: 8),
-                  _buildCriteriaItem(
-                    'Weight: At least 50 kg',
-                    true,
-                  ),
+                  _buildCriteriaItem('Weight: At least 50 kg', true),
                   const SizedBox(height: 8),
-                  _buildCriteriaItem(
-                    'Good overall health',
-                    true,
-                  ),
+                  _buildCriteriaItem('Good overall health', true),
                   const SizedBox(height: 32),
 
                   // Action Button
@@ -306,7 +308,8 @@ class _EligibilityStatusScreenState extends State<EligibilityStatusScreen> {
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textPrimary,
-              decoration: isMet ? TextDecoration.none : TextDecoration.lineThrough,
+              decoration:
+                  isMet ? TextDecoration.none : TextDecoration.lineThrough,
             ),
           ),
         ),

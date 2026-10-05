@@ -22,3 +22,12 @@ test('radius distinguishes 15 and 30 km and identical coordinates',()=>{
   const distance=distanceKm(31,74,31.18,74);
   assert.ok(distance>15 && distance<30);
 });
+const {isNotificationAllowed} = require('../notificationService');
+require('node:test').test('notification aliases respect master, status and category preferences', () => {
+  const assert = require('node:assert/strict');
+  assert.equal(isNotificationAllowed({status:'approved',notificationPrefs:{rewardUpdates:false}},'donation_confirmed'),false);
+  assert.equal(isNotificationAllowed({status:'approved',notificationPrefs:{sosAlerts:false}},'sos'),false);
+  assert.equal(isNotificationAllowed({status:'approved',notificationsEnabled:false},'blood_request'),false);
+  assert.equal(isNotificationAllowed({status:'suspended'},'general'),false);
+  assert.equal(isNotificationAllowed({status:'approved'},'blood_request'),true);
+});

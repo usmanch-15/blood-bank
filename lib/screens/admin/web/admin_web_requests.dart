@@ -1,6 +1,207 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+Future<void> showAdminRequestDetails(
+  BuildContext context,
+  DocumentReference ref,
+  Map<String, dynamic> data, {
+  bool sos = false,
+}) async {
+  final action = await showDialog<String>(
+    context: context,
+    builder:
+        (ctx) => AlertDialog(
+          title: Text(sos ? 'SOS request' : 'Blood request'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final field
+                    in (sos
+                        ? [
+                          'receiverId',
+                          'bloodGroup',
+                          'urgency',
+                          'latitude',
+                          'longitude',
+                          'status',
+                          'isResolved',
+                          'radiusKm',
+                          'notifiedDonors',
+                        ]
+                        : [
+                          'patientName',
+                          'patientAge',
+                          'bloodGroup',
+                          'quantity',
+                          'hospitalName',
+                          'hospitalAddress',
+                          'contactNumber',
+                          'requiredBy',
+                          'status',
+                          'acceptedDonorId',
+                          'notifiedDonors',
+                        ]))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text('$field: ${data[field] ?? 'Not provided'}'),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+            if (sos
+                ? data['isResolved'] != true
+                : ['pending', 'accepted'].contains(data['status']))
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'update'),
+                child: Text(sos ? 'Resolve SOS' : 'Cancel request'),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'delete'),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+  );
+  if (action == null || !context.mounted) return;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder:
+        (ctx) => AlertDialog(
+          title: Text(
+            action == 'delete'
+                ? 'Delete this record?'
+                : sos
+                ? 'Resolve this SOS?'
+                : 'Cancel this request?',
+          ),
+          content: Text(
+            action == 'delete'
+                ? 'This permanently removes the record.'
+                : 'The requester will see the updated status.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Keep record'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+  );
+  if (confirmed != true) return;
+  try {
+    final db = FirebaseFirestore.instance;
+    await db.runTransaction((tx) async {
+      final snapshot = await tx.get(ref);
+      if (!snapshot.exists) {
+        throw StateError('This record has already been removed.');
+      }
+      final current = snapshot.data() as Map<String, dynamic>;
+      if (action == 'delete') {
+        tx.delete(ref);
+        return;
+      }
+      if (!sos && !['pending', 'accepted'].contains(current['status'])) {
+        throw StateError('This request is no longer open.');
+      }
+      tx.update(
+        ref,
+        sos
+            ? {'isResolved': true}
+            : {
+              'status': 'cancelled',
+              'cancelledAt': FieldValue.serverTimestamp(),
+            },
+      );
+      final uid = current[sos ? 'receiverId' : 'requesterId'];
+      if (uid is String && uid.isNotEmpty) {
+        tx.set(db.collection('notifications').doc(), {
+          'userId': uid,
+          'title': sos ? 'SOS resolved' : 'Request cancelled',
+          'body':
+              sos
+                  ? 'An administrator marked your SOS as resolved.'
+                  : 'An administrator cancelled your blood request.',
+          'type': 'general',
+          'relatedId': ref.id,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+    });
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request updated successfully.')),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not update request: $e')));
+    }
+  }
+}
+
+class AdminEmergencyRequests extends StatelessWidget {
+  const AdminEmergencyRequests({super.key});
+  @override
+  Widget build(
+    BuildContext context,
+  ) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream:
+        FirebaseFirestore.instance
+            .collection('sosRequests')
+            .orderBy('triggerTime', descending: true)
+            .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return Center(
+          child: Text('Unable to load SOS requests: ${snapshot.error}'),
+        );
+      }
+      if (!snapshot.hasData) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      final docs = snapshot.data!.docs;
+      if (docs.isEmpty) return const Center(child: Text('No SOS requests.'));
+      return ListView.builder(
+        itemCount: docs.length,
+        itemBuilder: (context, index) {
+          final doc = docs[index], data = doc.data();
+          return ListTile(
+            leading: const Icon(Icons.emergency, color: Colors.red),
+            title: Text(
+              '${data['bloodGroup']} • ${data['urgency'] ?? 'critical'}',
+            ),
+            subtitle: Text(
+              '${data['receiverId']} • ${data['status'] ?? 'Queued'}',
+            ),
+            trailing: Text(data['isResolved'] == true ? 'Resolved' : 'Open'),
+            onTap:
+                () => showAdminRequestDetails(
+                  context,
+                  doc.reference,
+                  data,
+                  sos: true,
+                ),
+          );
+        },
+      );
+    },
+  );
+}
+
 class AdminWebRequests extends StatefulWidget {
   const AdminWebRequests({super.key});
 
@@ -15,7 +216,7 @@ class _AdminWebRequestsState extends State<AdminWebRequests>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -44,10 +245,8 @@ class _AdminWebRequestsState extends State<AdminWebRequests>
                   icon: Icon(Icons.person_add_alt_1),
                   text: 'User Approval Requests',
                 ),
-                Tab(
-                  icon: Icon(Icons.bloodtype),
-                  text: 'Blood Requests',
-                ),
+                Tab(icon: Icon(Icons.bloodtype), text: 'Blood Requests'),
+                Tab(icon: Icon(Icons.emergency), text: 'SOS Requests'),
               ],
             ),
           ),
@@ -59,6 +258,7 @@ class _AdminWebRequestsState extends State<AdminWebRequests>
               children: const [
                 _PendingUsersTab(),
                 _BloodRequestsTab(),
+                AdminEmergencyRequests(),
               ],
             ),
           ),
@@ -75,10 +275,9 @@ class _PendingUsersTab extends StatelessWidget {
   const _PendingUsersTab();
 
   Future<void> _approveUser(String uid, BuildContext context) async {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .update({'status': 'approved'});
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'status': 'approved',
+    });
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -94,30 +293,33 @@ class _PendingUsersTab extends StatelessWidget {
     // Confirm dialog
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Reject User?'),
-        content: const Text(
-            'Kya aap is user ko reject karna chahte hain? Yeh wapas login nahi kar sakega.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Reject User?'),
+            content: const Text(
+              'Kya aap is user ko reject karna chahte hain? Yeh wapas login nahi kar sakega.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text(
+                  'Reject',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child:
-            const Text('Reject', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
     );
 
     if (confirm == true) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .update({'status': 'rejected'});
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'status': 'rejected',
+      });
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,12 +335,16 @@ class _PendingUsersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .where('status', isEqualTo: 'pending')
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
+      stream:
+          FirebaseFirestore.instance
+              .collection('users')
+              .where('status', isEqualTo: 'pending')
+              .orderBy('createdAt', descending: true)
+              .snapshots(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return Center(child: Text('Unable to load records: ${snap.error}'));
+        }
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -150,8 +356,11 @@ class _PendingUsersTab extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.check_circle_outline,
-                    size: 64, color: Colors.green.shade300),
+                Icon(
+                  Icons.check_circle_outline,
+                  size: 64,
+                  color: Colors.green.shade300,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'Koi pending request nahi!',
@@ -177,7 +386,8 @@ class _PendingUsersTab extends StatelessWidget {
             return Card(
               margin: const EdgeInsets.only(bottom: 14),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
               elevation: 2,
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -188,7 +398,10 @@ class _PendingUsersTab extends StatelessWidget {
                       radius: 28,
                       backgroundColor: Colors.orange.shade50,
                       child: Text(
-                        (d['name'] ?? 'U')[0].toUpperCase(),
+                        (d['name']?.toString().isNotEmpty == true
+                                ? d['name'][0]
+                                : 'U')
+                            .toUpperCase(),
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -214,7 +427,9 @@ class _PendingUsersTab extends StatelessWidget {
                           Text(
                             d['email'] ?? '',
                             style: const TextStyle(
-                                color: Colors.grey, fontSize: 13),
+                              color: Colors.grey,
+                              fontSize: 13,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Row(
@@ -222,7 +437,9 @@ class _PendingUsersTab extends StatelessWidget {
                               if (d['bloodGroup'] != null) ...[
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 2),
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.red.shade50,
                                     borderRadius: BorderRadius.circular(8),
@@ -248,7 +465,9 @@ class _PendingUsersTab extends StatelessWidget {
                                 Text(
                                   d['contactNumber'],
                                   style: const TextStyle(
-                                      color: Colors.grey, fontSize: 12),
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
                                 ),
                             ],
                           ),
@@ -260,7 +479,9 @@ class _PendingUsersTab extends StatelessWidget {
                     Container(
                       margin: const EdgeInsets.only(right: 16),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.orange.shade50,
                         borderRadius: BorderRadius.circular(20),
@@ -286,7 +507,8 @@ class _PendingUsersTab extends StatelessWidget {
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -298,7 +520,8 @@ class _PendingUsersTab extends StatelessWidget {
                         foregroundColor: Colors.red.shade700,
                         side: BorderSide(color: Colors.red.shade300),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ],
@@ -321,11 +544,15 @@ class _BloodRequestsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('blood_requests')
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
+      stream:
+          FirebaseFirestore.instance
+              .collection('blood_requests')
+              .orderBy('createdAt', descending: true)
+              .snapshots(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return Center(child: Text('Unable to load requests: ${snap.error}'));
+        }
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -351,39 +578,53 @@ class _BloodRequestsTab extends StatelessWidget {
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Colors.red.shade50,
                   child: Text(
                     d['bloodGroup'] ?? '?',
                     style: TextStyle(
-                        color: Colors.red.shade700,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.red.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                title: Text(d['patientName'] ?? 'Unknown',
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text(d['hospital'] ?? ''),
+                title: Text(
+                  d['patientName'] ?? 'Unknown',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(d['hospitalName'] ?? ''),
+                onTap:
+                    () => showAdminRequestDetails(
+                      context,
+                      docs[index].reference,
+                      d,
+                    ),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 4),
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: status == 'pending'
-                        ? Colors.orange.shade50
-                        : status == 'fulfilled'
-                        ? Colors.green.shade50
-                        : Colors.grey.shade100,
+                    color:
+                        status == 'pending'
+                            ? Colors.orange.shade50
+                            : status == 'fulfilled'
+                            ? Colors.green.shade50
+                            : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     status,
                     style: TextStyle(
-                      color: status == 'pending'
-                          ? Colors.orange.shade700
-                          : status == 'fulfilled'
-                          ? Colors.green.shade700
-                          : Colors.grey,
+                      color:
+                          status == 'pending'
+                              ? Colors.orange.shade700
+                              : status == 'fulfilled'
+                              ? Colors.green.shade700
+                              : Colors.grey,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),

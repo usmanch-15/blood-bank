@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/push_navigation_service.dart';
 import '../utils/account_policy.dart';
 import '../constants/app_spacing.dart'; // ✅ light-touch polish
 
@@ -30,11 +31,13 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF8B0000),
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFF8B0000),
+      ),
+    );
 
     _initializeParticles();
 
@@ -60,10 +63,7 @@ class _SplashScreenState extends State<SplashScreen>
         weight: 1.0,
       ),
     ]).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOut,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
 
     _rotateAnimation = Tween<double>(begin: 0.0, end: 2 * pi).animate(
@@ -91,10 +91,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _particleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
     _animationController.addStatusListener((status) {
@@ -120,6 +117,9 @@ class _SplashScreenState extends State<SplashScreen>
           final data = await AuthService().initializeSession();
           if (!mounted) return;
           Navigator.pushReplacementNamed(context, AccountPolicy.route(data));
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => PushNavigationService.instance.sessionLanded(),
+          );
         } catch (e) {
           if (mounted) {
             Navigator.pushReplacementNamed(context, '/login');
@@ -133,13 +133,15 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _initializeParticles() {
     for (int i = 0; i < 50; i++) {
-      _particles.add(Particle(
-        x: _random.nextDouble(),
-        y: _random.nextDouble(),
-        speed: 0.3 + _random.nextDouble() * 0.7,
-        size: 2 + _random.nextDouble() * 6,
-        opacity: 0.1 + _random.nextDouble() * 0.4,
-      ));
+      _particles.add(
+        Particle(
+          x: _random.nextDouble(),
+          y: _random.nextDouble(),
+          speed: 0.3 + _random.nextDouble() * 0.7,
+          size: 2 + _random.nextDouble() * 6,
+          opacity: 0.1 + _random.nextDouble() * 0.4,
+        ),
+      );
     }
   }
 
@@ -202,9 +204,11 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Transform.translate(
                         offset: Offset(
                           0,
-                          sin((_particleAnimation.value + particle.x) *
-                              pi *
-                              2) *
+                          sin(
+                                (_particleAnimation.value + particle.x) *
+                                    pi *
+                                    2,
+                              ) *
                               10,
                         ),
                         child: Container(
@@ -282,22 +286,22 @@ class _SplashScreenState extends State<SplashScreen>
                                   gradient: LinearGradient(
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.white,
-                                      Colors.red[50]!,
-                                    ],
+                                    colors: [Colors.white, Colors.red[50]!],
                                   ),
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color:
-                                      Colors.red[900]!.withValues(alpha: 0.6),
+                                      color: Colors.red[900]!.withValues(
+                                        alpha: 0.6,
+                                      ),
                                       blurRadius: 40,
                                       spreadRadius: 10,
                                       offset: const Offset(0, 20),
                                     ),
                                     BoxShadow(
-                                      color: Colors.white.withValues(alpha: 0.3),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       blurRadius: 20,
                                       spreadRadius: -10,
                                       offset: const Offset(-10, -10),
@@ -331,20 +335,22 @@ class _SplashScreenState extends State<SplashScreen>
                                 final radius = 100;
                                 final animValue =
                                     _animationController.value % 1.0;
-                                final x = radius *
-                                    cos(angle + animValue * pi / 2);
-                                final y = radius *
-                                    sin(angle + animValue * pi / 2);
+                                final x =
+                                    radius * cos(angle + animValue * pi / 2);
+                                final y =
+                                    radius * sin(angle + animValue * pi / 2);
 
                                 return Positioned(
                                   left: 80 + x,
                                   top: 80 + y,
                                   child: Transform.scale(
                                     scale: (0.5 +
-                                        0.5 *
-                                            sin((animValue + index / 8) *
-                                                pi *
-                                                2))
+                                            0.5 *
+                                                sin(
+                                                  (animValue + index / 8) *
+                                                      pi *
+                                                      2,
+                                                ))
                                         .clamp(0.0, 1.5),
                                     child: Container(
                                       width: 16,
@@ -381,10 +387,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ShaderMask(
                               shaderCallback: (bounds) {
                                 return LinearGradient(
-                                  colors: [
-                                    Colors.white,
-                                    Colors.red[100]!,
-                                  ],
+                                  colors: [Colors.white, Colors.red[100]!],
                                   stops: const [0.3, 1.0],
                                 ).createShader(bounds);
                               },
@@ -399,8 +402,9 @@ class _SplashScreenState extends State<SplashScreen>
                                     height: 1,
                                     shadows: [
                                       Shadow(
-                                        color:
-                                        Colors.red[900]!.withValues(alpha: 0.5),
+                                        color: Colors.red[900]!.withValues(
+                                          alpha: 0.5,
+                                        ),
                                         blurRadius: 20,
                                         offset: const Offset(0, 5),
                                       ),
@@ -420,16 +424,20 @@ class _SplashScreenState extends State<SplashScreen>
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       letterSpacing: 5,
-                                      color: Colors.white.withValues(alpha: 0.8),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.8,
+                                      ),
                                     ),
                                   ),
                                   Positioned(
                                     bottom: 0,
                                     left: 0,
                                     child: AnimatedContainer(
-                                      duration:
-                                      const Duration(milliseconds: 500),
-                                      width: 200 *
+                                      duration: const Duration(
+                                        milliseconds: 500,
+                                      ),
+                                      width:
+                                          200 *
                                           (_animationController.value *
                                               1.5 %
                                               1),
@@ -441,8 +449,7 @@ class _SplashScreenState extends State<SplashScreen>
                                             Colors.transparent,
                                           ],
                                         ),
-                                        borderRadius:
-                                        BorderRadius.circular(1),
+                                        borderRadius: BorderRadius.circular(1),
                                       ),
                                     ),
                                   ),
@@ -469,17 +476,13 @@ class _SplashScreenState extends State<SplashScreen>
                                   ),
                                 ),
                                 AnimatedContainer(
-                                  duration:
-                                  const Duration(milliseconds: 100),
+                                  duration: const Duration(milliseconds: 100),
                                   height: 4,
-                                  width: 200 *
-                                      (_animationController.value % 1.0),
+                                  width:
+                                      200 * (_animationController.value % 1.0),
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
-                                      colors: [
-                                        Colors.white,
-                                        Colors.red[100]!,
-                                      ],
+                                      colors: [Colors.white, Colors.red[100]!],
                                     ),
                                     borderRadius: BorderRadius.circular(2),
                                   ),
@@ -502,14 +505,14 @@ class _SplashScreenState extends State<SplashScreen>
                                 const SizedBox(width: 8),
                                 ...List.generate(3, (index) {
                                   final dotOpacity =
-                                  (_animationController.value * 3 %
-                                      1) >
-                                      index / 3
-                                      ? 1.0
-                                      : 0.3;
+                                      (_animationController.value * 3 % 1) >
+                                              index / 3
+                                          ? 1.0
+                                          : 0.3;
                                   return Padding(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 2),
+                                      horizontal: 2,
+                                    ),
                                     child: Opacity(
                                       opacity: dotOpacity,
                                       child: Container(
@@ -539,9 +542,9 @@ class _SplashScreenState extends State<SplashScreen>
                           spacing: 30,
                           runSpacing: 12,
                           children: [
-                            _buildStatCounter('LIVES SAVED', '1,234+'),
-                            _buildStatCounter('DONORS', '5,678+'),
-                            _buildStatCounter('ACTIVE', '24/7'),
+                            _buildStatCounter('DONATE', 'Blood'),
+                            _buildStatCounter('CONNECT', 'Donors'),
+                            _buildStatCounter('REQUEST', 'Help'),
                           ],
                         ),
                       ),
@@ -572,8 +575,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                       child: CustomPaint(
                         painter: _WavePainter(
-                          animationValue:
-                          _animationController.value % 1.0,
+                          animationValue: _animationController.value % 1.0,
                         ),
                         size: Size(screenSize.width, 80),
                       ),
@@ -593,10 +595,7 @@ class _SplashScreenState extends State<SplashScreen>
                         height: 80,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [
-                              Colors.redAccent,
-                              Colors.red[900]!,
-                            ],
+                            colors: [Colors.redAccent, Colors.red[900]!],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
@@ -635,10 +634,7 @@ class _SplashScreenState extends State<SplashScreen>
         ShaderMask(
           shaderCallback: (bounds) {
             return LinearGradient(
-              colors: [
-                Colors.white,
-                Colors.red[100]!,
-              ],
+              colors: [Colors.white, Colors.red[100]!],
             ).createShader(bounds);
           },
           child: Text(
@@ -688,16 +684,18 @@ class _WavePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.3)
-      ..style = PaintingStyle.fill;
+    final paint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.3)
+          ..style = PaintingStyle.fill;
 
     final path = Path();
     path.moveTo(0, size.height * 0.5);
 
     for (double i = 0; i < size.width; i++) {
       final x = i;
-      final y = size.height * 0.5 +
+      final y =
+          size.height * 0.5 +
           sin((i / size.width * 4 * pi) + (animationValue * 2 * pi)) * 15;
       path.lineTo(x, y);
     }

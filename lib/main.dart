@@ -1,4 +1,6 @@
 import 'services/firebase_runtime.dart';
+import 'widgets/account_access_guard.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -37,25 +39,34 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(
-    options: const bool.fromEnvironment('USE_FIREBASE_EMULATORS')
-      ? const FirebaseOptions(apiKey: 'demo-key', appId: '1:123456789:web:demo',
-          messagingSenderId: '123456789', projectId: 'demo-blood-bank',
-          storageBucket: 'demo-blood-bank.appspot.com')
-      : DefaultFirebaseOptions.currentPlatform,
+    options:
+        const bool.fromEnvironment('USE_FIREBASE_EMULATORS')
+            ? const FirebaseOptions(
+              apiKey: 'demo-key',
+              appId: '1:123456789:web:demo',
+              messagingSenderId: '123456789',
+              projectId: 'demo-blood-bank',
+              storageBucket: 'demo-blood-bank.appspot.com',
+            )
+            : DefaultFirebaseOptions.currentPlatform,
   );
 
   await configureFirebaseRuntime();
 
   // ✅ NEW — must be registered before runApp(), so FCM can deliver
   // background messages to this handler even when the app is killed.
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  if (!kIsWeb && !const bool.fromEnvironment('USE_FIREBASE_EMULATORS')) {
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
 
   runApp(const BloodBankApp());
 
   // ✅ NEW — sets up foreground banner + tap-to-navigate listeners.
   // Safe to call after runApp(): listeners are registered immediately,
   // and any actual navigation waits for the first frame internally.
-  PushNavigationService.instance.init();
+  if (!kIsWeb && !const bool.fromEnvironment('USE_FIREBASE_EMULATORS')) {
+    await PushNavigationService.instance.init();
+  }
 }
 
 class BloodBankApp extends StatelessWidget {
@@ -74,41 +85,95 @@ class BloodBankApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeController()), // ✅ NEW
       ],
       child: Consumer<ThemeController>(
-        builder: (context, themeController, _) => MaterialApp(
-          title: 'Blood Bank',
-          debugShowCheckedModeBanner: false,
+        builder:
+            (context, themeController, _) => MaterialApp(
+              title: 'Blood Bank',
+              debugShowCheckedModeBanner: false,
 
-          // ✅ NEW — lets PushNavigationService navigate from outside the
-          // widget tree (e.g. from a notification tap callback).
-          navigatorKey: rootNavigatorKey,
+              // ✅ NEW — lets PushNavigationService navigate from outside the
+              // widget tree (e.g. from a notification tap callback).
+              navigatorKey: rootNavigatorKey,
+              builder:
+                  (context, child) => Consumer<AuthController>(
+                    builder:
+                        (context, auth, _) => Stack(
+                          children: [
+                            child!,
+                            if (auth.accessRevoked)
+                              const Positioned.fill(
+                                child: AccountAccessGuard(
+                                  child: SizedBox.shrink(),
+                                ),
+                              ),
+                          ],
+                        ),
+                  ),
 
-          // ✅ CHANGED — themeMode now comes from ThemeController instead of
-          // being hardcoded to ThemeMode.system, so Settings → Appearance
-          // can let the user override it (Light / Dark / System).
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: themeController.themeMode,
+              // ✅ CHANGED — themeMode now comes from ThemeController instead of
+              // being hardcoded to ThemeMode.system, so Settings → Appearance
+              // can let the user override it (Light / Dark / System).
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: themeController.themeMode,
 
-          home: const SplashScreen(), // 👈 SAME as tumhara code
+              home: const SplashScreen(), // 👈 SAME as tumhara code
 
-          routes: {
-            '/splash':        (context) => const SplashScreen(),
-            '/login':         (context) => const LoginScreen(),
-            '/role-select':   (context) => const RoleSelectionScreen(),
-            '/donor':         (context) => const DonorDashboardScreen(),
-            '/receiver':      (context) => const ReceiverDashboardScreen(),
+              routes: {
+                '/splash': (context) => const SplashScreen(),
+                '/login': (context) => const LoginScreen(),
+                '/role-select':
+                    (context) =>
+                        const AccountAccessGuard(child: RoleSelectionScreen()),
+                '/donor':
+                    (context) => const AccountAccessGuard(
+                      role: 'donor',
+                      child: DonorDashboardScreen(),
+                    ),
+                '/receiver':
+                    (context) => const AccountAccessGuard(
+                      role: 'receiver',
+                      child: ReceiverDashboardScreen(),
+                    ),
 
-            // Admin Routes
-            '/admin/login':         (context) => const AdminWebLogin(),
-            '/admin/dashboard':     (context) => const AdminWebDashboard(),
-            '/admin/users':         (context) => const AdminWebUsers(),
-            '/admin/requests':      (context) => const AdminWebRequests(),
-            '/admin/donations':     (context) => const AdminWebDonations(),
-            '/admin/analytics':     (context) => const AdminWebAnalytics(),
-            '/admin/reports':       (context) => const AdminWebReports(),
-            '/admin/notifications': (context) => const AdminWebNotifications(),
-          },
-        ),
+                // Admin Routes
+                '/admin/login': (context) => const AdminWebLogin(),
+                '/admin/dashboard':
+                    (context) => const AccountAccessGuard(
+                      role: 'admin',
+                      child: AdminWebDashboard(),
+                    ),
+                '/admin/users':
+                    (context) => const AccountAccessGuard(
+                      role: 'admin',
+                      child: AdminWebUsers(),
+                    ),
+                '/admin/requests':
+                    (context) => const AccountAccessGuard(
+                      role: 'admin',
+                      child: AdminWebRequests(),
+                    ),
+                '/admin/donations':
+                    (context) => const AccountAccessGuard(
+                      role: 'admin',
+                      child: AdminWebDonations(),
+                    ),
+                '/admin/analytics':
+                    (context) => const AccountAccessGuard(
+                      role: 'admin',
+                      child: AdminWebAnalytics(),
+                    ),
+                '/admin/reports':
+                    (context) => const AccountAccessGuard(
+                      role: 'admin',
+                      child: AdminWebReports(),
+                    ),
+                '/admin/notifications':
+                    (context) => const AccountAccessGuard(
+                      role: 'admin',
+                      child: AdminWebNotifications(),
+                    ),
+              },
+            ),
       ),
     );
   }

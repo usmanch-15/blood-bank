@@ -1,7 +1,8 @@
 const { HttpsError } = require('firebase-functions/v2/https');
-const admin = require('firebase-admin');
+const admin = require('./firebaseAdmin');
 const { active, eligible, compatible, INTERVAL_MS, POINTS } = require('./donationPolicy');
 const db = admin.firestore();
+const {checkSosRateLimit} = require('./rateLimiter');
 const fail = (code, message) => { throw new HttpsError(code, message); };
 function id(value) {
   if (typeof value !== 'string' || !value.length || value.length > 128 || value.includes('/')) {
@@ -27,8 +28,31 @@ async function acceptDonation(request) {
     if (r.status !== 'pending') fail('failed-precondition', 'This request is no longer open.');
     if (!eligible(d, Date.now()) || !compatible(d.bloodGroup, r.bloodGroup)) fail('failed-precondition', 'Donor does not meet the matching and interval requirements.');
     tx.update(ref, {status: 'accepted', acceptedDonorId: uid, acceptedAt: admin.firestore.Timestamp.now()});
+    tx.set(db.doc(`notifications/accepted_${requestId}`), {
+      userId: r.requesterId, title: 'Donor accepted your request',
+      body: `${d.name || 'A donor'} accepted your blood request. Open Find Donors to arrange the donation.`,
+      type: 'general', relatedId: requestId, isRead: false, createdAt: admin.firestore.Timestamp.now(),
+    });
     return {accepted: true};
   });
+}
+async function createSosAlert(request) {
+  const uid = caller(request);
+  const data = request.data || {};
+  const user = (await db.doc(`users/${uid}`).get()).data();
+  if (!active(user) || user.isReceiver !== true) fail('permission-denied','An active receiver account is required.');
+  if (!Number.isFinite(data.latitude) || Math.abs(data.latitude)>90 ||
+      !Number.isFinite(data.longitude) || Math.abs(data.longitude)>180 ||
+      !['A+','A-','B+','B-','AB+','AB-','O+','O-'].includes(data.bloodGroup) ||
+      !['urgent','critical','life_threatening'].includes(data.urgency)) {
+    fail('invalid-argument','Select a blood group, emergency level and valid location.');
+  }
+  if (!await checkSosRateLimit(uid)) fail('resource-exhausted','SOS limit reached. Try again later or contact emergency services.');
+  const ref = db.collection('sosRequests').doc();
+  await ref.set({id:ref.id,receiverId:uid,bloodGroup:data.bloodGroup,
+    latitude:data.latitude,longitude:data.longitude,urgency:data.urgency,
+    triggerTime:admin.firestore.Timestamp.now(),isResolved:false,status:'queued'});
+  return {id:ref.id};
 }
 async function confirmDonation(request) {
   const uid = caller(request);
@@ -62,6 +86,9 @@ async function confirmDonation(request) {
     tx.create(db.doc(`notifications/donation_${requestId}`), {userId: donorId,
       title: 'Donation confirmed', body: `Thank you for donating. You earned ${POINTS} points.`,
       type: 'donation_confirmed', relatedId: requestId, createdAt: now, isRead: false});
+    tx.create(db.doc(`notifications/fulfilled_${requestId}`), {userId: r.requesterId,
+      title: 'Blood request fulfilled', body: 'The donation has been confirmed and your request is fulfilled.',
+      type: 'general', relatedId: requestId, createdAt: now, isRead: false});
     return {donationId: donationRef.id, nextEligibleDate: nextEligible.toMillis()};
   });
 }
@@ -108,4 +135,4 @@ async function deleteAccount(request, adminAction = false) {
   catch (e) { if (e.code !== 'auth/user-not-found') throw e; }
   return {deleted: true};
 }
-module.exports = {acceptDonation, confirmDonation, deleteAccount};
+module.exports = {acceptDonation, confirmDonation, deleteAccount, createSosAlert};

@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+const admin = require('./firebaseAdmin');
 const {eligible, compatible, distanceKm} = require('./donationPolicy');
 // Indexed latitude bounding band, then exact spherical distance filtering.
 // Page through the band instead of loading the entire donor collection.

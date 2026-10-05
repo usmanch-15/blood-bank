@@ -2,14 +2,12 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const admin = require("firebase-admin");
+const admin = require("./firebaseAdmin");
 
 admin.initializeApp();
 const db = admin.firestore();
-const messaging = admin.messaging();
 
-const { sendPushToUsers } = require("./notificationService");
-const { checkSosRateLimit } = require("./rateLimiter");
+const { sendPushToUsers, sendPushToUser } = require("./notificationService");
 const { sendSmsFallback, twilioAuthToken } = require("./smsFallback");
 const { checkEligibilityReminders } = require("./eligibilityReminder");
 
@@ -18,6 +16,7 @@ const {nearbyDonors} = require('./nearbyDonors');
 exports.acceptDonation = onCall(workflows.acceptDonation);
 exports.confirmDonation = onCall(workflows.confirmDonation);
 exports.deleteAccount = onCall(request => workflows.deleteAccount(request));
+exports.createSosAlert = onCall(workflows.createSosAlert);
 
 exports.sendPushNotification = onDocumentCreated(
   "notifications/{notificationId}",
@@ -26,46 +25,20 @@ exports.sendPushNotification = onDocumentCreated(
     if (!data || !data.userId) return;
     if (data.pushSentDirectly) return; // already sent by notificationService — avoid duplicate push
 
-    const userSnap = await db.collection("users").doc(data.userId).get();
-    const token = (await db.doc(`users/${data.userId}/private/device`).get()).data()?.fcmToken;
-    if (userSnap.data()?.status !== 'approved' || userSnap.data()?.notificationsEnabled === false) return;
-    if (!token) return; // user ne notification permission nahi di / token nahi mila
-
-    try {
-      await messaging.send({
-        token,
-        android: {notification: {channelId: 'blood_requests'}},
-        notification: {
-          title: data.title || "Smart Blood Bank",
-          body: data.body || "",
-        },
-        data: {
-          type: data.type || "general",
-          relatedId: data.relatedId || "",
-        },
-      });
-    } catch (err) {
-      // Token expire/invalid ho sakta hai — silently log, app crash na ho
-      console.error("Push notification failed:", err.message);
-    }
+    await sendPushToUser(data.userId, {
+      title: data.title || 'Smart Blood Bank', body: data.body || '',
+      data: {type: data.type || 'general', relatedId: data.relatedId || ''},
+      record: false,
+    });
   }
 );
 
 exports.notifyNearbyDonorsOnSOS = onDocumentCreated(
-  { document: "sosRequests/{sosId}", secrets: [twilioAuthToken] },
+  { document: "sosRequests/{sosId}", secrets: process.env.FUNCTIONS_EMULATOR === 'true' ? [] : [twilioAuthToken] },
   async (event) => {
     const sosRef = event.data?.ref;
     const sos = event.data?.data();
-    if (!sos || !sos.bloodGroup || !sos.receiverId || !sosRef) return;
-
-    const allowed = await checkSosRateLimit(sos.receiverId);
-    if (!allowed) {
-      await sosRef.update({
-        status: "rate_limited",
-        rateLimitedAt: admin.firestore.Timestamp.now(),
-      });
-      return; // spam request — donors ko notify nahi karna
-    }
+    if (!sos || !sos.bloodGroup || !sos.receiverId || !sosRef || sos.isResolved) return;
 
     const owner = (await db.doc(`users/${sos.receiverId}`).get()).data();
     if (owner?.status !== 'approved') return;
@@ -204,7 +177,7 @@ exports.dailyEligibilityCheck = onSchedule(
     await checkEligibilityReminders();
   }
 );
-exports.notifyRequest = onCall(async request => {
+async function notifyRequest(request) {
   if (!request.auth) throw new HttpsError('unauthenticated','Sign in first.');
   const requestId = request.data?.requestId;
   if (typeof requestId !== 'string' || requestId.includes('/')) throw new HttpsError('invalid-argument','Request required.');
@@ -216,7 +189,8 @@ exports.notifyRequest = onCall(async request => {
   }
   const ids = await nearbyDonors(r.latitude,r.longitude,r.bloodGroup,50);
   const requested = request.data.userIds;
-  const recipients = Array.isArray(requested) ? ids.filter(uid=>requested.includes(uid)) : ids;
+  const recipients = ids.filter(uid => uid !== request.auth.uid &&
+    (!Array.isArray(requested) || requested.includes(uid)));
   for (const uid of recipients) {
     try {
       await db.doc(`notifications/request_${requestId}_${uid}`).create({
@@ -225,5 +199,22 @@ exports.notifyRequest = onCall(async request => {
       });
     } catch(e) { if(e.code !== 6) throw e; }
   }
+  if (recipients.length) await ref.update({notifiedDonors: admin.firestore.FieldValue.arrayUnion(...recipients)});
   return {count:recipients.length};
+}
+exports.notifyRequest = onCall(notifyRequest);
+
+// Matching runs on the server even if the client closes after saving.
+exports.onBloodRequestCreated = onDocumentCreated('blood_requests/{requestId}', async event => {
+  const data = event.data?.data();
+  if (!data || data.status !== 'pending' || !Number.isFinite(data.latitude) || !Number.isFinite(data.longitude)) return;
+  let recipients = [];
+  for (const radius of [10, 30, 50]) {
+    recipients = (await nearbyDonors(data.latitude, data.longitude, data.bloodGroup, radius))
+      .filter(uid => uid !== data.requesterId);
+    if (recipients.length) break;
+  }
+  await notifyRequest({auth: {uid: data.requesterId}, data: {
+    requestId: event.params.requestId, userIds: recipients,
+  }});
 });

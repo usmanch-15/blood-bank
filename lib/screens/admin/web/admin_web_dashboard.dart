@@ -8,6 +8,8 @@ import 'admin_web_requests.dart';
 import 'admin_web_analytics.dart';
 import 'admin_web_donations.dart';
 import 'admin_web_reports.dart';
+import 'admin_web_notifications.dart';
+import '../../../services/auth_service.dart';
 import '../../auth/login_screen.dart';
 
 /// ── Admin Console design tokens ────────────────────────────────────────
@@ -36,25 +38,23 @@ class _T {
     double size = 22,
     FontWeight weight = FontWeight.w700,
     Color? color,
-  }) =>
-      GoogleFonts.plusJakartaSans(
-        fontSize: size,
-        fontWeight: weight,
-        color: color ?? ink900,
-        height: 1.2,
-      );
+  }) => GoogleFonts.plusJakartaSans(
+    fontSize: size,
+    fontWeight: weight,
+    color: color ?? ink900,
+    height: 1.2,
+  );
 
   static TextStyle body({
     double size = 14,
     FontWeight weight = FontWeight.w500,
     Color? color,
-  }) =>
-      GoogleFonts.inter(
-        fontSize: size,
-        fontWeight: weight,
-        color: color ?? ink900,
-        height: 1.45,
-      );
+  }) => GoogleFonts.inter(
+    fontSize: size,
+    fontWeight: weight,
+    color: color ?? ink900,
+    height: 1.45,
+  );
 }
 
 class AdminWebDashboard extends StatefulWidget {
@@ -76,6 +76,7 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
     ('Analytics', Icons.insights_rounded),
     ('Donations', Icons.favorite_rounded),
     ('Reports', Icons.flag_rounded),
+    ('Notifications', Icons.notifications_rounded),
   ];
 
   @override
@@ -88,16 +89,17 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
       AdminWebAnalytics(),
       AdminWebDonations(),
       AdminWebReports(),
+      AdminWebNotifications(),
     ];
   }
 
   void _logout() async {
-    await FirebaseAuth.instance.signOut();
+    await AuthService().signOut();
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -108,62 +110,76 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
 
     return Scaffold(
       backgroundColor: _T.canvas,
-      body: isWide
-          ? Row(
-        children: [
-          _Sidebar(
-            selectedIndex: _selectedIndex,
-            sections: _sections,
-            onTap: (i) => setState(() => _selectedIndex = i),
-            onLogout: _logout,
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                _TopBar(title: _sections[_selectedIndex].$1),
-                Expanded(child: _screens[_selectedIndex]),
-              ],
-            ),
-          ),
-        ],
-      )
-          : Column(
-        children: [
-          _TopBar(
-            title: _sections[_selectedIndex].$1,
-            compact: true,
-            onLogout: _logout,
-          ),
-          Expanded(child: _screens[_selectedIndex]),
-        ],
-      ),
-      bottomNavigationBar: isWide
-          ? null
-          : Container(
-        decoration: BoxDecoration(
-          color: _T.ink,
-          border: Border(top: BorderSide(color: _T.inkBorder)),
-        ),
-        child: SafeArea(
-          child: BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: (i) => setState(() => _selectedIndex = i),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            selectedItemColor: _T.crimson,
-            unselectedItemColor: _T.slate400,
-            selectedLabelStyle: _T.body(size: 11, weight: FontWeight.w700),
-            unselectedLabelStyle: _T.body(size: 11, weight: FontWeight.w500),
-            type: BottomNavigationBarType.fixed,
-            items: _sections
-                .map((s) => BottomNavigationBarItem(
-              icon: Icon(s.$2),
-              label: s.$1 == 'Blood Requests' ? 'Requests' : s.$1,
-            ))
-                .toList(),
-          ),
-        ),
-      ),
+      body:
+          isWide
+              ? Row(
+                children: [
+                  _Sidebar(
+                    selectedIndex: _selectedIndex,
+                    sections: _sections,
+                    onTap: (i) => setState(() => _selectedIndex = i),
+                    onLogout: _logout,
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _TopBar(title: _sections[_selectedIndex].$1),
+                        Expanded(child: _screens[_selectedIndex]),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+              : Column(
+                children: [
+                  _TopBar(
+                    title: _sections[_selectedIndex].$1,
+                    compact: true,
+                    onLogout: _logout,
+                  ),
+                  Expanded(child: _screens[_selectedIndex]),
+                ],
+              ),
+      bottomNavigationBar:
+          isWide
+              ? null
+              : Container(
+                decoration: BoxDecoration(
+                  color: _T.ink,
+                  border: Border(top: BorderSide(color: _T.inkBorder)),
+                ),
+                child: SafeArea(
+                  child: BottomNavigationBar(
+                    currentIndex: _selectedIndex,
+                    onTap: (i) => setState(() => _selectedIndex = i),
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    selectedItemColor: _T.crimson,
+                    unselectedItemColor: _T.slate400,
+                    selectedLabelStyle: _T.body(
+                      size: 11,
+                      weight: FontWeight.w700,
+                    ),
+                    unselectedLabelStyle: _T.body(
+                      size: 11,
+                      weight: FontWeight.w500,
+                    ),
+                    type: BottomNavigationBarType.fixed,
+                    items:
+                        _sections
+                            .map(
+                              (s) => BottomNavigationBarItem(
+                                icon: Icon(s.$2),
+                                label:
+                                    s.$1 == 'Blood Requests'
+                                        ? 'Requests'
+                                        : s.$1,
+                              ),
+                            )
+                            .toList(),
+                  ),
+                ),
+              ),
     );
   }
 }
@@ -281,7 +297,9 @@ class _Sidebar extends StatelessWidget {
                   onTap: () => onTap(i),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 11),
+                      horizontal: 12,
+                      vertical: 11,
+                    ),
                     child: Row(
                       children: [
                         // left accent bar for the active section
@@ -306,7 +324,7 @@ class _Sidebar extends StatelessWidget {
                           style: GoogleFonts.inter(
                             color: selected ? Colors.white : _T.slate400,
                             fontWeight:
-                            selected ? FontWeight.w600 : FontWeight.w500,
+                                selected ? FontWeight.w600 : FontWeight.w500,
                             fontSize: 13.5,
                           ),
                         ),
@@ -352,8 +370,11 @@ class _Sidebar extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: 'Sign out',
-                  icon: const Icon(Icons.logout_rounded,
-                      size: 18, color: _T.slate400),
+                  icon: const Icon(
+                    Icons.logout_rounded,
+                    size: 18,
+                    color: _T.slate400,
+                  ),
                   onPressed: onLogout,
                 ),
               ],
@@ -390,15 +411,19 @@ class _TopBar extends StatelessWidget {
               height: 30,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                    colors: [_T.crimson, _T.crimsonDeep]),
+                  colors: [_T.crimson, _T.crimsonDeep],
+                ),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Center(
-                child: Text('BC',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11)),
+                child: Text(
+                  'BC',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -408,12 +433,15 @@ class _TopBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('Admin Console',
-                    style: GoogleFonts.inter(
-                        color: _T.slate500,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.6)),
+                Text(
+                  'Admin Console',
+                  style: GoogleFonts.inter(
+                    color: _T.slate500,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.6,
+                  ),
+                ),
                 Text(title, style: _T.display(size: 18)),
               ],
             ),
@@ -431,14 +459,19 @@ class _TopBar extends StatelessWidget {
                   width: 7,
                   height: 7,
                   decoration: const BoxDecoration(
-                      color: _T.emerald, shape: BoxShape.circle),
+                    color: _T.emerald,
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 const SizedBox(width: 6),
-                Text('Live data',
-                    style: GoogleFonts.inter(
-                        color: _T.emerald,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  'Live data',
+                  style: GoogleFonts.inter(
+                    color: _T.emerald,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -466,12 +499,15 @@ Widget _sectionHeader(String eyebrow, String title, {bool live = false}) {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(eyebrow,
-                  style: GoogleFonts.inter(
-                      color: _T.slate400,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1)),
+              Text(
+                eyebrow,
+                style: GoogleFonts.inter(
+                  color: _T.slate400,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
               const SizedBox(height: 2),
               Text(title, style: _T.display(size: 17)),
             ],
@@ -485,14 +521,19 @@ Widget _sectionHeader(String eyebrow, String title, {bool live = false}) {
                 width: 6,
                 height: 6,
                 decoration: const BoxDecoration(
-                    color: _T.emerald, shape: BoxShape.circle),
+                  color: _T.emerald,
+                  shape: BoxShape.circle,
+                ),
               ),
               const SizedBox(width: 6),
-              Text('Live',
-                  style: GoogleFonts.inter(
-                      color: _T.emerald,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                'Live',
+                style: GoogleFonts.inter(
+                  color: _T.emerald,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
       ],
@@ -525,9 +566,14 @@ Widget _statusPill(String status, {Map<String, Color>? overrides}) {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(status,
-            style: GoogleFonts.inter(
-                color: color, fontSize: 11.5, fontWeight: FontWeight.w600)),
+        Text(
+          status,
+          style: GoogleFonts.inter(
+            color: color,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     ),
   );
@@ -544,10 +590,11 @@ class _DashboardHome extends StatelessWidget {
     final requests = await db.collection('blood_requests').get();
     final donations = await db.collection('donations').get();
 
-    final pendingUsers = await db
-        .collection('users')
-        .where('status', isEqualTo: 'pending')
-        .get();
+    final pendingUsers =
+        await db
+            .collection('users')
+            .where('status', isEqualTo: 'pending')
+            .get();
 
     return {
       'users': users.size,
@@ -573,16 +620,21 @@ class _DashboardHome extends StatelessWidget {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 40),
                   child: Center(
-                      child: CircularProgressIndicator(color: _T.crimson)),
+                    child: CircularProgressIndicator(color: _T.crimson),
+                  ),
                 );
               }
-              final data = snap.data ??
+              final data =
+                  snap.data ??
                   {
                     'users': 0,
                     'requests': 0,
                     'donations': 0,
                     'pendingUsers': 0,
                   };
+              if (snap.hasError) {
+                return Text('Unable to load statistics: ${snap.error}');
+              }
 
               return Wrap(
                 spacing: 16,
@@ -621,11 +673,12 @@ class _DashboardHome extends StatelessWidget {
           _sectionHeader('ACTIVITY', 'Recent blood requests', live: true),
 
           _ListPanel(
-            stream: FirebaseFirestore.instance
-                .collection('blood_requests')
-                .orderBy('createdAt', descending: true)
-                .limit(5)
-                .snapshots(),
+            stream:
+                FirebaseFirestore.instance
+                    .collection('blood_requests')
+                    .orderBy('createdAt', descending: true)
+                    .limit(5)
+                    .snapshots(),
             emptyText: 'No blood requests yet.',
             rowBuilder: (doc) {
               final d = doc.data() as Map<String, dynamic>;
@@ -634,7 +687,7 @@ class _DashboardHome extends StatelessWidget {
                 leadingText: d['bloodGroup'] ?? '?',
                 leadingColor: _T.crimson,
                 title: d['patientName'] ?? 'Unknown',
-                subtitle: d['hospital'] ?? '',
+                subtitle: d['hospitalName'] ?? '',
                 trailing: _statusPill(status),
               );
             },
@@ -644,11 +697,12 @@ class _DashboardHome extends StatelessWidget {
           _sectionHeader('DIRECTORY', 'Recent users', live: true),
 
           _ListPanel(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .orderBy('createdAt', descending: true)
-                .limit(5)
-                .snapshots(),
+            stream:
+                FirebaseFirestore.instance
+                    .collection('users')
+                    .orderBy('createdAt', descending: true)
+                    .limit(5)
+                    .snapshots(),
             emptyText: 'No users yet.',
             rowBuilder: (doc) {
               final d = doc.data() as Map<String, dynamic>;
@@ -715,12 +769,15 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 16),
           Text(value, style: _T.display(size: 26)),
           const SizedBox(height: 3),
-          Text(label.toUpperCase(),
-              style: GoogleFonts.inter(
-                  color: _T.slate500,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4)),
+          Text(
+            label.toUpperCase(),
+            style: GoogleFonts.inter(
+              color: _T.slate500,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
+          ),
         ],
       ),
     );
@@ -754,7 +811,8 @@ class _ListPanel extends StatelessWidget {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 32),
               child: Center(
-                  child: CircularProgressIndicator(color: _T.crimson)),
+                child: CircularProgressIndicator(color: _T.crimson),
+              ),
             );
           }
           final docs = snap.data?.docs ?? [];
@@ -809,9 +867,10 @@ class _PanelRow extends StatelessWidget {
             child: Text(
               leadingText,
               style: TextStyle(
-                  color: leadingColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13),
+                color: leadingColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -822,7 +881,10 @@ class _PanelRow extends StatelessWidget {
                 Text(title, style: _T.body(size: 14, weight: FontWeight.w600)),
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text(subtitle, style: _T.body(size: 12.5, color: _T.slate500)),
+                  Text(
+                    subtitle,
+                    style: _T.body(size: 12.5, color: _T.slate500),
+                  ),
                 ],
               ],
             ),

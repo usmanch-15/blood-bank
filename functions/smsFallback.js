@@ -1,18 +1,20 @@
 
-const admin = require('firebase-admin');
+const admin = require('./firebaseAdmin');
 if (!admin.apps.length) {
   admin.initializeApp();
 }
 const db = admin.firestore();
 const { defineString, defineSecret } = require('firebase-functions/params');
 
-const twilioSid = defineString('TWILIO_SID', {default:''});
-const twilioPhone = defineString('TWILIO_PHONE', {default:''});
+const twilioSid = defineString('TWILIO_SID', {default:'disabled'});
+const twilioPhone = defineString('TWILIO_PHONE', {default:'disabled'});
 const twilioAuthToken = defineSecret('TWILIO_AUTH_TOKEN');
 
 let twilioClient = null;
 function getTwilioClient() {
+  if (process.env.FUNCTIONS_EMULATOR === 'true') return null;
   const sid = twilioSid.value();
+  if (!sid || sid === 'disabled') return null;
   const token = twilioAuthToken.value();
 
   if (!sid || !token) {

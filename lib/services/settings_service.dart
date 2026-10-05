@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'notification_service.dart';
+import 'geo_location_service.dart';
+import '../utils/location_helper.dart';
 import '../utils/validators.dart';
 import '../constants/app_constants.dart';
 
@@ -104,6 +106,12 @@ class SettingsService {
     final data = <String, dynamic>{
       'locationSharingEnabled': enabled,
     };
+    if (enabled) {
+      final position = await GeoLocationService().getCurrentLocation();
+      data['latitude'] = LocationHelper.roundForPrivacy(position.latitude);
+      data['longitude'] = LocationHelper.roundForPrivacy(position.longitude);
+      data['locationUpdatedAt'] = FieldValue.serverTimestamp();
+    }
     if (!enabled) {
       data['latitude'] = null;
       data['longitude'] = null;

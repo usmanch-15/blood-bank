@@ -89,7 +89,7 @@ class GeoLocationService {
     required double receiverLng,
     String?
     bloodGroup, // âœ… CHANGED: nullable â€” null means "any blood group"
-    List<double> radiiKm = const [15.0, 30.0, 50.0],
+    List<double> radiiKm = const [10.0, 30.0, 50.0],
   }) async {
     for (final radius in radiiKm) {
       final donors = await findNearbyDonors(

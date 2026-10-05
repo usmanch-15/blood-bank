@@ -84,6 +84,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
         bgRequests[bg] = (bgRequests[bg] ?? 0) + 1;
       }
 
+      if (!mounted) return;
       setState(() {
         _totalUsers = usersSnap.size;
         _totalDonors = donors;
@@ -99,6 +100,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -110,7 +112,8 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(
-          child: CircularProgressIndicator(color: AppColors.primaryRed));
+        child: CircularProgressIndicator(color: AppColors.primaryRed),
+      );
     }
     if (_error.isNotEmpty) {
       return Center(
@@ -119,16 +122,19 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
           children: [
             Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
             const SizedBox(height: 12),
-            Text('Error: $_error',
-                style: TextStyle(color: Colors.red.shade400)),
+            Text(
+              'Error: $_error',
+              style: TextStyle(color: Colors.red.shade400),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _loadAnalytics,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade700,
-                  foregroundColor: Colors.white),
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -157,8 +163,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
                   const SizedBox(height: 4),
                   Text(
                     'Live data from Firestore',
-                    style:
-                    TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -171,9 +176,12 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
                   foregroundColor: Colors.red.shade700,
                   side: BorderSide(color: Colors.red.shade300),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                 ),
               ),
             ],
@@ -196,8 +204,10 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
                   title: 'Donations by Blood Group',
                   icon: Icons.favorite,
                   iconColor: Colors.red,
-                  child: _buildBloodGroupChart(_bloodGroupDonations,
-                      Colors.red.shade400),
+                  child: _buildBloodGroupChart(
+                    _bloodGroupDonations,
+                    Colors.red.shade400,
+                  ),
                 ),
               ),
               const SizedBox(width: 20),
@@ -208,7 +218,9 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
                   icon: Icons.bloodtype,
                   iconColor: Colors.blue,
                   child: _buildBloodGroupChart(
-                      _bloodGroupRequests, Colors.blue.shade400),
+                    _bloodGroupRequests,
+                    Colors.blue.shade400,
+                  ),
                 ),
               ),
             ],
@@ -258,9 +270,10 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
 
   // ── KPI stat cards ──────────────────────────────────────────
   Widget _buildKpiRow() {
-    final fulfillmentRate = _totalRequests > 0
-        ? (_fulfilledRequests / _totalRequests * 100).toStringAsFixed(1)
-        : '0';
+    final fulfillmentRate =
+        _totalRequests > 0
+            ? (_fulfilledRequests / _totalRequests * 100).toStringAsFixed(1)
+            : '0';
 
     final kpis = [
       {
@@ -294,70 +307,75 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
     ];
 
     return Row(
-      children: kpis.map((k) {
-        final color = k['color'] as Color;
-        return Expanded(
-          child: Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+      children:
+          kpis.map((k) {
+            final color = k['color'] as Color;
+            return Expanded(
+              child: Container(
+                margin: const EdgeInsets.only(right: 16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(k['icon'] as IconData, color: color, size: 24),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        k['icon'] as IconData,
+                        color: color,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            k['value'] as String,
+                            style: TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
+                          ),
+                          Text(
+                            k['label'] as String,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: Color(0xFF1A1A2E),
+                            ),
+                          ),
+                          Text(
+                            k['sub'] as String,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        k['value'] as String,
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                        ),
-                      ),
-                      Text(
-                        k['label'] as String,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                          color: Color(0xFF1A1A2E),
-                        ),
-                      ),
-                      Text(
-                        k['sub'] as String,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+              ),
+            );
+          }).toList(),
     );
   }
 
@@ -411,71 +429,72 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: Text('No data yet',
-              style: TextStyle(color: Colors.grey.shade400)),
+          child: Text(
+            'No data yet',
+            style: TextStyle(color: Colors.grey.shade400),
+          ),
         ),
       );
     }
 
-    final sorted = data.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sorted =
+        data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     final maxVal = sorted.first.value;
 
     return Column(
-      children: sorted.take(8).map((e) {
-        final pct = maxVal > 0 ? e.value / maxVal : 0.0;
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 36,
-                child: Text(
-                  e.key,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade700,
+      children:
+          sorted.take(8).map((e) {
+            final pct = maxVal > 0 ? e.value / maxVal : 0.0;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 36,
+                    child: Text(
+                      e.key,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: pct,
-                    minHeight: 14,
-                    backgroundColor: Colors.grey.shade100,
-                    color: barColor,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: pct,
+                        minHeight: 14,
+                        backgroundColor: Colors.grey.shade100,
+                        color: barColor,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 28,
-                child: Text(
-                  '${e.value}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 28,
+                    child: Text(
+                      '${e.value}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade600,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
                   ),
-                  textAlign: TextAlign.right,
-                ),
+                ],
               ),
-            ],
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 
   // ── Fulfillment rate visual ──────────────────────────────────
   Widget _buildFulfillmentWidget() {
-    final rate = _totalRequests > 0
-        ? _fulfilledRequests / _totalRequests
-        : 0.0;
+    final rate = _totalRequests > 0 ? _fulfilledRequests / _totalRequests : 0.0;
 
     return Column(
       children: [
@@ -503,9 +522,10 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
                     color: Color(0xFF1A1A2E),
                   ),
                 ),
-                Text('fulfilled',
-                    style: TextStyle(
-                        fontSize: 11, color: Colors.grey.shade500)),
+                Text(
+                  'fulfilled',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                ),
               ],
             ),
           ],
@@ -517,9 +537,10 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
             _legendItem('Fulfilled', _fulfilledRequests, Colors.green),
             _legendItem('Pending', _pendingRequests, Colors.orange),
             _legendItem(
-                'Other',
-                _totalRequests - _fulfilledRequests - _pendingRequests,
-                Colors.grey),
+              'Other',
+              _totalRequests - _fulfilledRequests - _pendingRequests,
+              Colors.grey,
+            ),
           ],
         ),
       ],
@@ -529,12 +550,18 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
   Widget _legendItem(String label, int count, Color color) {
     return Column(
       children: [
-        Text('$count',
-            style: TextStyle(
-                fontWeight: FontWeight.bold, color: color, fontSize: 16)),
-        Text(label,
-            style:
-            TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+        Text(
+          '$count',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: color,
+            fontSize: 16,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+        ),
       ],
     );
   }
@@ -543,78 +570,91 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
   Widget _buildUserBreakdown() {
     final items = [
       {'label': 'Donors', 'count': _totalDonors, 'color': Colors.red},
-      {
-        'label': 'Receivers',
-        'count': _totalReceivers,
-        'color': Colors.blue
-      },
-      {
-        'label': 'Pending',
-        'count': _pendingUsers,
-        'color': Colors.orange
-      },
+      {'label': 'Receivers', 'count': _totalReceivers, 'color': Colors.blue},
+      {'label': 'Pending', 'count': _pendingUsers, 'color': Colors.orange},
     ];
 
     return Column(
-      children: items.map((item) {
-        final color = item['color'] as Color;
-        final count = item['count'] as int;
-        final pct = _totalUsers > 0 ? count / _totalUsers : 0.0;
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children:
+          items.map((item) {
+            final color = item['color'] as Color;
+            final count = item['count'] as int;
+            final pct = _totalUsers > 0 ? count / _totalUsers : 0.0;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item['label'] as String,
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w500)),
-                  Text('$count',
-                      style: TextStyle(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        item['label'] as String,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '$count',
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: color)),
+                          color: color,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: pct,
+                      minHeight: 8,
+                      backgroundColor: Colors.grey.shade100,
+                      color: color,
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 4),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: pct,
-                  minHeight: 8,
-                  backgroundColor: Colors.grey.shade100,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 
   // ── Rewards overview ─────────────────────────────────────────
   Widget _buildRewardsWidget() {
     final avgPoints =
-    _totalDonors > 0 ? (_totalPoints / _totalDonors).toStringAsFixed(0) : '0';
+        _totalDonors > 0
+            ? (_totalPoints / _totalDonors).toStringAsFixed(0)
+            : '0';
     return Column(
       children: [
-        _rewardStat('Total Points Distributed', '$_totalPoints',
-            Icons.stars, Colors.amber),
+        _rewardStat(
+          'Total Points Distributed',
+          '$_totalPoints',
+          Icons.stars,
+          Colors.amber,
+        ),
         const SizedBox(height: 12),
         _rewardStat(
-            'Avg Points per Donor', avgPoints, Icons.person, Colors.blue),
+          'Avg Points per Donor',
+          avgPoints,
+          Icons.person,
+          Colors.blue,
+        ),
         const SizedBox(height: 12),
-        _rewardStat('Total Donors', '$_totalDonors', Icons.favorite,
-            Colors.red),
+        _rewardStat(
+          'Total Donors',
+          '$_totalDonors',
+          Icons.favorite,
+          Colors.red,
+        ),
       ],
     );
   }
 
-  Widget _rewardStat(
-      String label, String value, IconData icon, Color color) {
+  Widget _rewardStat(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -626,15 +666,19 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 12, color: Colors.grey.shade600)),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
           ),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: color)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: color,
+            ),
+          ),
         ],
       ),
     );

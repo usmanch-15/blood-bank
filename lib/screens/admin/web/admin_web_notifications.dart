@@ -7,8 +7,7 @@ class AdminWebNotifications extends StatefulWidget {
   const AdminWebNotifications({super.key});
 
   @override
-  State<AdminWebNotifications> createState() =>
-      _AdminWebNotificationsState();
+  State<AdminWebNotifications> createState() => _AdminWebNotificationsState();
 }
 
 class _AdminWebNotificationsState extends State<AdminWebNotifications>
@@ -19,19 +18,32 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
   final _titleCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
   String _targetType = 'all'; // all | donor | receiver
-  String _notificationType = 'blood_request'; // blood_request | blood_drive | eligibility | reward
+  String _notificationType =
+      'blood_request'; // blood_request | blood_drive | eligibility | reward
   bool _isSending = false;
 
   final List<Map<String, dynamic>> _targetOptions = [
     {'value': 'all', 'label': 'All Users', 'icon': Icons.people},
     {'value': 'donor', 'label': 'Donors Only', 'icon': Icons.favorite},
-    {'value': 'receiver', 'label': 'Receivers Only', 'icon': Icons.person_search},
+    {
+      'value': 'receiver',
+      'label': 'Receivers Only',
+      'icon': Icons.person_search,
+    },
   ];
 
   final List<Map<String, dynamic>> _typeOptions = [
-    {'value': 'blood_request', 'label': 'Blood Request', 'icon': Icons.bloodtype},
+    {
+      'value': 'blood_request',
+      'label': 'Blood Request',
+      'icon': Icons.bloodtype,
+    },
     {'value': 'blood_drive', 'label': 'Blood Drive', 'icon': Icons.campaign},
-    {'value': 'eligibility', 'label': 'Eligibility Update', 'icon': Icons.health_and_safety},
+    {
+      'value': 'eligibility',
+      'label': 'Eligibility Update',
+      'icon': Icons.health_and_safety,
+    },
     {'value': 'reward', 'label': 'Reward', 'icon': Icons.stars},
   ];
 
@@ -51,14 +63,16 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
 
   Stream<List<NotificationModel>> _getAllNotifications() {
     return FirebaseFirestore.instance
-        .collection('notifications')
+        .collection('broadcasts')
         .orderBy('createdAt', descending: true)
         .limit(100)
         .snapshots()
-        .map((snap) => snap.docs
-        .map((d) => NotificationModel.fromFirestore(
-        d.data(), d.id))
-        .toList());
+        .map(
+          (snap) =>
+              snap.docs
+                  .map((d) => NotificationModel.fromFirestore(d.data(), d.id))
+                  .toList(),
+        );
   }
 
   @override
@@ -85,8 +99,7 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                   const SizedBox(height: 4),
                   Text(
                     'Send broadcast notifications & view history',
-                    style: TextStyle(
-                        fontSize: 14, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -112,7 +125,9 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
               indicatorColor: Colors.red.shade700,
               indicatorWeight: 3,
               labelStyle: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 13),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
               tabs: const [
                 Tab(
                   child: Row(
@@ -144,10 +159,7 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [
-              _buildComposeTab(),
-              _buildHistoryTab(),
-            ],
+            children: [_buildComposeTab(), _buildHistoryTab()],
           ),
         ),
       ],
@@ -192,186 +204,212 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                   const SizedBox(height: 20),
 
                   // Target audience
-                  const Text('Target Audience',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
+                  const Text(
+                    'Target Audience',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
                   const SizedBox(height: 10),
                   Row(
-                    children: _targetOptions.map((opt) {
-                      final isSelected = _targetType == opt['value'];
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () =>
-                              setState(() => _targetType = opt['value']),
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 10),
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 12),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.red.shade50
-                                  : Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.red.shade400
-                                    : Colors.grey.shade200,
-                                width: isSelected ? 2 : 1,
+                    children:
+                        _targetOptions.map((opt) {
+                          final isSelected = _targetType == opt['value'];
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap:
+                                  () => setState(
+                                    () => _targetType = opt['value'],
+                                  ),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isSelected
+                                          ? Colors.red.shade50
+                                          : Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color:
+                                        isSelected
+                                            ? Colors.red.shade400
+                                            : Colors.grey.shade200,
+                                    width: isSelected ? 2 : 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      opt['icon'] as IconData,
+                                      color:
+                                          isSelected
+                                              ? Colors.red.shade700
+                                              : Colors.grey.shade500,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      opt['label'] as String,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                        color:
+                                            isSelected
+                                                ? Colors.red.shade700
+                                                : Colors.grey.shade600,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  opt['icon'] as IconData,
-                                  color: isSelected
-                                      ? Colors.red.shade700
-                                      : Colors.grey.shade500,
-                                  size: 22,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  opt['label'] as String,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
-                                    color: isSelected
-                                        ? Colors.red.shade700
-                                        : Colors.grey.shade600,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                          );
+                        }).toList(),
                   ),
 
                   const SizedBox(height: 20),
 
                   // Notification type
-                  const Text('Notification Type',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
+                  const Text(
+                    'Notification Type',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _typeOptions.map((opt) {
-                      final isSelected = _notificationType == opt['value'];
-                      return GestureDetector(
-                        onTap: () => setState(
-                                () => _notificationType = opt['value']),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Colors.red.shade50
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Colors.red.shade400
-                                  : Colors.grey.shade300,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(opt['icon'] as IconData,
-                                  size: 14,
-                                  color: isSelected
-                                      ? Colors.red.shade700
-                                      : Colors.grey.shade600),
-                              const SizedBox(width: 6),
-                              Text(
-                                opt['label'] as String,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isSelected
-                                      ? Colors.red.shade700
-                                      : Colors.grey.shade600,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
+                    children:
+                        _typeOptions.map((opt) {
+                          final isSelected = _notificationType == opt['value'];
+                          return GestureDetector(
+                            onTap:
+                                () => setState(
+                                  () => _notificationType = opt['value'],
+                                ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    isSelected
+                                        ? Colors.red.shade50
+                                        : Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color:
+                                      isSelected
+                                          ? Colors.red.shade400
+                                          : Colors.grey.shade300,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    opt['icon'] as IconData,
+                                    size: 14,
+                                    color:
+                                        isSelected
+                                            ? Colors.red.shade700
+                                            : Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    opt['label'] as String,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          isSelected
+                                              ? Colors.red.shade700
+                                              : Colors.grey.shade600,
+                                      fontWeight:
+                                          isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
                   ),
 
                   const SizedBox(height: 20),
 
                   // Title
-                  const Text('Title',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
+                  const Text(
+                    'Title',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _titleCtrl,
                     decoration: InputDecoration(
                       hintText: 'e.g. Urgent Blood Needed in Lahore',
                       hintStyle: TextStyle(
-                          color: Colors.grey.shade400, fontSize: 13),
+                        color: Colors.grey.shade400,
+                        fontSize: 13,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                        BorderSide(color: Colors.grey.shade300),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                        BorderSide(color: Colors.grey.shade300),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                        BorderSide(color: Colors.red.shade400),
+                        borderSide: BorderSide(color: Colors.red.shade400),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
                   ),
 
                   const SizedBox(height: 16),
 
                   // Body
-                  const Text('Message Body',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
+                  const Text(
+                    'Message Body',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _bodyCtrl,
                     maxLines: 4,
                     decoration: InputDecoration(
-                      hintText:
-                      'Write the full notification message here...',
+                      hintText: 'Write the full notification message here...',
                       hintStyle: TextStyle(
-                          color: Colors.grey.shade400, fontSize: 13),
+                        color: Colors.grey.shade400,
+                        fontSize: 13,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                        BorderSide(color: Colors.grey.shade300),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                        BorderSide(color: Colors.grey.shade300),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                        BorderSide(color: Colors.red.shade400),
+                        borderSide: BorderSide(color: Colors.red.shade400),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
                   ),
 
@@ -383,24 +421,30 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                     height: 48,
                     child: ElevatedButton.icon(
                       onPressed: _isSending ? null : _sendNotification,
-                      icon: _isSending
-                          ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
-                      )
-                          : const Icon(Icons.send),
+                      icon:
+                          _isSending
+                              ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Icon(Icons.send),
                       label: Text(
                         _isSending ? 'Sending...' : 'Send Notification',
                         style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.shade700,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
                     ),
@@ -432,9 +476,10 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Preview',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text(
+                    'Preview',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   const SizedBox(height: 16),
 
                   // Notification preview card
@@ -456,55 +501,66 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                                 color: Colors.red.shade100,
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Icon(Icons.bloodtype,
-                                  color: Colors.red.shade700, size: 18),
+                              child: Icon(
+                                Icons.bloodtype,
+                                color: Colors.red.shade700,
+                                size: 18,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             const Expanded(
                               child: Text(
                                 'Blood Connect',
                                 style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
-                            Text('now',
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade400)),
+                            Text(
+                              'now',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 10),
                         ListenableBuilder(
                           listenable: _titleCtrl,
-                          builder: (_, __) => Text(
-                            _titleCtrl.text.isEmpty
-                                ? 'Notification Title'
-                                : _titleCtrl.text,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              color: _titleCtrl.text.isEmpty
-                                  ? Colors.grey.shade400
-                                  : Colors.black,
-                            ),
-                          ),
+                          builder:
+                              (_, __) => Text(
+                                _titleCtrl.text.isEmpty
+                                    ? 'Notification Title'
+                                    : _titleCtrl.text,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color:
+                                      _titleCtrl.text.isEmpty
+                                          ? Colors.grey.shade400
+                                          : Colors.black,
+                                ),
+                              ),
                         ),
                         const SizedBox(height: 4),
                         ListenableBuilder(
                           listenable: _bodyCtrl,
-                          builder: (_, __) => Text(
-                            _bodyCtrl.text.isEmpty
-                                ? 'Your message will appear here...'
-                                : _bodyCtrl.text,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: _bodyCtrl.text.isEmpty
-                                  ? Colors.grey.shade400
-                                  : Colors.grey.shade700,
-                              height: 1.4,
-                            ),
-                          ),
+                          builder:
+                              (_, __) => Text(
+                                _bodyCtrl.text.isEmpty
+                                    ? 'Your message will appear here...'
+                                    : _bodyCtrl.text,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color:
+                                      _bodyCtrl.text.isEmpty
+                                          ? Colors.grey.shade400
+                                          : Colors.grey.shade700,
+                                  height: 1.4,
+                                ),
+                              ),
                         ),
                       ],
                     ),
@@ -513,16 +569,23 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                   const SizedBox(height: 20),
 
                   // Send summary
-                  _infoRow(Icons.people, 'Target',
-                      _targetOptions.firstWhere((o) =>
-                      o['value'] == _targetType)['label'] as String),
+                  _infoRow(
+                    Icons.people,
+                    'Target',
+                    _targetOptions.firstWhere(
+                          (o) => o['value'] == _targetType,
+                        )['label']
+                        as String,
+                  ),
                   const SizedBox(height: 8),
                   _infoRow(
-                      Icons.label,
-                      'Type',
-                      _typeOptions.firstWhere((o) =>
-                      o['value'] ==
-                          _notificationType)['label'] as String),
+                    Icons.label,
+                    'Type',
+                    _typeOptions.firstWhere(
+                          (o) => o['value'] == _notificationType,
+                        )['label']
+                        as String,
+                  ),
                 ],
               ),
             ),
@@ -537,12 +600,14 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
       children: [
         Icon(icon, size: 16, color: Colors.grey.shade400),
         const SizedBox(width: 8),
-        Text('$label: ',
-            style: TextStyle(
-                fontSize: 12, color: Colors.grey.shade500)),
-        Text(value,
-            style: const TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600)),
+        Text(
+          '$label: ',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+        ),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
@@ -554,13 +619,16 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-              child:
-              CircularProgressIndicator(color: AppColors.primaryRed));
+            child: CircularProgressIndicator(color: AppColors.primaryRed),
+          );
         }
         if (snapshot.hasError) {
           return Center(
-              child: Text('Error: ${snapshot.error}',
-                  style: TextStyle(color: Colors.red.shade400)));
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: TextStyle(color: Colors.red.shade400),
+            ),
+          );
         }
 
         final notifications = snapshot.data ?? [];
@@ -570,12 +638,16 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.notifications_none,
-                    size: 64, color: Colors.grey.shade300),
+                Icon(
+                  Icons.notifications_none,
+                  size: 64,
+                  color: Colors.grey.shade300,
+                ),
                 const SizedBox(height: 16),
-                Text('No notifications sent yet',
-                    style: TextStyle(
-                        fontSize: 16, color: Colors.grey.shade500)),
+                Text(
+                  'No notifications sent yet',
+                  style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
+                ),
               ],
             ),
           );
@@ -591,9 +663,10 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                 child: Text(
                   '${notifications.length} notification${notifications.length == 1 ? '' : 's'}',
                   style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500),
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               Expanded(
@@ -614,10 +687,11 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                     borderRadius: BorderRadius.circular(12),
                     child: ListView.separated(
                       itemCount: notifications.length,
-                      separatorBuilder: (_, __) =>
-                          Divider(height: 1, color: Colors.grey.shade100),
-                      itemBuilder: (_, i) =>
-                          _buildNotificationTile(notifications[i]),
+                      separatorBuilder:
+                          (_, __) =>
+                              Divider(height: 1, color: Colors.grey.shade100),
+                      itemBuilder:
+                          (_, i) => _buildNotificationTile(notifications[i]),
                     ),
                   ),
                 ),
@@ -632,8 +706,7 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
   Widget _buildNotificationTile(NotificationModel n) {
     final typeColor = _notifTypeColor(n.type);
     return ListTile(
-      contentPadding:
-      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
@@ -644,24 +717,23 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
       ),
       title: Text(
         n.title,
-        style:
-        const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 2),
-          Text(n.body,
-              style: TextStyle(
-                  fontSize: 12, color: Colors.grey.shade600),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis),
+          Text(
+            n.body,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
           const SizedBox(height: 4),
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: typeColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
@@ -669,24 +741,22 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
                 child: Text(
                   n.type.replaceAll('_', ' '),
                   style: TextStyle(
-                      fontSize: 10,
-                      color: typeColor,
-                      fontWeight: FontWeight.w500),
+                    fontSize: 10,
+                    color: typeColor,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 _formatDate(n.createdAt),
-                style: TextStyle(
-                    fontSize: 11, color: Colors.grey.shade400),
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
               ),
               const SizedBox(width: 8),
               if (n.isRead)
-                Icon(Icons.done_all,
-                    size: 14, color: Colors.blue.shade400)
+                Icon(Icons.done_all, size: 14, color: Colors.blue.shade400)
               else
-                Icon(Icons.done,
-                    size: 14, color: Colors.grey.shade400),
+                Icon(Icons.done, size: 14, color: Colors.grey.shade400),
             ],
           ),
         ],
@@ -706,7 +776,8 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10)),
+            borderRadius: BorderRadius.circular(10),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );
@@ -718,31 +789,21 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
     try {
       final db = FirebaseFirestore.instance;
 
-      // Get target users
-      Query usersQuery = db.collection('users');
-      if (_targetType != 'all') {
-        usersQuery = usersQuery.where('role', isEqualTo: _targetType);
-      }
-      final usersSnap = await usersQuery.get();
-
-      // Batch write notifications
-      final batch = db.batch();
-      for (final userDoc in usersSnap.docs) {
-        final notifRef = db.collection('notifications').doc();
-        batch.set(notifRef, {
-          'userId': userDoc.id,
-          'title': title,
-          'body': body,
-          'type': _notificationType,
-          'createdAt': FieldValue.serverTimestamp(),
-          'isRead': false,
-          'data': {
-            'sentByAdmin': true,
-            'target': _targetType,
-          },
-        });
-      }
-      await batch.commit();
+      await db.collection('broadcasts').add({
+        'title': title,
+        'body': body,
+        'status': 'pending',
+        'audience':
+            _targetType == 'donor'
+                ? 'donors'
+                : _targetType == 'receiver'
+                ? 'receivers'
+                : 'all',
+        'userId': _targetType,
+        'type': 'adminAnnouncements',
+        'messageType': _notificationType,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
       if (mounted) {
         _titleCtrl.clear();
@@ -755,12 +816,12 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                '✓ Notification sent to ${usersSnap.size} user${usersSnap.size == 1 ? '' : 's'}'),
+            content: Text('Announcement queued for server delivery.'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+              borderRadius: BorderRadius.circular(10),
+            ),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -769,12 +830,11 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
         _tabController.animateTo(1);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSending = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Error: $e'),
-              backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -816,8 +876,18 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
 
   String _month(int m) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return months[m - 1];
   }

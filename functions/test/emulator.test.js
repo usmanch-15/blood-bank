@@ -2,8 +2,8 @@ const {test,before,after,beforeEach} = require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const {initializeTestEnvironment,assertSucceeds,assertFails}=require('@firebase/rules-unit-testing');
-const {doc,setDoc,updateDoc,getDoc,deleteDoc}=require('firebase/firestore');
-const admin=require('firebase-admin');
+const {doc,setDoc,updateDoc,getDoc,deleteDoc,writeBatch}=require('firebase/firestore');
+const admin=require('../firebaseAdmin');
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST || !process.env.FIREBASE_STORAGE_EMULATOR_HOST) throw Error('Use emulators:exec. Production tests are forbidden.');
 const projectId='demo-blood-bank';
 admin.initializeApp({projectId,storageBucket:`${projectId}.appspot.com`});
@@ -13,7 +13,9 @@ let env;
 const profile=(uid,role='donor')=>({uid,email:`${uid}@example.test`,name:'Test User',role,status:'approved',bloodGroup:'O+',isDonor:role==='donor',isReceiver:role==='receiver',isAvailable:true,locationSharingEnabled:false,latitude:null,longitude:null,rewardPoints:0,isEligible:true,lastDonationDate:null});
 const requestData={requesterId:'receiver',status:'pending',bloodGroup:'O+',quantity:1,hospitalName:"Children's Hospital"};
 const auth=uid=>({uid,token:{auth_time:Math.floor(Date.now()/1000)}});
-before(async()=>{env=await initializeTestEnvironment({projectId,firestore:{rules:fs.readFileSync('../firestore.rules','utf8')}});});
+before(async()=>{env=await initializeTestEnvironment({projectId,
+  firestore:{rules:fs.readFileSync('../firestore.rules','utf8')},
+  storage:{rules:fs.readFileSync('../storage.rules','utf8')}});});
 after(async()=>{await env.cleanup();await admin.app().delete();});
 beforeEach(async()=>{
   await env.clearFirestore();
@@ -29,6 +31,52 @@ test('signup schema, mode switching, availability and privilege boundaries',asyn
   await assertFails(updateDoc(doc(db,'users/new'),{lastDonationDate:null,isEligible:false}));
   await assertFails(updateDoc(doc(db,'users/new'),{status:'approved',phoneNumber:'+923001234567'}));
 });
+test('signup profile and private contact commit atomically',async()=>{
+  const db=env.authenticatedContext('new',{email:'new@example.test'}).firestore();
+  const batch=writeBatch(db);
+  batch.set(doc(db,'users/new'),profile('new','receiver'));
+  batch.set(doc(db,'users/new/private/contact'),{phoneNumber:'+923001234567',cnic:'12345-1234567-1'});
+  await assertSucceeds(batch.commit());
+  assert.equal((await getDoc(doc(db,'users/new/private/contact'))).data().phoneNumber,'+923001234567');
+});
+test('email sync requires the authenticated email claim and coordinate pairs',async()=>{
+  const ref=doc(env.authenticatedContext('donor',{email:'new@example.test'}).firestore(),'users/donor');
+  await assertFails(updateDoc(ref,{email:'victim@example.test'}));
+  await assertSucceeds(updateDoc(ref,{email:'new@example.test'}));
+  await assertFails(updateDoc(ref,{locationSharingEnabled:true,latitude:31}));
+});
+test('acceptance and fulfillment notify the requester and donor exactly once',async()=>{
+  const accept={auth:auth('donor'),data:{requestId:'request'}};
+  await workflows.acceptDonation(accept);
+  await workflows.acceptDonation(accept);
+  assert.equal((await admin.firestore().doc('notifications/accepted_request').get()).data().userId,'receiver');
+  const confirm={auth:auth('receiver'),data:{requestId:'request',donorId:'donor'}};
+  await workflows.confirmDonation(confirm);
+  await workflows.confirmDonation(confirm);
+  assert.equal((await admin.firestore().collection('notifications').get()).size,3);
+  assert.equal((await admin.firestore().doc('notifications/fulfilled_request').get()).data().userId,'receiver');
+});
+test('ordinary accounts cannot resolve unrelated SOS or perform admin edits',async()=>{
+  await admin.firestore().doc('sosRequests/sos').set({receiverId:'receiver',isResolved:false});
+  const db=env.authenticatedContext('donor').firestore();
+  await assertFails(updateDoc(doc(db,'sosRequests/sos'),{isResolved:true}));
+  await assertFails(updateDoc(doc(db,'users/receiver'),{name:'Edited by donor'}));
+  await admin.firestore().doc('users/admin').set({...profile('admin'),role:'admin'});
+  const adminDb=env.authenticatedContext('admin').firestore();
+  await assertSucceeds(updateDoc(doc(adminDb,'sosRequests/sos'),{isResolved:true}));
+  await assertFails(updateDoc(doc(adminDb,'users/admin'),{status:'rejected'}));
+});
+test('SOS creation validates ownership, urgency and limits before writing',async()=>{
+  const data={latitude:31,longitude:74,bloodGroup:'O+',urgency:'life_threatening'};
+  await assert.rejects(workflows.createSosAlert({auth:auth('donor'),data}),{code:'permission-denied'});
+  await assert.rejects(workflows.createSosAlert({auth:auth('receiver'),data:{...data,latitude:200}}),{code:'invalid-argument'});
+  for (let i=0;i<3;i++) await workflows.createSosAlert({auth:auth('receiver'),data:{...data,receiverId:'other'}});
+  await assert.rejects(workflows.createSosAlert({auth:auth('receiver'),data}),{code:'resource-exhausted'});
+  const records=await admin.firestore().collection('sosRequests').get();
+  assert.equal(records.size,3);
+  assert.ok(records.docs.every(doc=>doc.data().receiverId==='receiver' && doc.data().urgency==='life_threatening'));
+  await assertFails(setDoc(doc(env.authenticatedContext('receiver').firestore(),'sosRequests/direct'),{...data,receiverId:'receiver',isResolved:false}));
+});
 test('suspended users and unauthenticated callers cannot read dashboards',async()=>{
   await admin.firestore().doc('users/donor').update({status:'suspended'});
   await assertFails(getDoc(doc(env.authenticatedContext('donor').firestore(),'blood_requests/request')));
@@ -41,6 +89,14 @@ test('owner can cancel but cannot forge fulfillment, assignment or ownership',as
   await assertFails(updateDoc(ref,{acceptedDonorId:'donor'}));
   await assertSucceeds(updateDoc(ref,{status:'cancelled'}));
   await assertFails(updateDoc(ref,{status:'pending'}));
+});
+test('request creation requires receiver capability, valid coordinates and no forged recipients',async()=>{
+  const valid={...requestData,latitude:31,longitude:74,notifiedDonors:[]};
+  const receiverDb=env.authenticatedContext('receiver').firestore();
+  await assertSucceeds(setDoc(doc(receiverDb,'blood_requests/new'),valid));
+  await assertFails(setDoc(doc(receiverDb,'blood_requests/forged'),{...valid,notifiedDonors:['donor']}));
+  await assertFails(setDoc(doc(receiverDb,'blood_requests/bad-location'),{...valid,latitude:200}));
+  await assertFails(setDoc(doc(env.authenticatedContext('donor').firestore(),'blood_requests/not-receiver'),{...valid,requesterId:'donor'}));
 });
 test('notifications and donation records cannot be forged by clients',async()=>{
   const db=env.authenticatedContext('donor').firestore();
@@ -108,4 +164,14 @@ test('deletion checks recent authentication and cleans private data, requests an
   assert.equal((await admin.firestore().doc('users/delete-me/private/device').get()).exists,false);
   assert.equal((await admin.storage().bucket().file('profile_images/delete-me/avatar.jpg').exists())[0],false);
   await assert.rejects(admin.auth().getUser('delete-me'),{code:'auth/user-not-found'});
+});
+test('storage restricts profile uploads and requires a confirmed donation for certificates',async()=>{
+  const donor=env.authenticatedContext('donor').storage();
+  const other=env.authenticatedContext('other').storage();
+  await assertSucceeds(donor.ref('profile_images/donor/audit.png').put(Buffer.from('image'),{contentType:'image/png'}));
+  await assertFails(other.ref('profile_images/donor/other.png').put(Buffer.from('image'),{contentType:'image/png'}));
+  await assertFails(donor.ref('profile_images/donor/text.txt').put(Buffer.from('text'),{contentType:'text/plain'}));
+  await assertFails(donor.ref('certificates/donor/missing/certificate.pdf').put(Buffer.from('pdf'),{contentType:'application/pdf'}));
+  await admin.firestore().doc('donations/confirmed').set({donorId:'donor'});
+  await assertSucceeds(donor.ref('certificates/donor/confirmed/certificate.pdf').put(Buffer.from('pdf'),{contentType:'application/pdf'}));
 });

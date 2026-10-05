@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/auth_service.dart';
-import 'donor/donor_dashboard_screen.dart';
-import 'receiver/receiver_dashboard_screen.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -34,13 +32,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _fadeAnim =
-        CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.12),
       end: Offset.zero,
     ).animate(
-        CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
 
     Future.delayed(const Duration(milliseconds: 100), () {
       if (!mounted) return;
@@ -70,13 +68,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
         await _authService.switchMode(role);
       }
       if (!mounted) return;
-      Navigator.pushReplacement(
+      Navigator.pushReplacementNamed(
         context,
-        MaterialPageRoute(
-          builder: (_) => role == 'donor'
-              ? const DonorDashboardScreen()
-              : const ReceiverDashboardScreen(),
-        ),
+        role == 'donor' ? '/donor' : '/receiver',
       );
       setState(() => _isLoading = false);
     } catch (e) {
@@ -185,14 +179,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                                     gradient: const LinearGradient(
                                       colors: [
                                         Color(0xFFEF5350),
-                                        Color(0xFFB71C1C)
+                                        Color(0xFFB71C1C),
                                       ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
                                   ),
-                                  child: const Icon(Icons.water_drop_rounded,
-                                      color: Colors.white, size: 18),
+                                  child: const Icon(
+                                    Icons.water_drop_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
                                 ),
                                 const SizedBox(width: 10),
                                 const Text(
@@ -212,14 +209,19 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                             // Badge
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 7),
+                                horizontal: 14,
+                                vertical: 7,
+                              ),
                               decoration: BoxDecoration(
                                 border: Border.all(
-                                    color: const Color(0xFFB71C1C)
-                                        .withValues(alpha: 0.6)),
+                                  color: const Color(
+                                    0xFFB71C1C,
+                                  ).withValues(alpha: 0.6),
+                                ),
                                 borderRadius: BorderRadius.circular(30),
-                                color: const Color(0xFFB71C1C)
-                                    .withValues(alpha: 0.08),
+                                color: const Color(
+                                  0xFFB71C1C,
+                                ).withValues(alpha: 0.08),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -282,12 +284,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                               badge: 'SAVE A LIFE',
                               title: 'Donate Blood',
                               description:
-                              'Register as a donor and help someone in need.',
+                                  'Register as a donor and help someone in need.',
                               ctaLabel: 'Continue as Donor',
                               accentColor: const Color(0xFFEF5350),
                               glowColor: const Color(0xFFB71C1C),
-                              isLoading:
-                              _isLoading && _selectedRole == 'donor',
+                              isLoading: _isLoading && _selectedRole == 'donor',
                               onTap: () => _handleRoleSelection('donor'),
                             ),
 
@@ -299,12 +300,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                               badge: 'FIND A DONOR',
                               title: 'Request Blood',
                               description:
-                              'Find compatible blood donors near you.',
+                                  'Find compatible blood donors near you.',
                               ctaLabel: 'Continue as Receiver',
                               accentColor: const Color(0xFF42A5F5),
                               glowColor: const Color(0xFF1565C0),
                               isLoading:
-                              _isLoading && _selectedRole == 'receiver',
+                                  _isLoading && _selectedRole == 'receiver',
                               onTap: () => _handleRoleSelection('receiver'),
                             ),
 
@@ -317,9 +318,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                             Center(
                               child: OutlinedButton.icon(
                                 onPressed: _backToLogin,
-                                icon: Icon(Icons.arrow_back_rounded,
-                                    size: 16,
-                                    color: Colors.white.withValues(alpha: 0.55)),
+                                icon: Icon(
+                                  Icons.arrow_back_rounded,
+                                  size: 16,
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                ),
                                 label: Text(
                                   'Already registered?  Back to Login',
                                   style: TextStyle(
@@ -330,9 +333,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                                 ),
                                 style: OutlinedButton.styleFrom(
                                   side: BorderSide(
-                                      color: Colors.white.withValues(alpha: 0.12)),
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                  ),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 18, vertical: 12),
+                                    horizontal: 18,
+                                    vertical: 12,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -411,16 +417,20 @@ class _RoleCardState extends State<_RoleCard> {
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
           transform: Matrix4.translationValues(
-              0, _hovering && !_pressed ? -4 : 0, 0),
+            0,
+            _hovering && !_pressed ? -4 : 0,
+            0,
+          ),
           constraints: const BoxConstraints(minHeight: 160),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
             color: const Color(0xFF13131A),
             border: Border.all(
-              color: active
-                  ? widget.accentColor.withValues(alpha: 0.55)
-                  : Colors.white.withValues(alpha: 0.07),
+              color:
+                  active
+                      ? widget.accentColor.withValues(alpha: 0.55)
+                      : Colors.white.withValues(alpha: 0.07),
               width: 1,
             ),
             boxShadow: [
@@ -465,7 +475,9 @@ class _RoleCardState extends State<_RoleCard> {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: widget.accentColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(6),
@@ -508,40 +520,47 @@ class _RoleCardState extends State<_RoleCard> {
               // CTA — explicit label + arrow, not just a bare icon circle
               widget.isLoading
                   ? SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: widget.accentColor,
-                ),
-              )
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: widget.accentColor,
+                    ),
+                  )
                   : Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: widget.accentColor.withValues(alpha: active ? 0.18 : 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: widget.accentColor.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      widget.ctaLabel,
-                      style: TextStyle(
-                        color: widget.accentColor,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: widget.accentColor.withValues(
+                        alpha: active ? 0.18 : 0.1,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: widget.accentColor.withValues(alpha: 0.3),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Icon(Icons.arrow_forward_rounded,
-                        color: widget.accentColor, size: 15),
-                  ],
-                ),
-              ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.ctaLabel,
+                          style: TextStyle(
+                            color: widget.accentColor,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          color: widget.accentColor,
+                          size: 15,
+                        ),
+                      ],
+                    ),
+                  ),
             ],
           ),
         ),
@@ -554,9 +573,10 @@ class _RoleCardState extends State<_RoleCard> {
 class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.03)
-      ..strokeWidth = 0.8;
+    final paint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.03)
+          ..strokeWidth = 0.8;
 
     const spacing = 40.0;
 

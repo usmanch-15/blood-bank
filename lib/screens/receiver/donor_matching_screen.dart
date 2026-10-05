@@ -1,4 +1,5 @@
 import 'package:provider/provider.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -36,6 +37,10 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
   bool _isLoading = false;
   List<DonorModel> _donors = [];
   String _searchQuery = '';
+  String? _acceptedDonorId;
+  String? _requestStatus;
+  bool _confirming = false;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _requestSubscription;
 
   // Compatible blood groups map
   static const _compatibleGroups = {
@@ -50,14 +55,39 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
   };
 
   static const _bloodGroups = [
-    'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'
+    'A+',
+    'A-',
+    'B+',
+    'B-',
+    'O+',
+    'O-',
+    'AB+',
+    'AB-',
   ];
 
   @override
   void initState() {
     super.initState();
     _selectedBloodGroup = widget.initialBloodGroup;
+    if (widget.requestId != null) {
+      _requestSubscription = FirebaseFirestore.instance.doc('blood_requests/${widget.requestId}')
+          .snapshots().listen((doc) {
+        if (!mounted) return;
+        setState(() {
+          _acceptedDonorId = doc.data()?['acceptedDonorId'] as String?;
+          _requestStatus = doc.data()?['status'] as String?;
+        });
+      }, onError: (Object error) {
+        if (mounted) setState(() { _acceptedDonorId = null; _requestStatus = null; });
+      });
+    }
     _fetchDonors();
+  }
+
+  @override
+  void dispose() {
+    _requestSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchDonors() async {
@@ -74,16 +104,31 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
           .where('status', isEqualTo: 'approved');
 
       final snap = await query.get();
-      final donors = snap.docs
-          .map((d) =>
-          DonorModel.fromFirestore(d.data() as Map<String, dynamic>, d.id))
-          .toList();
+      final donors =
+          snap.docs
+              .map(
+                (d) => DonorModel.fromFirestore(
+                  d.data() as Map<String, dynamic>,
+                  d.id,
+                ),
+              )
+              .toList();
+      if (widget.requestId != null) {
+        final request =
+            await FirebaseFirestore.instance
+                .doc('blood_requests/${widget.requestId}')
+                .get();
+        _acceptedDonorId = request.data()?['acceptedDonorId'] as String?;
+        _requestStatus = request.data()?['status'] as String?;
+      }
 
+      if (!mounted) return;
       setState(() {
         _donors = donors;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -106,8 +151,9 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
 
       // Eligibility filter
       if (_eligibleOnly) {
-        final eligible =
-        EligibilityChecker.isEligibleForDonation(donor.lastDonationDate);
+        final eligible = EligibilityChecker.isEligibleForDonation(
+          donor.lastDonationDate,
+        );
         if (!eligible) return false;
       }
 
@@ -132,10 +178,15 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
   // the lookup to audit_logs.
   Future<void> _callDonor(DonorModel donor) async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fetching donor number...'), duration: Duration(seconds: 1)),
+      const SnackBar(
+        content: Text('Fetching donor number...'),
+        duration: Duration(seconds: 1),
+      ),
     );
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('getDonorContact');
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'getDonorContact',
+      );
       final result = await callable.call({'donorId': donor.uid});
       final phone = result.data['phoneNumber'] as String?;
 
@@ -167,32 +218,38 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
   // hi nahi tha — donation record, reward points, certificate, eligibility
   // sab backend mein maujood thay lekin kabhi trigger hi nahi hotay thay.
   Future<void> _confirmDonation(DonorModel donorModel) async {
+    if (_confirming) return;
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Donation'),
-        content: Text(
-          'Kya ${donorModel.name} ne aapko ${donorModel.bloodGroup} blood diya hai? '
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Confirm Donation'),
+            content: Text(
+              'Kya ${donorModel.name} ne aapko ${donorModel.bloodGroup} blood diya hai? '
               'Confirm karne par unko reward points aur donation certificate mil jayega.',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryRed),
-            child: const Text('Yes, Confirm'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryRed,
+                ),
+                child: const Text('Yes, Confirm'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
     if (confirm != true || !mounted) return;
+    setState(() => _confirming = true);
 
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Confirming donation...')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Confirming donation...')));
       await context.read<DonorController>().confirmDonation(
         donorId: donorModel.uid,
         bloodGroup: donorModel.bloodGroup ?? _selectedBloodGroup ?? '',
@@ -210,9 +267,12 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('Failed to confirm donation: $e'),
-            backgroundColor: AppColors.error),
+          content: Text('Failed to confirm donation: $e'),
+          backgroundColor: AppColors.error,
+        ),
       );
+    } finally {
+      if (mounted) setState(() => _confirming = false);
     }
   }
 
@@ -241,10 +301,12 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      NearbyDonorsMapScreen(
+                  builder:
+                      (_) => NearbyDonorsMapScreen(
                         bloodGroup: _selectedBloodGroup,
-                        requestId: widget.requestId, // ✅ so "Notify Donors" can tag this request
+                        requestId:
+                            widget
+                                .requestId, // ✅ so "Notify Donors" can tag this request
                       ),
                 ),
               );
@@ -279,8 +341,10 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                 TextField(
                   decoration: InputDecoration(
                     hintText: 'Search by name or location...',
-                    prefixIcon: const Icon(Icons.search,
-                        color: AppColors.primaryRed),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: AppColors.primaryRed,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide(color: Colors.grey[300]!),
@@ -291,8 +355,7 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                      const BorderSide(color: AppColors.primaryRed),
+                      borderSide: const BorderSide(color: AppColors.primaryRed),
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
                     filled: true,
@@ -314,30 +377,37 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                         hint: const Text('Any', style: TextStyle(fontSize: 13)),
                         items: [
                           const DropdownMenuItem(
-                              value: null, child: Text('Any')),
-                          ..._bloodGroups.map((bg) => DropdownMenuItem(
-                            value: bg,
-                            child: Text(bg),
-                          )),
+                            value: null,
+                            child: Text('Any'),
+                          ),
+                          ..._bloodGroups.map(
+                            (bg) =>
+                                DropdownMenuItem(value: bg, child: Text(bg)),
+                          ),
                         ],
-                        onChanged: (v) =>
-                            setState(() => _selectedBloodGroup = v),
+                        onChanged:
+                            (v) => setState(() => _selectedBloodGroup = v),
                       ),
                     ),
                     const SizedBox(width: 12),
                     // Eligible only toggle
                     Column(
                       children: [
-                        const Text('Eligible\nonly',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary)),
+                        const Text(
+                          'Eligible\nonly',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                         Switch(
                           value: _eligibleOnly,
                           activeThumbColor: AppColors.primaryRed,
@@ -353,20 +423,23 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
 
           // ── Results count ──
           Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 Text(
                   '${filtered.length} donor${filtered.length == 1 ? '' : 's'} found',
                   style: const TextStyle(
-                      fontSize: 13, color: AppColors.textSecondary),
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 if (_selectedBloodGroup != null) ...[
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primaryRed.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -374,7 +447,9 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
                     child: Text(
                       'Compatible with $_selectedBloodGroup',
                       style: const TextStyle(
-                          fontSize: 11, color: AppColors.primaryRed),
+                        fontSize: 11,
+                        color: AppColors.primaryRed,
+                      ),
                     ),
                   ),
                 ],
@@ -384,39 +459,48 @@ class _DonorMatchingScreenState extends State<DonorMatchingScreen> {
 
           // ── Donor List ──
           Expanded(
-            child: _isLoading
-                ? const Center(
-                child: CircularProgressIndicator(
-                    color: AppColors.primaryRed))
-                : filtered.isEmpty
-                ? _EmptyState(
-              bloodGroup: _selectedBloodGroup,
-              onClear: () => setState(() {
-                _selectedBloodGroup = null;
-                _eligibleOnly = false;
-                _searchQuery = '';
-              }),
-            )
-                : RefreshIndicator(
-              color: AppColors.primaryRed,
-              onRefresh: _fetchDonors,
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                itemCount: filtered.length,
-                itemBuilder: (context, i) => _DonorCard(
-                  donor: filtered[i],
-                  onCall: () => _callDonor(filtered[i]),
-                  // ✅ Only offer "Mark Donation Complete" when opened
-                  // with a requestId — confirmDonation (Cloud Function)
-                  // requires the caller to be the requester of that
-                  // specific request, so without one this would always
-                  // fail with permission-denied.
-                  onMarkDonated: widget.requestId != null
-                      ? () => _confirmDonation(filtered[i])
-                      : null,
-                ),
-              ),
-            ),
+            child:
+                _isLoading
+                    ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryRed,
+                      ),
+                    )
+                    : filtered.isEmpty
+                    ? _EmptyState(
+                      bloodGroup: _selectedBloodGroup,
+                      onClear:
+                          () => setState(() {
+                            _selectedBloodGroup = null;
+                            _eligibleOnly = false;
+                            _searchQuery = '';
+                          }),
+                    )
+                    : RefreshIndicator(
+                      color: AppColors.primaryRed,
+                      onRefresh: _fetchDonors,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        itemCount: filtered.length,
+                        itemBuilder:
+                            (context, i) => _DonorCard(
+                              donor: filtered[i],
+                              onCall: () => _callDonor(filtered[i]),
+                              // ✅ Only offer "Mark Donation Complete" when opened
+                              // with a requestId — confirmDonation (Cloud Function)
+                              // requires the caller to be the requester of that
+                              // specific request, so without one this would always
+                              // fail with permission-denied.
+                              onMarkDonated:
+                                  widget.requestId != null &&
+                                          !_confirming &&
+                                          _requestStatus == 'accepted' &&
+                                          _acceptedDonorId == filtered[i].uid
+                                      ? () => _confirmDonation(filtered[i])
+                                      : null,
+                            ),
+                      ),
+                    ),
           ),
         ],
       ),
@@ -438,8 +522,9 @@ class _DonorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final eligible =
-    EligibilityChecker.isEligibleForDonation(donor.lastDonationDate);
+    final eligible = EligibilityChecker.isEligibleForDonation(
+      donor.lastDonationDate,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -502,14 +587,18 @@ class _DonorCard extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 2),
                       child: Row(
                         children: [
-                          const Icon(Icons.location_on,
-                              size: 13, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.location_on,
+                            size: 13,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 2),
                           Text(
                             donor.location!,
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary),
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -519,11 +608,14 @@ class _DonorCard extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: eligible
-                              ? AppColors.success.withValues(alpha: 0.1)
-                              : AppColors.warning.withValues(alpha: 0.1),
+                          color:
+                              eligible
+                                  ? AppColors.success.withValues(alpha: 0.1)
+                                  : AppColors.warning.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -531,9 +623,10 @@ class _DonorCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: eligible
-                                ? AppColors.success
-                                : AppColors.warning,
+                            color:
+                                eligible
+                                    ? AppColors.success
+                                    : AppColors.warning,
                           ),
                         ),
                       ),
@@ -541,8 +634,9 @@ class _DonorCard extends StatelessWidget {
                       Text(
                         '${donor.rewardPoints} pts',
                         style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary),
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -559,7 +653,9 @@ class _DonorCard extends StatelessWidget {
                     icon: const Icon(Icons.phone, color: AppColors.success),
                     tooltip: 'Call Donor',
                     style: IconButton.styleFrom(
-                      backgroundColor: AppColors.success.withValues(alpha: 0.08),
+                      backgroundColor: AppColors.success.withValues(
+                        alpha: 0.08,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -569,11 +665,15 @@ class _DonorCard extends StatelessWidget {
                   if (onMarkDonated != null)
                     IconButton(
                       onPressed: onMarkDonated,
-                      icon: const Icon(Icons.check_circle_outline,
-                          color: AppColors.primaryRed),
+                      icon: const Icon(
+                        Icons.check_circle_outline,
+                        color: AppColors.primaryRed,
+                      ),
                       tooltip: 'Mark Donation Complete',
                       style: IconButton.styleFrom(
-                        backgroundColor: AppColors.primaryRed.withValues(alpha: 0.08),
+                        backgroundColor: AppColors.primaryRed.withValues(
+                          alpha: 0.08,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -611,9 +711,10 @@ class _EmptyState extends StatelessWidget {
                   : 'No donors found',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  color: AppColors.textSecondary),
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -624,10 +725,14 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 20),
             TextButton.icon(
               onPressed: onClear,
-              icon: const Icon(Icons.filter_alt_off,
-                  color: AppColors.primaryRed),
-              label: const Text('Clear Filters',
-                  style: TextStyle(color: AppColors.primaryRed)),
+              icon: const Icon(
+                Icons.filter_alt_off,
+                color: AppColors.primaryRed,
+              ),
+              label: const Text(
+                'Clear Filters',
+                style: TextStyle(color: AppColors.primaryRed),
+              ),
             ),
           ],
         ),

@@ -23,16 +23,15 @@ class HelpSupportScreen extends StatelessWidget {
     ),
     _FaqItem(
       'My account is stuck on "Pending" — what does that mean?',
-      'New accounts are reviewed before activation, usually within 24-48 '
-          'hours. You\'ll receive an email once your account is approved. '
-          'If it\'s been longer, contact us below.',
+      'New donor and receiver accounts are active immediately. If an older '
+          'account is pending or your account is restricted, contact support.',
     ),
     _FaqItem(
       'How does the SOS emergency alert work?',
       'When a receiver sends an SOS, nearby approved donors with a '
           'matching blood group and "Available" status are notified '
-          'immediately via push notification (and SMS as a backup if push '
-          'fails to deliver). Responding is always voluntary.',
+          'through server notifications. SMS fallback requires a verified '
+          'phone and configured provider. Delivery and response are not guaranteed.',
     ),
     _FaqItem(
       'How do I stop appearing in donor searches?',
@@ -57,16 +56,22 @@ class HelpSupportScreen extends StatelessWidget {
   Future<void> _contactUs(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (AppConstants.supportEmail.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Support email is not configured. Contact the project administrator.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Support email is not configured. Contact the project administrator.',
+          ),
+        ),
+      );
       return;
     }
     final subject = Uri.encodeComponent('Smart Blood Bank — Support Request');
     final body = Uri.encodeComponent(
       'Describe your issue here:\n\n\n'
-          '---\n'
-          'App version: ${AppConstants.appVersion}\n'
-          'Account email: ${user?.email ?? "not signed in"}\n'
-          'User ID: ${user?.uid ?? "n/a"}',
+      '---\n'
+      'App version: ${AppConstants.appVersion}\n'
+      'Account email: ${user?.email ?? "not signed in"}\n'
+      'User ID: ${user?.uid ?? "n/a"}',
     );
     final uri = Uri.parse(
       'mailto:${AppConstants.supportEmail}?subject=$subject&body=$body',
@@ -79,7 +84,7 @@ class HelpSupportScreen extends StatelessWidget {
         SnackBar(
           content: Text(
             'Could not open your email app. Email us directly at '
-                '${AppConstants.supportEmail}',
+            '${AppConstants.supportEmail}',
           ),
         ),
       );
@@ -185,8 +190,7 @@ class HelpSupportScreen extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    childrenPadding:
-                    const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     expandedCrossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(

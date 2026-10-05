@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,10 +17,24 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
   bool _isSosActive = false;
   int _countdown = 10;
   bool _isSending = false;
+  Timer? _countdownTimer;
   String _selectedBloodGroup = 'O+';
   String _selectedUrgency = 'critical';
-  final List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
-  final List<String> _urgencyLevels = ['urgent', 'critical', 'life_threatening'];
+  final List<String> _bloodGroups = [
+    'A+',
+    'A-',
+    'B+',
+    'B-',
+    'O+',
+    'O-',
+    'AB+',
+    'AB-',
+  ];
+  final List<String> _urgencyLevels = [
+    'urgent',
+    'critical',
+    'life_threatening',
+  ];
 
   // ✅ NEW — replaces the old hardcoded "Lahore, Pakistan" demo text.
   // Fetched once on screen load and again whenever "Update Location" is
@@ -49,20 +64,23 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
       setState(() {
         _isLocating = false;
         _locationError =
-        'Could not get your location. Please enable location services and grant permission.';
+            'Could not get your location. Please enable location services and grant permission.';
       });
       return;
     }
 
     final address = await LocationHelper.getAddressFromCoordinates(
-        position.latitude, position.longitude);
+      position.latitude,
+      position.longitude,
+    );
 
     if (!mounted) return;
     setState(() {
       _currentLat = position.latitude;
       _currentLng = position.longitude;
       _locationAddress =
-          address ?? '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
+          address ??
+          '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
       _isLocating = false;
     });
   }
@@ -82,21 +100,24 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
   // Hospital" row. Opens a maps search centered on the receiver's actual
   // GPS position (or a generic search if location isn't available yet).
   Future<void> _openNearbyHospitals() async {
-    final uri = (_currentLat != null && _currentLng != null)
-        ? Uri.parse(
-        'https://www.google.com/maps/search/hospital/@$_currentLat,$_currentLng,14z')
-        : Uri.parse('https://www.google.com/maps/search/hospital+near+me');
+    final uri =
+        (_currentLat != null && _currentLng != null)
+            ? Uri.parse(
+              'https://www.google.com/maps/search/hospital/@$_currentLat,$_currentLng,14z',
+            )
+            : Uri.parse('https://www.google.com/maps/search/hospital+near+me');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open maps.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not open maps.')));
     }
   }
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     // SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
   }
@@ -111,23 +132,23 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
     });
 
     // Start countdown
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted || !_isSosActive) return false;
-      if (_countdown > 0) {
-        setState(() {
-          _countdown--;
-        });
-        return true;
-      } else {
-        // Auto-send when countdown reaches 0
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || !_isSosActive) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _countdown--);
+      if (_countdown <= 0) {
+        timer.cancel();
         _sendSosAlert();
-        return false;
       }
     });
   }
 
   void _cancelSos() {
+    if (_isSending) return;
+    _countdownTimer?.cancel();
     setState(() {
       _isSosActive = false;
       _countdown = 10;
@@ -172,6 +193,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
       await controller.sendSosAlert(
         receiverId: uid,
         bloodGroup: _selectedBloodGroup,
+        urgency: _selectedUrgency,
       );
 
       if (!mounted) return;
@@ -231,10 +253,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                 SizedBox(width: 8),
                 Text(
                   'Blood Group Required',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -242,31 +261,32 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _bloodGroups.map((group) {
-                bool isSelected = _selectedBloodGroup == group;
-                return ChoiceChip(
-                  label: Text(group),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    setState(() {
-                      _selectedBloodGroup = group;
-                    });
-                  },
-                  selectedColor: Colors.red.withValues(alpha: 0.2),
-                  backgroundColor: Colors.grey[100],
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.red : Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: BorderSide(
-                      color: isSelected ? Colors.red : Colors.grey[300]!,
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                );
-              }).toList(),
+              children:
+                  _bloodGroups.map((group) {
+                    bool isSelected = _selectedBloodGroup == group;
+                    return ChoiceChip(
+                      label: Text(group),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          _selectedBloodGroup = group;
+                        });
+                      },
+                      selectedColor: Colors.red.withValues(alpha: 0.2),
+                      backgroundColor: Colors.grey[100],
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.red : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(
+                          color: isSelected ? Colors.red : Colors.grey[300]!,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                    );
+                  }).toList(),
             ),
           ],
         ),
@@ -289,10 +309,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                 SizedBox(width: 8),
                 Text(
                   'Emergency Level',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -307,20 +324,22 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                 filled: true,
                 fillColor: Colors.white,
               ),
-              items: _urgencyLevels.map((level) {
-                return DropdownMenuItem(
-                  value: level,
-                  child: Text(
-                    level.replaceAll('_', ' ').toUpperCase(),
-                    style: TextStyle(
-                      color: level == 'critical' || level == 'life_threatening'
-                          ? Colors.red
-                          : Colors.orange,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                );
-              }).toList(),
+              items:
+                  _urgencyLevels.map((level) {
+                    return DropdownMenuItem(
+                      value: level,
+                      child: Text(
+                        level.replaceAll('_', ' ').toUpperCase(),
+                        style: TextStyle(
+                          color:
+                              level == 'critical' || level == 'life_threatening'
+                                  ? Colors.red
+                                  : Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }).toList(),
               onChanged: (value) {
                 setState(() {
                   _selectedUrgency = value!;
@@ -373,10 +392,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'Alert will be sent automatically',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.red,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.red),
                   ),
                 ],
               ),
@@ -405,7 +421,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Notifying nearby donors and hospitals',
+                    'Saving your alert for nearby donors',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.green),
                   ),
@@ -415,8 +431,18 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
 
           // SOS Button
           GestureDetector(
-            onTap: _isSosActive ? _cancelSos : _startSosCountdown,
-            onLongPress: _isSending ? null : _startSosCountdown,
+            onTap:
+                _isSending
+                    ? null
+                    : (_isSosActive ? _cancelSos : _startSosCountdown),
+            onLongPress:
+                _isSending
+                    ? null
+                    : () {
+                      _countdownTimer?.cancel();
+                      setState(() => _isSosActive = true);
+                      _sendSosAlert();
+                    },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               width: _isSosActive ? 200 : 220,
@@ -426,7 +452,9 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                 color: _isSosActive ? Colors.red.shade700 : Colors.red,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.red.withValues(alpha: _isSosActive ? 0.5 : 0.3),
+                    color: Colors.red.withValues(
+                      alpha: _isSosActive ? 0.5 : 0.3,
+                    ),
                     blurRadius: _isSosActive ? 30 : 20,
                     spreadRadius: _isSosActive ? 10 : 5,
                   ),
@@ -494,10 +522,10 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     '• Press to start 10-second countdown\n'
-                        '• Alert sends automatically\n'
-                        '• Nearby donors notified\n'
-                        '• Emergency contacts called\n'
-                        '• Hospital alert sent',
+                    '• Alert sends automatically\n'
+                    '• Nearby donors notified\n'
+                    '• Use the call button for emergency services\n'
+                    '• Delivery depends on donor notification settings',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
@@ -547,26 +575,27 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                 // national emergency/ambulance number (Rescue 1122).
                 showDialog(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Emergency Call'),
-                    content: const Text('Call Rescue 1122 (ambulance)?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                  builder:
+                      (context) => AlertDialog(
+                        title: const Text('Emergency Call'),
+                        content: const Text('Call Rescue 1122 (ambulance)?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _callNumber('1122');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                            ),
+                            child: const Text('Call Now'),
+                          ),
+                        ],
                       ),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _callNumber('1122');
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                        ),
-                        child: const Text('Call Now'),
-                      ),
-                    ],
-                  ),
                 );
               },
             ),
@@ -647,8 +676,10 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                           SizedBox(width: 10),
-                          Text('Getting your location...',
-                              style: TextStyle(fontSize: 14)),
+                          Text(
+                            'Getting your location...',
+                            style: TextStyle(fontSize: 14),
+                          ),
                         ],
                       )
                     else if (_locationError != null)
@@ -659,36 +690,39 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                     else
                       Text(
                         _locationAddress ?? 'Location unavailable',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                       ),
                     const SizedBox(height: 8),
                     ElevatedButton.icon(
-                      icon: _isLocating
-                          ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                          : const Icon(Icons.my_location, size: 16),
-                      label: Text(_isLocating ? 'Locating...' : 'Update Location'),
-                      onPressed: _isLocating
-                          ? null
-                          : () async {
-                        await _fetchRealLocation();
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              _locationError ??
-                                  'Location updated: ${_locationAddress ?? ''}',
-                            ),
-                          ),
-                        );
-                      },
+                      icon:
+                          _isLocating
+                              ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Icon(Icons.my_location, size: 16),
+                      label: Text(
+                        _isLocating ? 'Locating...' : 'Update Location',
+                      ),
+                      onPressed:
+                          _isLocating
+                              ? null
+                              : () async {
+                                await _fetchRealLocation();
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      _locationError ??
+                                          'Location updated: ${_locationAddress ?? ''}',
+                                    ),
+                                  ),
+                                );
+                              },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         minimumSize: const Size(double.infinity, 40),
@@ -702,9 +736,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
             const SizedBox(height: 30),
 
             // SOS Button
-            Center(
-              child: _buildSosButton(),
-            ),
+            Center(child: _buildSosButton()),
 
             const SizedBox(height: 20),
 
@@ -721,7 +753,11 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.contact_phone, color: Colors.green, size: 20),
+                        Icon(
+                          Icons.contact_phone,
+                          color: Colors.green,
+                          size: 20,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'Emergency Contacts',
@@ -741,7 +777,11 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                     ListTile(
                       leading: const CircleAvatar(
                         backgroundColor: Colors.green,
-                        child: Icon(Icons.person, color: Colors.white, size: 20),
+                        child: Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                       title: const Text('Ambulance (Rescue 1122)'),
                       subtitle: const Text('1122'),
@@ -759,12 +799,19 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                     ListTile(
                       leading: const CircleAvatar(
                         backgroundColor: Colors.orange,
-                        child: Icon(Icons.local_hospital, color: Colors.white, size: 20),
+                        child: Icon(
+                          Icons.local_hospital,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                       title: const Text('Find Nearby Hospitals'),
                       subtitle: const Text('Opens maps near your location'),
                       trailing: IconButton(
-                        icon: const Icon(Icons.map_outlined, color: Colors.orange),
+                        icon: const Icon(
+                          Icons.map_outlined,
+                          color: Colors.orange,
+                        ),
                         onPressed: _openNearbyHospitals,
                       ),
                       onTap: _openNearbyHospitals,

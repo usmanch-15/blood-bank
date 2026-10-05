@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -7,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../services/geo_location_service.dart';
+import '../../services/osrm_routing_service.dart';
 import '../../services/notification_service.dart';
 import '../../utils/eligibility_checker.dart';
 
@@ -53,6 +55,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
   final GeoLocationService _geoService = GeoLocationService();
   final NotificationService _notificationService = NotificationService();
   final MapController _mapController = MapController();
+  final OsrmRoutingService _routingService = OsrmRoutingService();
 
   static const double _maxFetchRadiusKm = 50.0;
   static const List<double> _radiusSteps = [2, 5, 10, 15, 25, 50];
@@ -79,12 +82,27 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
     });
 
     try {
-      final position = await _geoService.getCurrentLocation();
-      final center = LatLng(position.latitude, position.longitude);
+      LatLng center;
+      if (widget.requestId != null) {
+        final request =
+            (await FirebaseFirestore.instance
+                    .doc('blood_requests/${widget.requestId}')
+                    .get())
+                .data();
+        final lat = request?['latitude'] as num?,
+            lng = request?['longitude'] as num?;
+        if (lat == null || lng == null) {
+          throw StateError('The request has no hospital coordinates.');
+        }
+        center = LatLng(lat.toDouble(), lng.toDouble());
+      } else {
+        final position = await _geoService.getCurrentLocation();
+        center = LatLng(position.latitude, position.longitude);
+      }
 
       final donors = await _geoService.findCompatibleDonorsWithDistance(
-        receiverLat: position.latitude,
-        receiverLng: position.longitude,
+        receiverLat: center.latitude,
+        receiverLng: center.longitude,
         bloodGroup: widget.bloodGroup,
         maxRadiusKm: _maxFetchRadiusKm,
       );
@@ -97,7 +115,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
       });
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _mapController.move(center, 12);
+        if (mounted) _mapController.move(center, 12);
       });
     } catch (e) {
       if (!mounted) return;
@@ -122,8 +140,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
 
   Future<String?> _fetchDonorPhone(String donorId) async {
     try {
-      final callable =
-      FirebaseFunctions.instance.httpsCallable('getDonorContact');
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'getDonorContact',
+      );
       final result = await callable.call({'donorId': donorId});
       return result.data['phoneNumber'] as String?;
     } catch (_) {
@@ -132,26 +151,36 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
   }
 
   Future<void> _notifySingleDonor(DonorWithDistance dwd) async {
-    final receiverName =
-        FirebaseAuth.instance.currentUser?.displayName ?? 'A patient';
-    await _notificationService.sendToUser(
-      userId: dwd.donor.uid,
-      title: widget.bloodGroup != null
-          ? 'Urgent: ${widget.bloodGroup} blood needed nearby'
-          : 'Blood donation needed nearby',
-      body: '$receiverName needs your help'
-          '${widget.unitsNeeded != null ? ' (${widget.unitsNeeded} units)' : ''}'
-          ' — you are ${dwd.distanceKm.toStringAsFixed(1)} km away.',
-      type: 'blood_request',
-      relatedId: widget.requestId,
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Notification sent to ${dwd.donor.name}'),
-        backgroundColor: AppColors.success,
-      ),
-    );
+    try {
+      final receiverName =
+          FirebaseAuth.instance.currentUser?.displayName ?? 'A patient';
+      await _notificationService.sendToUser(
+        userId: dwd.donor.uid,
+        title:
+            widget.bloodGroup != null
+                ? 'Urgent: ${widget.bloodGroup} blood needed nearby'
+                : 'Blood donation needed nearby',
+        body:
+            '$receiverName needs your help'
+            '${widget.unitsNeeded != null ? ' (${widget.unitsNeeded} units)' : ''}'
+            ' — you are ${dwd.distanceKm.toStringAsFixed(1)} km away.',
+        type: 'blood_request',
+        relatedId: widget.requestId,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Notification sent to ${dwd.donor.name}'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not notify donor: $e')));
+      }
+    }
   }
 
   Future<void> _confirmAndNotifyAll() async {
@@ -160,34 +189,35 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        ),
-        title: const Text('Notify Donors?'),
-        content: Text(
-          'This will send a notification to all ${targets.length} donor'
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            ),
+            title: const Text('Notify Donors?'),
+            content: Text(
+              'This will send a notification to all ${targets.length} donor'
               '${targets.length == 1 ? '' : 's'} within ${_radiusKm.toStringAsFixed(0)} km'
               '${widget.bloodGroup != null ? ' (${widget.bloodGroup} compatible)' : ''}.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryRed,
-              foregroundColor: Colors.white,
             ),
-            child: Text('Notify ${targets.length} Donors'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryRed,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text('Notify ${targets.length} Donors'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
     setState(() => _isNotifying = true);
     try {
@@ -196,10 +226,12 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
 
       await _notificationService.sendToUsers(
         userIds: targets.map((d) => d.donor.uid).toList(),
-        title: widget.bloodGroup != null
-            ? 'Urgent: ${widget.bloodGroup} blood needed nearby'
-            : 'Blood donation needed nearby',
-        body: '$receiverName needs your help'
+        title:
+            widget.bloodGroup != null
+                ? 'Urgent: ${widget.bloodGroup} blood needed nearby'
+                : 'Blood donation needed nearby',
+        body:
+            '$receiverName needs your help'
             '${widget.unitsNeeded != null ? ' (${widget.unitsNeeded} units)' : ''}'
             ' — within ${_radiusKm.toStringAsFixed(0)} km of your location.',
         type: 'blood_request',
@@ -209,8 +241,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-          Text('Notified ${targets.length} donor${targets.length == 1 ? '' : 's'}!'),
+          content: Text(
+            'Notified ${targets.length} donor${targets.length == 1 ? '' : 's'}!',
+          ),
           backgroundColor: AppColors.success,
         ),
       );
@@ -226,209 +259,280 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
 
   void _showDonorSheet(DonorWithDistance dwd) {
     final donor = dwd.donor;
-    final eligible =
-    EligibilityChecker.isEligibleForDonation(donor.lastDonationDate);
+    final eta = _routingService.getDrivingEta(originLat: _center!.latitude,
+      originLng: _center!.longitude, destLat: donor.latitude!, destLng: donor.longitude!);
+    final eligible = EligibilityChecker.isEligibleForDonation(
+      donor.lastDonationDate,
+    );
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl)),
-      ),
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.55,
-        minChildSize: 0.3,
-        maxChildSize: 0.85,
-        expand: false,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: AppColors.primaryRed.withValues(alpha: 0.1),
-                    backgroundImage: donor.profileImageUrl != null
-                        ? NetworkImage(donor.profileImageUrl!)
-                        : null,
-                    child: donor.profileImageUrl == null
-                        ? Text(
-                      donor.name.isNotEmpty
-                          ? donor.name[0].toUpperCase()
-                          : 'D',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primaryRed,
-                      ),
-                    )
-                        : null,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          donor.name.isNotEmpty ? donor.name : 'Donor',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on,
-                                size: 14, color: Colors.grey[500]),
-                            const SizedBox(width: 2),
-                            Text(
-                              '${dwd.distanceKm.toStringAsFixed(1)} km away',
-                              style: TextStyle(
-                                  fontSize: 13, color: Colors.grey[600]),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryRed,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-                    ),
-                    child: Text(
-                      donor.bloodGroup ?? '—',
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  _statusChip(
-                    icon: eligible ? Icons.check_circle : Icons.timer,
-                    label: eligible ? 'Eligible to donate' : 'Not yet eligible',
-                    color: eligible ? AppColors.success : AppColors.warning,
-                  ),
-                  const SizedBox(width: 8),
-                  _statusChip(
-                    icon: donor.isAvailable
-                        ? Icons.check_circle_outline
-                        : Icons.pause_circle_outline,
-                    label: donor.isAvailable ? 'Available' : 'Unavailable',
-                    color: donor.isAvailable
-                        ? AppColors.secondaryBlue
-                        : Colors.grey,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              if (donor.location != null && donor.location!.isNotEmpty) ...[
-                _detailRow(Icons.map_outlined, 'Location', donor.location!),
-                const SizedBox(height: 10),
-              ],
-              if (donor.lastDonationDate != null)
-                _detailRow(
-                  Icons.history,
-                  'Last Donation',
-                  '${donor.lastDonationDate!.day}/${donor.lastDonationDate!.month}/${donor.lastDonationDate!.year}',
-                ),
-              const SizedBox(height: 22),
-              FutureBuilder<String?>(
-                future: _fetchDonorPhone(donor.uid),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 10),
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    );
-                  }
-                  final phone = snapshot.data;
-                  return Column(
-                    children: [
-                      if (phone != null && phone.isNotEmpty)
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.call),
-                            label: const Text('Call Donor'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryRed,
-                              foregroundColor: Colors.white,
-                              padding:
-                              const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius:
-                                BorderRadius.circular(AppSpacing.radiusMd),
-                              ),
-                            ),
-                            onPressed: () =>
-                                launchUrl(Uri(scheme: 'tel', path: phone)),
-                          ),
-                        )
-                      else
-                        Text(
-                          'No phone number on file for this donor.',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.notifications_active_outlined),
-                          label: const Text('Notify This Donor'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.primaryRed,
-                            side:
-                            const BorderSide(color: AppColors.primaryRed),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusMd),
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _notifySingleDonor(dwd);
-                          },
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppSpacing.radiusXl),
         ),
       ),
+      builder:
+          (_) => DraggableScrollableSheet(
+            initialChildSize: 0.55,
+            minChildSize: 0.3,
+            maxChildSize: 0.85,
+            expand: false,
+            builder:
+                (context, scrollController) => SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 30,
+                            backgroundColor: AppColors.primaryRed.withValues(
+                              alpha: 0.1,
+                            ),
+                            backgroundImage:
+                                donor.profileImageUrl != null
+                                    ? NetworkImage(donor.profileImageUrl!)
+                                    : null,
+                            child:
+                                donor.profileImageUrl == null
+                                    ? Text(
+                                      donor.name.isNotEmpty
+                                          ? donor.name[0].toUpperCase()
+                                          : 'D',
+                                      style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primaryRed,
+                                      ),
+                                    )
+                                    : null,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  donor.name.isNotEmpty ? donor.name : 'Donor',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 14,
+                                      color: Colors.grey[500],
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '${dwd.distanceKm.toStringAsFixed(1)} km away',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryRed,
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusFull,
+                              ),
+                            ),
+                            child: Text(
+                              donor.bloodGroup ?? '—',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          _statusChip(
+                            icon: eligible ? Icons.check_circle : Icons.timer,
+                            label:
+                                eligible
+                                    ? 'Eligible to donate'
+                                    : 'Not yet eligible',
+                            color:
+                                eligible
+                                    ? AppColors.success
+                                    : AppColors.warning,
+                          ),
+                          const SizedBox(width: 8),
+                          _statusChip(
+                            icon:
+                                donor.isAvailable
+                                    ? Icons.check_circle_outline
+                                    : Icons.pause_circle_outline,
+                            label:
+                                donor.isAvailable ? 'Available' : 'Unavailable',
+                            color:
+                                donor.isAvailable
+                                    ? AppColors.secondaryBlue
+                                    : Colors.grey,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      if (donor.location != null &&
+                          donor.location!.isNotEmpty) ...[
+                        _detailRow(
+                          Icons.map_outlined,
+                          'Location',
+                          donor.location!,
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      if (donor.lastDonationDate != null)
+                        _detailRow(
+                          Icons.history,
+                          'Last Donation',
+                          '${donor.lastDonationDate!.day}/${donor.lastDonationDate!.month}/${donor.lastDonationDate!.year}',
+                        ),
+                      const SizedBox(height: 22),
+                      FutureBuilder<RouteEta?>(future: eta, builder: (context, snapshot) => Text(
+                        snapshot.data == null ? 'Driving estimate unavailable' :
+                          'Estimated drive: ${snapshot.data!.humanDuration} (${snapshot.data!.humanDistance})')),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(icon: const Icon(Icons.directions), label: const Text('Directions to approximate donor location'),
+                        onPressed: () async {
+                          try {
+                            if (!await launchUrl(Uri.parse('https://www.openstreetmap.org/directions?from=${_center!.latitude}%2C${_center!.longitude}&to=${donor.latitude}%2C${donor.longitude}'),
+                              mode: LaunchMode.externalApplication)) throw StateError('Could not open directions.');
+                          } catch (e) {
+                            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open directions: $e')));
+                          }
+                        }),
+                      const SizedBox(height: 12),
+                      FutureBuilder<String?>(
+                        future: _fetchDonorPhone(donor.uid),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 10),
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          final phone = snapshot.data;
+                          return Column(
+                            children: [
+                              if (phone != null && phone.isNotEmpty)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.call),
+                                    label: const Text('Call Donor'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primaryRed,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppSpacing.radiusMd,
+                                        ),
+                                      ),
+                                    ),
+                                    onPressed:
+                                        () => launchUrl(
+                                          Uri(scheme: 'tel', path: phone),
+                                        ),
+                                  ),
+                                )
+                              else
+                                Text(
+                                  'No phone number on file for this donor.',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(
+                                    Icons.notifications_active_outlined,
+                                  ),
+                                  label: const Text('Notify This Donor'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primaryRed,
+                                    side: const BorderSide(
+                                      color: AppColors.primaryRed,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppSpacing.radiusMd,
+                                      ),
+                                    ),
+                                  ),
+                                  onPressed:
+                                      widget.requestId == null
+                                          ? null
+                                          : () {
+                                            Navigator.pop(context);
+                                            _notifySingleDonor(dwd);
+                                          },
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+          ),
     );
   }
 
-  Widget _statusChip(
-      {required IconData icon, required String label, required Color color}) {
+  Widget _statusChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
@@ -445,7 +549,10 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
               child: Text(
                 label,
                 style: TextStyle(
-                    fontSize: 11.5, fontWeight: FontWeight.w600, color: color),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -461,10 +568,15 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
       children: [
         Icon(icon, size: 17, color: Colors.grey[500]),
         const SizedBox(width: 10),
-        Text('$label: ', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+        Text(
+          '$label: ',
+          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+        ),
         Expanded(
-          child: Text(value,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
         ),
       ],
     );
@@ -486,7 +598,10 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
         backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(icon: const Icon(Icons.my_location), onPressed: _goToCenter),
+          IconButton(
+            icon: const Icon(Icons.my_location),
+            onPressed: _goToCenter,
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadDonors),
         ],
       ),
@@ -510,7 +625,10 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
               const SizedBox(height: 12),
               Text(_errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
-              ElevatedButton(onPressed: _loadDonors, child: const Text('Try Again')),
+              ElevatedButton(
+                onPressed: _loadDonors,
+                child: const Text('Try Again'),
+              ),
             ],
           ),
         ),
@@ -551,8 +669,11 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                   point: center,
                   width: 40,
                   height: 40,
-                  child: const Icon(Icons.person_pin_circle,
-                      color: Colors.blue, size: 40),
+                  child: const Icon(
+                    Icons.person_pin_circle,
+                    color: Colors.blue,
+                    size: 40,
+                  ),
                 ),
                 for (final dwd in donors)
                   Marker(
@@ -566,26 +687,33 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 5, vertical: 1),
+                              horizontal: 5,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
-                              color: dwd.donor.isAvailable
-                                  ? AppColors.primaryRed
-                                  : Colors.grey,
+                              color:
+                                  dwd.donor.isAvailable
+                                      ? AppColors.primaryRed
+                                      : Colors.grey,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               dwd.donor.bloodGroup ?? '',
                               style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold),
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                          Icon(Icons.location_on,
-                              color: dwd.donor.isAvailable
-                                  ? AppColors.primaryRed
-                                  : Colors.grey,
-                              size: 30),
+                          Icon(
+                            Icons.location_on,
+                            color:
+                                dwd.donor.isAvailable
+                                    ? AppColors.primaryRed
+                                    : Colors.grey,
+                            size: 30,
+                          ),
                         ],
                       ),
                     ),
@@ -593,7 +721,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
               ],
             ),
             const RichAttributionWidget(
-              attributions: [TextSourceAttribution('OpenStreetMap contributors')],
+              attributions: [
+                TextSourceAttribution('OpenStreetMap contributors'),
+              ],
             ),
           ],
         ),
@@ -620,7 +750,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
             isNotifying: _isNotifying,
             onRadiusChanged: (v) => setState(() => _radiusKm = v),
             onEligibleToggle: (v) => setState(() => _eligibleOnly = v),
-            onNotifyAll: donors.isEmpty ? null : _confirmAndNotifyAll,
+            onNotifyAll: donors.isEmpty || widget.requestId == null ? null : _confirmAndNotifyAll,
           ),
         ),
       ],
@@ -665,8 +795,11 @@ class _DonorCountBanner extends StatelessWidget {
               color: AppColors.primaryRed.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.people_alt_rounded,
-                color: AppColors.primaryRed, size: 18),
+            child: const Icon(
+              Icons.people_alt_rounded,
+              color: AppColors.primaryRed,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -676,7 +809,9 @@ class _DonorCountBanner extends StatelessWidget {
                 Text(
                   '$count donor${count == 1 ? '' : 's'} found',
                   style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.bold),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   'within ${radiusKm.toStringAsFixed(0)} km',
@@ -721,9 +856,15 @@ class _BottomControlPanel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusXl)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppSpacing.radiusXl),
+        ),
         boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 16, offset: Offset(0, -4)),
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 16,
+            offset: Offset(0, -4),
+          ),
         ],
       ),
       child: Column(
@@ -731,11 +872,18 @@ class _BottomControlPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.social_distance, size: 16, color: AppColors.primaryRed),
+              const Icon(
+                Icons.social_distance,
+                size: 16,
+                color: AppColors.primaryRed,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Search radius: ${radiusKm.toStringAsFixed(0)} km',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                ),
               ),
               const Spacer(),
               // Eligible-only toggle
@@ -743,8 +891,10 @@ class _BottomControlPanel extends StatelessWidget {
                 onTap: () => onEligibleToggle(!eligibleOnly),
                 child: Row(
                   children: [
-                    Text('Eligible only',
-                        style: TextStyle(fontSize: 12.5, color: Colors.grey[700])),
+                    Text(
+                      'Eligible only',
+                      style: TextStyle(fontSize: 12.5, color: Colors.grey[700]),
+                    ),
                     Switch(
                       value: eligibleOnly,
                       activeThumbColor: AppColors.primaryRed,
@@ -776,28 +926,32 @@ class _BottomControlPanel extends StatelessWidget {
             height: 34,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              children: radiusSteps.map((r) {
-                final selected = r == radiusKm;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text('${r.toStringAsFixed(0)} km'),
-                    selected: selected,
-                    onSelected: (_) => onRadiusChanged(r),
-                    selectedColor: AppColors.primaryRed,
-                    labelStyle: TextStyle(
-                      fontSize: 12,
-                      color: selected ? Colors.white : AppColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    backgroundColor: Colors.grey[100],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-                      side: BorderSide.none,
-                    ),
-                  ),
-                );
-              }).toList(),
+              children:
+                  radiusSteps.map((r) {
+                    final selected = r == radiusKm;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text('${r.toStringAsFixed(0)} km'),
+                        selected: selected,
+                        onSelected: (_) => onRadiusChanged(r),
+                        selectedColor: AppColors.primaryRed,
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          color:
+                              selected ? Colors.white : AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        backgroundColor: Colors.grey[100],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusFull,
+                          ),
+                          side: BorderSide.none,
+                        ),
+                      ),
+                    );
+                  }).toList(),
             ),
           ),
           const SizedBox(height: 12),
@@ -806,21 +960,27 @@ class _BottomControlPanel extends StatelessWidget {
             height: 52,
             child: ElevatedButton.icon(
               onPressed: isNotifying ? null : onNotifyAll,
-              icon: isNotifying
-                  ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
-              )
-                  : const Icon(Icons.notifications_active_rounded),
+              icon:
+                  isNotifying
+                      ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                      : const Icon(Icons.notifications_active_rounded),
               label: Text(
                 isNotifying
                     ? 'Sending...'
                     : donorCount == 0
                     ? 'No Donors in Range'
                     : 'Notify $donorCount Donor${donorCount == 1 ? '' : 's'}',
-                style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryRed,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/user_model.dart';
 import '../../../services/firestore_service.dart';
@@ -61,10 +62,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                   const SizedBox(height: 4),
                   Text(
                     'Manage donors, receivers and admin accounts',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -103,18 +101,23 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                     decoration: InputDecoration(
                       hintText: 'Search by name, email or blood group...',
                       hintStyle: TextStyle(
-                          color: Colors.grey.shade400, fontSize: 13),
-                      prefixIcon: Icon(Icons.search,
-                          color: Colors.grey.shade400, size: 20),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () => _searchController.clear(),
-                      )
-                          : null,
+                        color: Colors.grey.shade400,
+                        fontSize: 13,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Colors.grey.shade400,
+                        size: 20,
+                      ),
+                      suffixIcon:
+                          _searchQuery.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () => _searchController.clear(),
+                              )
+                              : null,
                       border: InputBorder.none,
-                      contentPadding:
-                      const EdgeInsets.symmetric(vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
@@ -141,15 +144,20 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                   child: DropdownButton<String>(
                     value: _roleFilter,
                     icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-                    items: _roles
-                        .map((r) => DropdownMenuItem(
-                      value: r,
-                      child: Text(
-                        r == 'All' ? 'All Roles' : r[0].toUpperCase() + r.substring(1),
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ))
-                        .toList(),
+                    items:
+                        _roles
+                            .map(
+                              (r) => DropdownMenuItem(
+                                value: r,
+                                child: Text(
+                                  r == 'All'
+                                      ? 'All Roles'
+                                      : r[0].toUpperCase() + r.substring(1),
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (v) => setState(() => _roleFilter = v!),
                   ),
                 ),
@@ -175,8 +183,10 @@ class _AdminWebUsersState extends State<AdminWebUsers>
               unselectedLabelColor: Colors.grey.shade600,
               indicatorColor: Colors.red.shade700,
               indicatorWeight: 3,
-              labelStyle:
-              const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
               tabs: const [
                 Tab(
                   child: Row(
@@ -246,8 +256,11 @@ class _AdminWebUsersState extends State<AdminWebUsers>
           ),
           child: Row(
             children: [
-              Icon(Icons.pending_actions,
-                  color: Colors.orange.shade700, size: 16),
+              Icon(
+                Icons.pending_actions,
+                color: Colors.orange.shade700,
+                size: 16,
+              ),
               const SizedBox(width: 6),
               Text(
                 '$count Pending Approval',
@@ -281,8 +294,10 @@ class _AdminWebUsersState extends State<AdminWebUsers>
               children: [
                 Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
                 const SizedBox(height: 12),
-                Text('Error: ${snapshot.error}',
-                    style: TextStyle(color: Colors.red.shade400)),
+                Text(
+                  'Error: ${snapshot.error}',
+                  style: TextStyle(color: Colors.red.shade400),
+                ),
               ],
             ),
           );
@@ -292,11 +307,13 @@ class _AdminWebUsersState extends State<AdminWebUsers>
 
         // Apply search filter
         if (_searchQuery.isNotEmpty) {
-          users = users.where((u) {
-            return u.name.toLowerCase().contains(_searchQuery) ||
-                u.email.toLowerCase().contains(_searchQuery) ||
-                (u.bloodGroup?.toLowerCase().contains(_searchQuery) ?? false);
-          }).toList();
+          users =
+              users.where((u) {
+                return u.name.toLowerCase().contains(_searchQuery) ||
+                    u.email.toLowerCase().contains(_searchQuery) ||
+                    (u.bloodGroup?.toLowerCase().contains(_searchQuery) ??
+                        false);
+              }).toList();
         }
 
         // Apply role filter
@@ -327,8 +344,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                       : status == 'approved'
                       ? 'No approved users'
                       : 'No rejected users',
-                  style: TextStyle(
-                      fontSize: 16, color: Colors.grey.shade500),
+                  style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
                 ),
               ],
             ),
@@ -346,9 +362,10 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                 child: Text(
                   '${users.length} user${users.length == 1 ? '' : 's'} found',
                   style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500),
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
 
@@ -372,7 +389,8 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                     child: SingleChildScrollView(
                       child: DataTable(
                         headingRowColor: WidgetStateProperty.all(
-                            Colors.grey.shade50),
+                          Colors.grey.shade50,
+                        ),
                         headingTextStyle: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
@@ -394,9 +412,10 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                           DataColumn(label: Text('Eligibility')),
                           DataColumn(label: Text('Actions')),
                         ],
-                        rows: users
-                            .map((user) => _buildDataRow(user, status))
-                            .toList(),
+                        rows:
+                            users
+                                .map((user) => _buildDataRow(user, status))
+                                .toList(),
                       ),
                     ),
                   ),
@@ -419,21 +438,23 @@ class _AdminWebUsersState extends State<AdminWebUsers>
               CircleAvatar(
                 radius: 18,
                 backgroundColor: Colors.red.shade100,
-                backgroundImage: user.profileImageUrl != null
-                    ? NetworkImage(user.profileImageUrl!)
-                    : null,
-                child: user.profileImageUrl == null
-                    ? Text(
-                  user.name.isNotEmpty
-                      ? user.name[0].toUpperCase()
-                      : '?',
-                  style: TextStyle(
-                    color: Colors.red.shade700,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                )
-                    : null,
+                backgroundImage:
+                    user.profileImageUrl != null
+                        ? NetworkImage(user.profileImageUrl!)
+                        : null,
+                child:
+                    user.profileImageUrl == null
+                        ? Text(
+                          user.name.isNotEmpty
+                              ? user.name[0].toUpperCase()
+                              : '?',
+                          style: TextStyle(
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        )
+                        : null,
               ),
               const SizedBox(width: 10),
               Column(
@@ -443,12 +464,13 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                   Text(
                     user.name,
                     style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 13),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                   Text(
                     user.email,
-                    style: TextStyle(
-                        color: Colors.grey.shade500, fontSize: 11),
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
                   ),
                 ],
               ),
@@ -463,22 +485,24 @@ class _AdminWebUsersState extends State<AdminWebUsers>
         DataCell(
           user.bloodGroup != null
               ? Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.red.shade50,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.red.shade200),
-            ),
-            child: Text(
-              user.bloodGroup!,
-              style: TextStyle(
-                color: Colors.red.shade700,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          )
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Text(
+                  user.bloodGroup!,
+                  style: TextStyle(
+                    color: Colors.red.shade700,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              )
               : Text('—', style: TextStyle(color: Colors.grey.shade400)),
         ),
 
@@ -505,56 +529,57 @@ class _AdminWebUsersState extends State<AdminWebUsers>
         DataCell(
           user.lastLoginAt != null
               ? Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: Colors.green.shade500,
-                  shape: BoxShape.circle,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade500,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatDate(user.lastLoginAt!),
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                  ),
+                ],
+              )
+              : Text(
+                'Never logged in',
+                style: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
-              const SizedBox(width: 6),
-              Text(
-                _formatDate(user.lastLoginAt!),
-                style: TextStyle(
-                    color: Colors.grey.shade700, fontSize: 12),
-              ),
-            ],
-          )
-              : Text(
-            'Never logged in',
-            style: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 12,
-                fontStyle: FontStyle.italic),
-          ),
         ),
 
         // ── Eligibility ──
         DataCell(
           user.role == 'donor'
               ? Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: user.isEligible
-                  ? Colors.green.shade50
-                  : Colors.orange.shade50,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              user.isEligible ? 'Eligible' : 'Not Eligible',
-              style: TextStyle(
-                color: user.isEligible
-                    ? Colors.green.shade700
-                    : Colors.orange.shade700,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          )
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color:
+                      user.isEligible
+                          ? Colors.green.shade50
+                          : Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  user.isEligible ? 'Eligible' : 'Not Eligible',
+                  style: TextStyle(
+                    color:
+                        user.isEligible
+                            ? Colors.green.shade700
+                            : Colors.orange.shade700,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )
               : Text('—', style: TextStyle(color: Colors.grey.shade400)),
         ),
 
@@ -669,7 +694,10 @@ class _AdminWebUsersState extends State<AdminWebUsers>
           Text(
             role[0].toUpperCase() + role.substring(1),
             style: TextStyle(
-                color: color, fontSize: 11, fontWeight: FontWeight.w600),
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -677,86 +705,101 @@ class _AdminWebUsersState extends State<AdminWebUsers>
   }
 
   // ── Firestore update ─────────────────────────────────────────
-  Future<void> _updateStatus(
-      String uid, String newStatus, String name) async {
+  Future<void> _updateStatus(String uid, String newStatus, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              newStatus == 'approved'
-                  ? Icons.check_circle
-                  : newStatus == 'rejected'
-                  ? Icons.cancel
-                  : Icons.restore,
-              color: newStatus == 'approved'
-                  ? Colors.green
-                  : newStatus == 'rejected'
-                  ? Colors.red
-                  : Colors.green,
+      builder:
+          (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(width: 10),
-            Text(
-              newStatus == 'approved'
-                  ? 'Approve User'
-                  : newStatus == 'rejected'
-                  ? 'Reject User'
-                  : 'Re-approve User',
-              style: const TextStyle(fontSize: 18),
+            title: Row(
+              children: [
+                Icon(
+                  newStatus == 'approved'
+                      ? Icons.check_circle
+                      : newStatus == 'rejected'
+                      ? Icons.cancel
+                      : Icons.restore,
+                  color:
+                      newStatus == 'approved'
+                          ? Colors.green
+                          : newStatus == 'rejected'
+                          ? Colors.red
+                          : Colors.green,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  newStatus == 'approved'
+                      ? 'Approve User'
+                      : newStatus == 'rejected'
+                      ? 'Reject User'
+                      : 'Re-approve User',
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ],
             ),
-          ],
-        ),
-        content: Text(
-          'Are you sure you want to ${newStatus == "approved" ? "approve" : newStatus == "rejected" ? "reject" : "re-approve"} "$name"?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            content: Text(
+              'Are you sure you want to ${newStatus == "approved"
+                  ? "approve"
+                  : newStatus == "rejected"
+                  ? "reject"
+                  : "re-approve"} "$name"?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      newStatus == 'approved'
+                          ? Colors.green
+                          : newStatus == 'rejected'
+                          ? Colors.red
+                          : Colors.green,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  newStatus == 'approved'
+                      ? 'Approve'
+                      : newStatus == 'rejected'
+                      ? 'Reject'
+                      : 'Re-approve',
+                ),
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: newStatus == 'approved'
-                  ? Colors.green
-                  : newStatus == 'rejected'
-                  ? Colors.red
-                  : Colors.green,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(newStatus == 'approved'
-                ? 'Approve'
-                : newStatus == 'rejected'
-                ? 'Reject'
-                : 'Re-approve'),
-          ),
-        ],
-      ),
     );
 
     if (confirm != true) return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .update({'status': newStatus});
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'status': newStatus,
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                '$name has been ${newStatus == "approved" ? "approved ✓" : newStatus == "rejected" ? "rejected ✗" : "re-approved ✓"}'),
+              '$name has been ${newStatus == "approved"
+                  ? "approved ✓"
+                  : newStatus == "rejected"
+                  ? "rejected ✗"
+                  : "re-approved ✓"}',
+            ),
             backgroundColor:
-            newStatus == 'rejected' ? Colors.red : Colors.green,
+                newStatus == 'rejected' ? Colors.red : Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -764,125 +807,295 @@ class _AdminWebUsersState extends State<AdminWebUsers>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
   }
 
   // ── User detail dialog ────────────────────────────────────────
-  void _showUserDetails(UserModel user) {
-    showDialog(
+  Future<void> _editUser(UserModel user) async {
+    final name = TextEditingController(text: user.name);
+    final form = GlobalKey<FormState>();
+    String? bloodGroup = user.bloodGroup;
+    await showDialog<void>(
       context: context,
-      builder: (_) => Dialog(
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Container(
-          width: 480,
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Edit user profile'),
+            content: Form(
+              key: form,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.red.shade100,
-                    backgroundImage: user.profileImageUrl != null
-                        ? NetworkImage(user.profileImageUrl!)
-                        : null,
-                    child: user.profileImageUrl == null
-                        ? Text(
-                      user.name.isNotEmpty
-                          ? user.name[0].toUpperCase()
-                          : '?',
-                      style: TextStyle(
-                        color: Colors.red.shade700,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22,
-                      ),
-                    )
-                        : null,
+                  TextFormField(
+                    controller: name,
+                    decoration: const InputDecoration(labelText: 'Name'),
+                    validator:
+                        (v) =>
+                            v == null ||
+                                    v.trim().length < 2 ||
+                                    v.trim().length > 100
+                                ? 'Enter a name of 2–100 characters'
+                                : null,
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(user.name,
-                            style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold)),
-                        Text(user.email,
-                            style:
-                            TextStyle(color: Colors.grey.shade600)),
-                        const SizedBox(height: 4),
-                        _buildRoleBadge(user.role),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
+                  DropdownButtonFormField<String>(
+                    initialValue: bloodGroup,
+                    decoration: const InputDecoration(labelText: 'Blood group'),
+                    items:
+                        ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+                            .map(
+                              (g) => DropdownMenuItem(value: g, child: Text(g)),
+                            )
+                            .toList(),
+                    onChanged: (v) => bloodGroup = v,
+                    validator: (v) => v == null ? 'Select a blood group' : null,
                   ),
                 ],
               ),
-
-              const Divider(height: 28),
-
-              // Details grid
-              _detailRow(Icons.bloodtype, 'Blood Group',
-                  user.bloodGroup ?? 'Not specified'),
-              _detailRow(Icons.phone, 'Phone',
-                  user.phoneNumber ?? 'Not provided'),
-              _detailRow(Icons.location_on, 'Location',
-                  user.location ?? 'Not specified'),
-              _detailRow(Icons.stars, 'Reward Points',
-                  '${user.rewardPoints} pts'),
-              _detailRow(
-                  Icons.calendar_today,
-                  'Joined',
-                  _formatDate(user.createdAt)),
-              if (user.lastDonationDate != null)
-                _detailRow(
-                    Icons.favorite,
-                    'Last Donation',
-                    _formatDate(user.lastDonationDate!)),
-              _detailRow(
-                  Icons.verified_user,
-                  'Status',
-                  user.status[0].toUpperCase() + user.status.substring(1)),
-              if (user.role == 'donor')
-                _detailRow(
-                    Icons.health_and_safety,
-                    'Eligible to Donate',
-                    user.isEligible ? 'Yes ✓' : 'No — cooling period'),
-
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade700,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Close'),
-                ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  if (!form.currentState!.validate()) return;
+                  try {
+                    await FirebaseFirestore.instance
+                        .doc('users/${user.uid}')
+                        .update({
+                          'name': name.text.trim(),
+                          'bloodGroup': bloodGroup,
+                        });
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  } catch (e) {
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(content: Text('Could not save profile: $e')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Save'),
               ),
             ],
           ),
-        ),
-      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => name.dispose());
+  }
+
+  void _showUserDetails(UserModel user) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Container(
+              width: 480,
+              padding: const EdgeInsets.all(28),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 30,
+                          backgroundColor: Colors.red.shade100,
+                          backgroundImage:
+                              user.profileImageUrl != null
+                                  ? NetworkImage(user.profileImageUrl!)
+                                  : null,
+                          child:
+                              user.profileImageUrl == null
+                                  ? Text(
+                                    user.name.isNotEmpty
+                                        ? user.name[0].toUpperCase()
+                                        : '?',
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 22,
+                                    ),
+                                  )
+                                  : null,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user.name,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                user.email,
+                                style: TextStyle(color: Colors.grey.shade600),
+                              ),
+                              const SizedBox(height: 4),
+                              _buildRoleBadge(user.role),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+
+                    const Divider(height: 28),
+
+                    // Details grid
+                    _detailRow(
+                      Icons.bloodtype,
+                      'Blood Group',
+                      user.bloodGroup ?? 'Not specified',
+                    ),
+                    FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                      future:
+                          FirebaseFirestore.instance
+                              .doc('users/${user.uid}/private/contact')
+                              .get(),
+                      builder:
+                          (context, snapshot) => _detailRow(
+                            Icons.phone,
+                            'Phone',
+                            snapshot.hasError
+                                ? 'Unable to load contact'
+                                : !snapshot.hasData
+                                ? 'Loading...'
+                                : snapshot.data!
+                                        .data()?['phoneNumber']
+                                        ?.toString() ??
+                                    'Not provided',
+                          ),
+                    ),
+                    _detailRow(
+                      Icons.location_on,
+                      'Location',
+                      user.location ?? 'Not specified',
+                    ),
+                    _detailRow(
+                      Icons.stars,
+                      'Reward Points',
+                      '${user.rewardPoints} pts',
+                    ),
+                    _detailRow(
+                      Icons.calendar_today,
+                      'Joined',
+                      _formatDate(user.createdAt),
+                    ),
+                    if (user.lastDonationDate != null)
+                      _detailRow(
+                        Icons.favorite,
+                        'Last Donation',
+                        _formatDate(user.lastDonationDate!),
+                      ),
+                    _detailRow(
+                      Icons.verified_user,
+                      'Status',
+                      user.status[0].toUpperCase() + user.status.substring(1),
+                    ),
+                    if (user.role == 'donor')
+                      _detailRow(
+                        Icons.health_and_safety,
+                        'Eligible to Donate',
+                        user.isEligible ? 'Yes ✓' : 'No — cooling period',
+                      ),
+
+                    const SizedBox(height: 20),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _editUser(user);
+                          },
+                          child: const Text('Edit profile'),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder:
+                                  (ctx) => AlertDialog(
+                                    title: const Text(
+                                      'Delete account permanently?',
+                                    ),
+                                    content: Text(
+                                      'Delete ${user.name}, their login, records and uploaded files?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.pop(ctx, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.pop(ctx, true),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                            );
+                            if (confirmed != true) return;
+                            try {
+                              await FirebaseFunctions.instance
+                                  .httpsCallable('adminDeleteUser')
+                                  .call({'uid': user.uid});
+                              if (mounted) Navigator.pop(context);
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Could not delete account: $e',
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          child: const Text('Delete account'),
+                        ),
+                      ],
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade700,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
     );
   }
 
@@ -898,16 +1111,16 @@ class _AdminWebUsersState extends State<AdminWebUsers>
             child: Text(
               label,
               style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500),
+                color: Colors.grey.shade600,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -921,8 +1134,18 @@ class _AdminWebUsersState extends State<AdminWebUsers>
 
   String _month(int m) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return months[m - 1];
   }

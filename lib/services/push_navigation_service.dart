@@ -1,4 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
+import '../screens/donor/blood_request_detail_screen.dart';
+import '../screens/notification/sos_alert_detail_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -64,6 +69,15 @@ class PushNavigationService {
   static final PushNavigationService instance = PushNavigationService._();
 
   bool _initialized = false;
+  bool _landingReady = false;
+  RemoteMessage? _pendingMessage;
+
+  void sessionLanded() {
+    _landingReady = true;
+    final pending = _pendingMessage;
+    _pendingMessage = null;
+    if (pending != null) _handleNotificationTap(pending);
+  }
 
   /// Call once from main.dart, right after runApp(). Safe to call before
   /// the navigator is mounted — listeners just get registered immediately,
@@ -82,10 +96,15 @@ class PushNavigationService {
 
     // 3) App was fully TERMINATED and got launched BY tapping a
     //    notification. (Returns null on a normal app launch.)
-    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    RemoteMessage? initialMessage;
+    try {
+      initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    } catch (e) {
+      debugPrint('Push startup unavailable: $e');
+    }
     if (initialMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _handleNotificationTap(initialMessage);
+        _handleNotificationTap(initialMessage!);
       });
     }
   }
@@ -111,23 +130,67 @@ class PushNavigationService {
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
           label: 'View',
-          onPressed: () => _navigateForType(message.data['type']),
+          onPressed: () => _handleNotificationTap(message),
         ),
       ),
     );
   }
 
   void _handleNotificationTap(RemoteMessage message) {
-    _navigateForType(message.data['type']);
+    if (!_landingReady) {
+      _pendingMessage = message;
+      return;
+    }
+    openNotification(message.data['type'], message.data['relatedId']);
   }
 
-  void _navigateForType(String? type) {
+  Future<void> openNotification(String? type, String? relatedId) async {
     if (FirebaseAuth.instance.currentUser == null) return;
     final navigator = rootNavigatorKey.currentState;
     if (navigator == null) return;
+    final auth = navigator.context.read<AuthController>();
+    if (!auth.isLoggedIn) return;
+    try {
+      if (type == 'blood_request' &&
+          relatedId != null &&
+          !relatedId.contains('/')) {
+        final doc =
+            await FirebaseFirestore.instance
+                .doc('blood_requests/$relatedId')
+                .get();
+        if (!doc.exists ||
+            FirebaseAuth.instance.currentUser?.uid != auth.currentUser?.uid) {
+          return;
+        }
+        navigator.push(
+          MaterialPageRoute(
+            builder:
+                (_) => BloodRequestDetailScreen(
+                  requestId: auth.isDonor ? relatedId : null,
+                  requestData: doc.data()!,
+                ),
+          ),
+        );
+        return;
+      }
+      if ((type == 'sosAlerts' || type == 'sos') &&
+          relatedId != null &&
+          !relatedId.contains('/')) {
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => SosAlertDetailScreen(requestId: relatedId),
+          ),
+        );
+        return;
+      }
+    } catch (e) {
+      debugPrint('Notification destination unavailable: $e');
+    }
 
     switch (type) {
       case 'donation_confirmed':
+      case 'rewardUpdates':
+        if (!auth.isDonor) return;
         navigator.push(
           MaterialPageRoute(builder: (_) => const EligibilityStatusScreen()),
         );

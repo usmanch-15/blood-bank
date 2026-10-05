@@ -54,7 +54,10 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _bloodGroup = widget.userData['bloodGroup'] ?? 'O+';
+    _bloodGroup =
+        AppValidators.validateBloodGroup(widget.userData['bloodGroup']) == null
+            ? widget.userData['bloodGroup']
+            : 'O+';
     _addressController.text = widget.userData['address'] ?? '';
     _emailController.text = widget.userData['email'] ?? '';
     _nameController.text = widget.userData['name'] ?? '';
@@ -105,18 +108,25 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
   }
 
   Future<void> _pickAndUploadPhoto() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-    if (picked == null) return;
-
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
+    if (_uploadingPhoto) return;
     setState(() => _uploadingPhoto = true);
     try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+      if (picked == null || !mounted) {
+        if (mounted) setState(() => _uploadingPhoto = false);
+        return;
+      }
+
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        throw StateError('Please sign in to upload a profile photo.');
+      }
+
+      setState(() => _uploadingPhoto = true);
       final url = await _storageService.uploadProfileImage(
         bytes: await picked.readAsBytes(),
         userId: uid,
@@ -245,15 +255,22 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
               )
             else
               TextButton(
-                onPressed: () {
-                  setState(() {
-                    _isEditing = false;
-                    _nameController.text = widget.userData['name'] ?? '';
-                    _locationController.text =
-                        widget.userData['location'] ?? '';
-                  });
-                  _loadOwnPrivateInfo();
-                },
+                onPressed:
+                    _isLoading || _uploadingPhoto
+                        ? null
+                        : () {
+                          setState(() {
+                            _isEditing = false;
+                            _nameController.text =
+                                widget.userData['name'] ?? '';
+                            _locationController.text =
+                                widget.userData['location'] ?? '';
+                            _bloodGroup = widget.userData['bloodGroup'] ?? 'O+';
+                            _addressController.text =
+                                widget.userData['address'] ?? '';
+                          });
+                          _loadOwnPrivateInfo();
+                        },
                 child: Text('Cancel', style: TextStyle(color: Colors.white)),
               ),
           ],
@@ -435,7 +452,13 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                         if (_isEditing)
                           CustomButton(
                             text: 'Save Changes',
-                            onPressed: _isLoading ? null : _handleSave,
+                            onPressed:
+                                _isLoading ||
+                                        _loadingPrivate ||
+                                        _privateError != null ||
+                                        _uploadingPhoto
+                                    ? null
+                                    : _handleSave,
                             isLoading: _isLoading,
                             backgroundColor: AppColors.primaryRed,
                             height: 54,
@@ -553,6 +576,53 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
     }
   }
 
+  Future<void> _changePhone() async {
+    final phone = TextEditingController(text: _phoneController.text);
+    final form = GlobalKey<FormState>();
+    final number = await showDialog<String>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Verify a new phone number'),
+            content: Form(
+              key: form,
+              child: TextFormField(
+                controller: phone,
+                keyboardType: TextInputType.phone,
+                validator: AppValidators.validatePhone,
+                decoration: const InputDecoration(labelText: 'Mobile number'),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (form.currentState!.validate()) {
+                    Navigator.pop(
+                      ctx,
+                      AppValidators.normalizePhone(phone.text),
+                    );
+                  }
+                },
+                child: const Text('Send verification code'),
+              ),
+            ],
+          ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => phone.dispose());
+    if (number == null || !mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OtpVerificationScreen(phoneNumber: number),
+      ),
+    );
+    if (mounted) await _loadOwnPrivateInfo();
+  }
+
   Future<void> _updateLocation() async {
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -611,10 +681,13 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
           label: 'Phone Number',
           prefixIcon: Icons.phone_outlined,
           enabled: false,
-          helperText:
-              'Phone changes are unavailable here. Verify your saved number from the profile view.',
+          helperText: 'Change your number using SMS verification below.',
           keyboardType: TextInputType.phone,
-          validator: AppValidators.validatePhone,
+        ),
+        TextButton.icon(
+          onPressed: _isLoading ? null : _changePhone,
+          icon: const Icon(Icons.verified_user_outlined),
+          label: const Text('Change phone with verification'),
         ),
         const SizedBox(height: AppSpacing.lg),
         CustomTextField(

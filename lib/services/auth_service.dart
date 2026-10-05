@@ -57,6 +57,8 @@ class AuthService {
     if (!const ['donor', 'receiver'].contains(role)) {
       throw ArgumentError('Choose donor or receiver.');
     }
+    User? createdUser;
+    bool profileSaved = false;
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
@@ -64,6 +66,8 @@ class AuthService {
       );
 
       final userRef = _firestore.collection('users').doc(credential.user!.uid);
+      createdUser = credential.user;
+      final batch = _firestore.batch();
 
       // Firestore mein user data save karo — status: approved
       // ✅ CHANGE: admin approval step removed — new signups get full
@@ -76,7 +80,7 @@ class AuthService {
       // sirf users/{uid}/private/contact mein likha jata hai, jo sirf
       // owner ya admin parh sakte hain (firestore.rules mein pehle se
       // maujood).
-      await userRef.set({
+      batch.set(userRef, {
         'uid': credential.user!.uid,
         'email': email.trim(),
         'name': name.trim(),
@@ -103,12 +107,14 @@ class AuthService {
       // never on the top-level user doc that any signed-in user can read.
       if ((phoneNumber != null && phoneNumber.trim().isNotEmpty) ||
           (cnic != null && cnic.trim().isNotEmpty)) {
-        await userRef.collection('private').doc('contact').set({
+        batch.set(userRef.collection('private').doc('contact'), {
           if (phoneNumber != null && phoneNumber.trim().isNotEmpty)
             'phoneNumber': AppValidators.normalizePhone(phoneNumber),
           if (cnic != null && cnic.trim().isNotEmpty) 'cnic': cnic.trim(),
         }, SetOptions(merge: true));
       }
+      await batch.commit();
+      profileSaved = true;
 
       // Verification email bhejo — sirf record ke liye, ab login isko
       // require nahi karta (signInWithEmailPassword mein check hata diya
@@ -124,8 +130,16 @@ class AuthService {
       await _auth.signOut();
 
       return credential;
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthError(e);
+    } catch (e) {
+      if (createdUser != null && !profileSaved) {
+        try {
+          await createdUser.delete();
+        } catch (_) {
+          await _auth.signOut();
+        }
+      }
+      if (e is FirebaseAuthException) throw _handleAuthError(e);
+      rethrow;
     }
   }
 
@@ -252,6 +266,8 @@ class AuthService {
     final user = _auth.currentUser;
     if (user == null) throw StateError('Please sign in.');
     try {
+      await user.reload();
+      await user.getIdToken(true);
       final doc = await _firestore
           .collection('users')
           .doc(user.uid)
@@ -260,6 +276,11 @@ class AuthService {
       final data = doc.data();
       if (!AccountPolicy.isActive(data)) {
         throw StateError('This account is unavailable or suspended.');
+      }
+      final email = _auth.currentUser?.email;
+      if (email != null && email != data!['email']) {
+        await doc.reference.update({'email': email});
+        data['email'] = email;
       }
       await NotificationService().init();
       return data!;

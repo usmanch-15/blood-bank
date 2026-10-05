@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../services/auth_service.dart';
 
 class AdminWebLogin extends StatefulWidget {
   const AdminWebLogin({super.key});
@@ -30,14 +31,11 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
 
     try {
       String email = _emailController.text.trim();
-      String password = _passwordController.text.trim();
+      String password = _passwordController.text;
 
       // 🔐 Firebase login
-      UserCredential userCredential =
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential userCredential = await AuthService()
+          .signInWithEmailPassword(email: email, password: password);
 
       User? user = userCredential.user;
       if (user == null) {
@@ -46,27 +44,19 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
         return;
       }
 
-      // 📧 Email verification check
-      if (!user.emailVerified) {
-        await user.sendEmailVerification();
-        _showError('📧 Verification email bhej di — pehle verify karo.');
-        await FirebaseAuth.instance.signOut();
-        setState(() => _isLoading = false);
-        return;
-      }
-
       // ✅ FIX (Issue #8): check role + status in Firestore instead of a
       // hardcoded email list. Only an existing admin can set someone's
       // role to "admin", so this can't be spoofed by editing client code.
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
       final role = userDoc.data()?['role'];
       final status = userDoc.data()?['status'];
 
       if (role != 'admin' || status != 'approved') {
-        await FirebaseAuth.instance.signOut();
+        await AuthService().signOut();
         _showError('❌ Yeh account admin ke liye authorized nahi hai.');
         setState(() => _isLoading = false);
         return;
@@ -81,7 +71,9 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
       if (e.code == 'user-not-found') msg = 'Yeh email registered nahi hai.';
       if (e.code == 'wrong-password') msg = 'Password galat hai.';
       if (e.code == 'invalid-credential') msg = 'Email ya password galat hai.';
-      if (e.code == 'too-many-requests') msg = 'Zyada attempts. Thodi der baad try karo.';
+      if (e.code == 'too-many-requests') {
+        msg = 'Zyada attempts. Thodi der baad try karo.';
+      }
       _showError(msg);
     } catch (e) {
       _showError(e.toString());
@@ -91,9 +83,10 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
-    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   @override
@@ -104,11 +97,7 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.red.shade50,
-              Colors.white,
-              Colors.red.shade50,
-            ],
+            colors: [Colors.red.shade50, Colors.white, Colors.red.shade50],
           ),
         ),
         child: Center(
@@ -151,10 +140,7 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                       const SizedBox(height: 8),
                       const Text(
                         'Sign in to manage your blood donation platform',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
@@ -223,14 +209,15 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: _isLoading
-                              ? const CircularProgressIndicator(
-                            color: Colors.white,
-                          )
-                              : const Text(
-                            'Login',
-                            style: TextStyle(fontSize: 16),
-                          ),
+                          child:
+                              _isLoading
+                                  ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                  : const Text(
+                                    'Login',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -241,8 +228,9 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                             _showError('Pehle email field mein email daalo');
                             return;
                           }
-                          await FirebaseAuth.instance
-                              .sendPasswordResetEmail(email: email);
+                          await FirebaseAuth.instance.sendPasswordResetEmail(
+                            email: email,
+                          );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(

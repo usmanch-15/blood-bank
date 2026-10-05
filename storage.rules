@@ -6,7 +6,12 @@ service firebase.storage {
     }
     match /certificates/{donorId}/{fileName} {
       allow read: if active() && request.auth.uid == donorId;
+      allow delete: if active() && request.auth.uid == donorId;
+    }
+    match /certificates/{donorId}/{donationId}/certificate.pdf {
+      allow read: if active() && request.auth.uid == donorId;
       allow create, update: if active() && request.auth.uid == donorId
+        && firestore.get(/databases/(default)/documents/donations/$(donationId)).data.donorId == donorId
         && request.resource.size < 5 * 1024 * 1024 && request.resource.contentType == 'application/pdf';
       allow delete: if active() && request.auth.uid == donorId;
     }

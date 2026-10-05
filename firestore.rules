@@ -10,6 +10,9 @@ service cloud.firestore {
       return active() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     function bloodGroup(value) { return value in ['A+','A-','B+','B-','AB+','AB-','O+','O-']; }
+    function receiver() {
+      return active() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isReceiver == true;
+    }
     function profileValid(d) {
       return d.name is string && d.name.size() >= 2 && d.name.size() <= 100
         && bloodGroup(d.bloodGroup) && d.isDonor is bool && d.isReceiver is bool
@@ -17,6 +20,7 @@ service cloud.firestore {
         && (d.role != 'donor' || d.isDonor) && (d.role != 'receiver' || d.isReceiver)
         && (!d.keys().hasAny(['phoneNumber','cnic','fcmToken','phoneVerified']))
         && (d.locationSharingEnabled || (d.latitude == null && d.longitude == null))
+        && ((d.latitude == null) == (d.longitude == null))
         && (d.latitude == null || (d.latitude is number && d.latitude >= -90 && d.latitude <= 90))
         && (d.longitude == null || (d.longitude is number && d.longitude >= -180 && d.longitude <= 180));
     }
@@ -30,19 +34,23 @@ service cloud.firestore {
         && request.resource.data.status == 'approved' && request.resource.data.role in ['donor','receiver']
         && request.resource.data.rewardPoints == 0 && request.resource.data.isEligible == true
         && request.resource.data.lastDonationDate == null;
-      allow update: if admin() || (owner(uid) && active() && profileValid(request.resource.data)
+      allow update: if (admin() && (uid != request.auth.uid ||
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status','role']))) || (owner(uid) && active() && profileValid(request.resource.data)
         && resource.data.role in ['donor','receiver'] && request.resource.data.role in ['donor','receiver']
         && (!resource.data.isDonor || request.resource.data.isDonor)
         && (!resource.data.isReceiver || request.resource.data.isReceiver)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['email'])
+          || request.resource.data.email == request.auth.token.email)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'name','bloodGroup','role','isDonor','isReceiver','isAvailable','availabilityUpdatedAt',
+          'email','name','bloodGroup','role','isDonor','isReceiver','isAvailable','availabilityUpdatedAt',
           'locationSharingEnabled','latitude','longitude','location','locationUpdatedAt',
           'profileImageUrl','address','updatedAt','lastLoginAt','declinedRequestIds',
           'notificationsEnabled','notificationPrefs']));
       allow delete: if false; // Cleanup goes through the authenticated callable.
       match /private/{document} {
         allow read: if (owner(uid) && active()) || admin();
-        allow create: if owner(uid) && active() && (
+        allow create: if owner(uid)
+          && getAfter(/databases/$(database)/documents/users/$(uid)).data.status == 'approved' && (
           (document == 'contact' && request.resource.data.keys().hasOnly(['phoneNumber','cnic'])) ||
           (document == 'device' && request.resource.data.keys().hasOnly(['fcmToken','fcmUpdatedAt'])));
         allow update: if owner(uid) && active() && (
@@ -55,7 +63,7 @@ service cloud.firestore {
     }
     match /blood_requests/{id} {
       allow read: if active();
-      allow create: if active() && request.resource.data.requesterId == request.auth.uid
+      allow create: if receiver() && request.resource.data.requesterId == request.auth.uid
         && request.resource.data.status == 'pending' && bloodGroup(request.resource.data.bloodGroup)
         && request.resource.data.hospitalName is string && request.resource.data.hospitalName.size() > 0
         && request.resource.data.hospitalName.size() <= 100
@@ -63,7 +71,15 @@ service cloud.firestore {
         && (request.resource.data.get('unitsRequired', null) == null ||
           (request.resource.data.unitsRequired is int && request.resource.data.unitsRequired >= 1 && request.resource.data.unitsRequired <= 50))
         && !request.resource.data.keys().hasAny(['acceptedDonorId','acceptedAt','fulfilledByDonorId'])
-        && request.resource.data.get('fulfilledAt',null) == null;
+        && request.resource.data.get('fulfilledAt',null) == null
+        && request.resource.data.get('notifiedDonors',[]) == []
+        && request.resource.data.keys().hasOnly(['id','requesterId','requesterName','requesterPhone',
+          'patientName','patientAge','patientGender','bloodGroup','quantity','unitsRequired',
+          'hospitalName','hospitalAddress','location','latitude','longitude','urgency','reason',
+          'contactNumber','requiredBy','status','createdAt','fulfilledAt','notes','notifiedDonors'])
+        && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+        && (request.resource.data.get('unitsRequired',null) == null || request.resource.data.unitsRequired == request.resource.data.quantity);
       allow update: if admin() || (active() && resource.data.requesterId == request.auth.uid
         && resource.data.status in ['pending','accepted']
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','cancelledAt'])
@@ -86,11 +102,7 @@ service cloud.firestore {
     }
     match /sosRequests/{id} {
       allow read: if active();
-      allow create: if active() && request.resource.data.receiverId == request.auth.uid
-        && bloodGroup(request.resource.data.bloodGroup) && request.resource.data.isResolved == false
-        && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
-        && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
-        && request.resource.data.keys().hasOnly(['id','receiverId','bloodGroup','latitude','longitude','triggerTime','isResolved','urgency']);
+      allow create: if false; // Callable enforces validation and rate limits before writing.
       allow update: if admin() || (active() && resource.data.receiverId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isResolved'])
         && request.resource.data.isResolved == true);
@@ -107,12 +119,21 @@ service cloud.firestore {
     }
     match /misuse_reports/{id} {
       allow read: if admin() || (active() && resource.data.reporterId == request.auth.uid);
-      allow create: if active() && request.resource.data.reporterId == request.auth.uid;
+      allow create: if active() && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.reportType in ['fraud','misuse','fake_profile','other']
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100
+        && request.resource.data.description is string && request.resource.data.description.size() <= 2000
+        && request.resource.data.get('adminNotes',null) == null && request.resource.data.get('adminReviewedBy',null) == null
+        && request.resource.data.get('resolvedAt',null) == null;
       allow update, delete: if admin();
     }
     match /broadcasts/{id} {
       allow read: if active();
-      allow create: if admin() && request.resource.data.status == 'pending';
+      allow create: if admin() && request.resource.data.status == 'pending'
+        && request.resource.data.audience in ['all','donors','receivers','bloodGroup']
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100
+        && request.resource.data.body is string && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 2000;
       allow update: if false;
       allow delete: if admin();
     }

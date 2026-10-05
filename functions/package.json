@@ -2,7 +2,7 @@
   "name": "smart-blood-bank-functions",
   "description": "Cloud Functions for Smart Blood Bank",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "scripts": {
@@ -11,17 +11,23 @@
     "logs": "firebase functions:log",
     "test": "node --test test/policy.test.js",
     "test:emulator": "node --test --test-concurrency=1 test/emulator.test.js",
+    "test:http": "node --test test/http-workflow.test.js",
+    "test:browser": "node test/browser-audit.js",
     "check": "node --check index.js && node --check secureWorkflows.js && node --check nearbyDonors.js"
   },
   "dependencies": {
-    "firebase-admin": "^12.6.0",
-    "firebase-functions": "^6.0.1",
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0",
     "twilio": "^5.3.0"
   },
   "private": true,
+  "overrides": {
+    "gaxios": {"uuid": "11.1.1"}
+  },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^4.0.1",
-    "firebase": "^11.10.0",
-    "firebase-tools": "^14.27.0"
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^15.32.1",
+    "playwright": "^1.63.0"
   }
 }

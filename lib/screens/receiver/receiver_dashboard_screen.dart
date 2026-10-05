@@ -1,4 +1,7 @@
 import '../../utils/feedback.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/auth_controller.dart';
+import '../notification/notification_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -43,14 +46,25 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
   Future<void> _loadUserData() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
-    final doc = await _firestore.collection('users').doc(uid).get();
-    if (mounted) setState(() => _userData = doc.data());
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (mounted) setState(() => _userData = doc.data());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(AppFeedback.message(e))));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final uid = _auth.currentUser?.uid ?? '';
-    final name = _userData?['name'] ?? 'User';
+    final name =
+        context.watch<AuthController>().currentUser?.name ??
+        _userData?['name'] ??
+        'User';
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -65,7 +79,11 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             title: Row(
               children: [
                 GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/role-select'),
+                  onTap:
+                      () => Navigator.pushReplacementNamed(
+                        context,
+                        '/role-select',
+                      ),
                   child: Icon(Icons.arrow_back, color: AppColors.primaryRed),
                 ),
                 const SizedBox(width: AppSpacing.md),
@@ -82,8 +100,21 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             // in the receiver flow before this.
             actions: [
               IconButton(
-                icon: Icon(Icons.settings_outlined,
-                    color: AppColors.primaryRed),
+                icon: const Icon(Icons.notifications_outlined),
+                tooltip: 'Notifications',
+                onPressed:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationHistoryScreen(),
+                      ),
+                    ),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.settings_outlined,
+                  color: AppColors.primaryRed,
+                ),
                 tooltip: 'Settings',
                 onPressed: () {
                   Navigator.push(
@@ -149,13 +180,17 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     icon: Icon(Icons.warning, size: 28),
                     label: Text(
                       'SOS EMERGENCY',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const SosEmergencyScreen()),
+                          builder: (_) => const SosEmergencyScreen(),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -165,7 +200,9 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       shadowColor: AppColors.shadowRed,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
                       ),
                     ),
                   ),
@@ -182,7 +219,8 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => const BloodRequestFormScreen()),
+                        builder: (_) => const BloodRequestFormScreen(),
+                      ),
                     );
                     // Form submit hone ke baad list auto-refresh hogi (StreamBuilder)
                   },
@@ -199,7 +237,8 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => const NearbyDonorsMapScreen()),
+                        builder: (_) => const NearbyDonorsMapScreen(),
+                      ),
                     );
                   },
                 ),
@@ -208,7 +247,11 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
 
                 Text(
                   'My Requests',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
@@ -216,38 +259,43 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                 uid.isEmpty
                     ? Center(child: Text('Not logged in'))
                     : StreamBuilder<QuerySnapshot>(
-                  stream: _firestore
-                      .collection('blood_requests')
-.where('requesterId', isEqualTo: uid)
-                      .orderBy('createdAt', descending: true).limit(100)
-                      .snapshots(),
-                  builder: (context, snap) {
-                    if (snap.connectionState == ConnectionState.waiting) {
-                      return const LoadingShimmerList(itemCount: 2);
-                    }
+                      stream:
+                          _firestore
+                              .collection('blood_requests')
+                              .where('requesterId', isEqualTo: uid)
+                              .orderBy('createdAt', descending: true)
+                              .limit(100)
+                              .snapshots(),
+                      builder: (context, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const LoadingShimmerList(itemCount: 2);
+                        }
 
-                    if (snap.hasError) return Text(AppFeedback.message(snap.error!));
-                    final docs = snap.data?.docs ?? [];
+                        if (snap.hasError) {
+                          return Text(AppFeedback.message(snap.error!));
+                        }
+                        final docs = snap.data?.docs ?? [];
 
-                    if (docs.isEmpty) {
-                      return const EmptyState(
-                        icon: Icons.assignment_outlined,
-                        title: 'No requests yet',
-                        message: 'Tap "Create Blood Request" to add one.',
-                      );
-                    }
+                        if (docs.isEmpty) {
+                          return const EmptyState(
+                            icon: Icons.assignment_outlined,
+                            title: 'No requests yet',
+                            message: 'Tap "Create Blood Request" to add one.',
+                          );
+                        }
 
-                    return Column(
-                      children: docs.map((doc) {
-                        final request = BloodRequestModel.fromFirestore(
-                          doc.data() as Map<String, dynamic>,
-                          doc.id,
+                        return Column(
+                          children:
+                              docs.map((doc) {
+                                final request = BloodRequestModel.fromFirestore(
+                                  doc.data() as Map<String, dynamic>,
+                                  doc.id,
+                                );
+                                return _requestCard(request);
+                              }).toList(),
                         );
-                        return _requestCard(request);
-                      }).toList(),
-                    );
-                  },
-                ),
+                      },
+                    ),
 
                 const SizedBox(height: AppSpacing.xxl),
               ]),
@@ -266,7 +314,9 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
   }) {
     return Card(
       elevation: AppSpacing.elevationLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      ),
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
@@ -293,7 +343,9 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
   Widget _requestCard(BloodRequestModel request) {
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      ),
       elevation: AppSpacing.elevationLow,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -309,7 +361,10 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     const SizedBox(width: AppSpacing.sm),
                     Text(
                       '${request.unitsRequired ?? request.quantity} Units',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -323,8 +378,11 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             const SizedBox(height: AppSpacing.sm + 2),
             Row(
               children: [
-                Icon(Icons.local_hospital_outlined,
-                    size: AppSpacing.iconSm, color: Colors.grey),
+                Icon(
+                  Icons.local_hospital_outlined,
+                  size: AppSpacing.iconSm,
+                  color: Colors.grey,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -339,8 +397,11 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.location_on_outlined,
-                    size: AppSpacing.iconSm, color: Colors.grey),
+                Icon(
+                  Icons.location_on_outlined,
+                  size: AppSpacing.iconSm,
+                  color: Colors.grey,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -357,21 +418,44 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
               UrgencyBadge(urgency: request.urgency),
             ],
             if (['pending', 'accepted'].contains(request.status))
-              TextButton.icon(icon: Icon(Icons.cancel_outlined), label: Text('Cancel request'),
+              TextButton.icon(
+                icon: Icon(Icons.cancel_outlined),
+                label: Text('Cancel request'),
                 onPressed: () async {
-                  final confirmed = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-                    title: Text('Cancel this request?'), actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Keep request')),
-                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Cancel request')),
-                    ]));
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder:
+                        (ctx) => AlertDialog(
+                          title: Text('Cancel this request?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: Text('Keep request'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: Text('Cancel request'),
+                            ),
+                          ],
+                        ),
+                  );
                   if (confirmed != true) return;
                   try {
-                    await FirebaseFirestore.instance.doc('blood_requests/${request.id}').update({
-                      'status': 'cancelled', 'cancelledAt': FieldValue.serverTimestamp()});
+                    await FirebaseFirestore.instance
+                        .doc('blood_requests/${request.id}')
+                        .update({
+                          'status': 'cancelled',
+                          'cancelledAt': FieldValue.serverTimestamp(),
+                        });
                   } catch (e) {
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to cancel: $e')));
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Unable to cancel: $e')),
+                      );
+                    }
                   }
-                }),
+                },
+              ),
             // ── Find Donors (unchanged: DonorMatchingScreen with requestId,
             // needed for confirmDonation Cloud Function authorization) ──
             if (['pending', 'accepted'].contains(request.status)) ...[
@@ -383,10 +467,11 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => DonorMatchingScreen(
-                          initialBloodGroup: request.bloodGroup,
-                          requestId: request.id,
-                        ),
+                        builder:
+                            (_) => DonorMatchingScreen(
+                              initialBloodGroup: request.bloodGroup,
+                              requestId: request.id,
+                            ),
                       ),
                     );
                   },
@@ -396,7 +481,9 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     foregroundColor: AppColors.primaryRed,
                     side: const BorderSide(color: AppColors.primaryRed),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm + 2),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusSm + 2,
+                      ),
                     ),
                   ),
                 ),

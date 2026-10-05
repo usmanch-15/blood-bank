@@ -18,6 +18,7 @@ class DonationHistoryScreen extends StatefulWidget {
 class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
   late FirestoreService _firestoreService;
   final user = FirebaseAuth.instance.currentUser;
+  int _limit = 100;
 
   @override
   void initState() {
@@ -48,34 +49,32 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
       ),
 
       body: StreamBuilder<List<DonationModel>>(
-        stream: _firestoreService.getDonationHistory(user!.uid),
+        stream: _firestoreService.getDonationHistory(user!.uid, limit: _limit),
         builder: (context, snapshot) {
-
           // Loading
           if (snapshot.connectionState == ConnectionState.waiting) {
             return ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: 5,
-              itemBuilder: (context, index) => Shimmer.fromColors(
-                baseColor: Colors.grey[300]!,
-                highlightColor: Colors.grey[100]!,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+              itemBuilder:
+                  (context, index) => Shimmer.fromColors(
+                    baseColor: Colors.grey[300]!,
+                    highlightColor: Colors.grey[100]!,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
-                ),
-              ),
             );
           }
 
           // Error
           if (snapshot.hasError) {
-            return const Center(
-              child: Text('Error loading donation history'),
-            );
+            return const Center(child: Text('Error loading donation history'));
           }
 
           final donations = snapshot.data ?? [];
@@ -86,8 +85,11 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.bloodtype_outlined,
-                      size: 80, color: AppColors.textLight),
+                  Icon(
+                    Icons.bloodtype_outlined,
+                    size: 80,
+                    color: AppColors.textLight,
+                  ),
                   SizedBox(height: 20),
                   Text(
                     'No donations yet',
@@ -99,10 +101,7 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
                   SizedBox(height: 10),
                   Text(
                     'Your donation history will appear here',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textLight,
-                    ),
+                    style: TextStyle(fontSize: 14, color: AppColors.textLight),
                   ),
                 ],
               ),
@@ -112,8 +111,14 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
           // List
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: donations.length,
+            itemCount: donations.length + (donations.length == _limit ? 1 : 0),
             itemBuilder: (context, index) {
+              if (index == donations.length) {
+                return TextButton(
+                  onPressed: () => setState(() => _limit += 100),
+                  child: const Text('Load older donations'),
+                );
+              }
               return _buildDonationCard(donations[index]);
             },
           );
@@ -128,9 +133,7 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 15),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -196,8 +199,7 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
             ),
 
             Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.primaryRed,
                 borderRadius: BorderRadius.circular(8),

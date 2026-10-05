@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/report_service.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
@@ -17,73 +18,105 @@ class AboutScreen extends StatelessWidget {
     // e.g. 'Download Smart Blood Bank: https://play.google.com/store/apps/details?id=com.usmanch.bloodbank'
     Share.share(
       'Check out Smart Blood Bank — an app that connects blood donors '
-          'with people who need blood, nearby and in emergencies.',
+      'with people who need blood, nearby and in emergencies.',
       subject: 'Smart Blood Bank',
     );
   }
+
   void _showRatingDialog(BuildContext context) {
     int selectedStars = 0;
+    bool saving = false;
     showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Rate Smart Blood Bank'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('How would you rate your experience?'),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) {
-                  final starIndex = i + 1;
-                  return IconButton(
-                    onPressed: () => setDialogState(
-                            () => selectedStars = starIndex),
-                    icon: Icon(
-                      starIndex <= selectedStars
-                          ? Icons.star
-                          : Icons.star_border,
-                      color: Colors.amber,
-                      size: 32,
-                    ),
-                  );
-                }),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: selectedStars == 0
-                  ? null
-                  : () {
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      selectedStars >= 4
-                          ? 'Thanks for the $selectedStars★ rating! 🎉'
-                          : 'Thanks for the feedback — we\'ll keep '
-                          'improving. 🙏',
-                    ),
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (dialogContext, setDialogState) => AlertDialog(
+                  title: const Text('Rate Smart Blood Bank'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('How would you rate your experience?'),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        children: List.generate(5, (i) {
+                          final starIndex = i + 1;
+                          return IconButton(
+                            onPressed:
+                                () => setDialogState(
+                                  () => selectedStars = starIndex,
+                                ),
+                            icon: Icon(
+                              starIndex <= selectedStars
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: Colors.amber,
+                              size: 32,
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
                   ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryRed,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Submit'),
-            ),
-          ],
-        ),
-      ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed:
+                          selectedStars == 0 || saving
+                              ? null
+                              : () async {
+                                setDialogState(() => saving = true);
+                                try {
+                                  await ReportService().submitReport(
+                                    reason: 'App rating: $selectedStars/5',
+                                    details: 'Submitted from the About screen.',
+                                  );
+                                  if (!dialogContext.mounted ||
+                                      !context.mounted) {
+                                    return;
+                                  }
+                                  Navigator.pop(dialogContext);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        selectedStars >= 4
+                                            ? 'Thanks for the $selectedStars★ rating! 🎉'
+                                            : 'Thanks for the feedback — we\'ll keep '
+                                                'improving. 🙏',
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  if (dialogContext.mounted) {
+                                    setDialogState(() => saving = false);
+                                  }
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Could not save rating: $e',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryRed,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Submit'),
+                    ),
+                  ],
+                ),
+          ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,8 +153,11 @@ class AboutScreen extends StatelessWidget {
                     gradient: AppColors.primaryGradient,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.bloodtype,
-                      color: Colors.white, size: 40),
+                  child: const Icon(
+                    Icons.bloodtype,
+                    color: Colors.white,
+                    size: 40,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 const Text(
@@ -132,7 +168,9 @@ class AboutScreen extends StatelessWidget {
                 Text(
                   'Version ${AppConstants.appVersion}',
                   style: const TextStyle(
-                      fontSize: 13, color: AppColors.textSecondary),
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -168,46 +206,54 @@ class AboutScreen extends StatelessWidget {
                   leading: const Icon(Icons.description_outlined),
                   title: const Text('Terms of Service'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const LegalDocumentScreen(
-                        title: 'Terms of Service',
-                        content: LegalContent.termsOfService,
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => const LegalDocumentScreen(
+                                title: 'Terms of Service',
+                                content: LegalContent.termsOfService,
+                              ),
+                        ),
                       ),
-                    ),
-                  ),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.privacy_tip_outlined),
                   title: const Text('Privacy Policy'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const LegalDocumentScreen(
-                        title: 'Privacy Policy',
-                        content: LegalContent.privacyPolicy,
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => const LegalDocumentScreen(
+                                title: 'Privacy Policy',
+                                content: LegalContent.privacyPolicy,
+                              ),
+                        ),
                       ),
-                    ),
-                  ),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.article_outlined),
                   title: const Text('Open Source Licenses'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => showLicensePage(
-                    context: context,
-                    applicationName: AppConstants.appName,
-                    applicationVersion: AppConstants.appVersion,
-                    applicationIcon: const Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Icon(Icons.bloodtype,
-                          color: AppColors.primaryRed, size: 40),
-                    ),
-                  ),
+                  onTap:
+                      () => showLicensePage(
+                        context: context,
+                        applicationName: AppConstants.appName,
+                        applicationVersion: AppConstants.appVersion,
+                        applicationIcon: const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.bloodtype,
+                            color: AppColors.primaryRed,
+                            size: 40,
+                          ),
+                        ),
+                      ),
                 ),
               ],
             ),
@@ -218,7 +264,9 @@ class AboutScreen extends StatelessWidget {
             child: Text(
               'Made with ❤️ by ${AppConstants.developerName}',
               style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
           const SizedBox(height: 24),

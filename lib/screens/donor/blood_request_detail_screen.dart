@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
@@ -29,61 +32,95 @@ class BloodRequestDetailScreen extends StatefulWidget {
 
 class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
   bool _isSubmitting = false;
+  Map<String, dynamic>? _liveData;
+  bool _requestMissing = false;
+  String? _requestError;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _requestSubscription;
+  Map<String, dynamic> get _data => _liveData ?? widget.requestData;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.requestId != null) {
+      _requestSubscription = FirebaseFirestore.instance.doc('blood_requests/${widget.requestId}')
+          .snapshots().listen((doc) {
+        if (mounted) setState(() { _liveData = doc.data(); _requestMissing = !doc.exists; _requestError = null; });
+      }, onError: (Object error) {
+        if (mounted) setState(() => _requestError = 'Unable to load this request. Check your connection.');
+      });
+    }
+  }
+
+  @override
+  void dispose() { _requestSubscription?.cancel(); super.dispose(); }
 
   Future<void> _handleAccept() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final requestId = widget.requestId;
     if (uid == null || requestId == null) return;
+    final completing = _data['status'] == 'accepted';
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(widget.requestData['status'] == 'accepted' ? 'Confirm Donation' : 'Accept Request'),
-        content: Text(widget.requestData['status'] != 'accepted' ? 'Accept this request to arrange a donation. Confirm completion only after donating.' :
-          'This marks the request as fulfilled by you and adds it to your '
-              'donation history. Only confirm once you\'ve actually donated.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel'),
+      builder:
+          (ctx) => AlertDialog(
+            title: Text(
+          completing
+                  ? 'Confirm Donation'
+                  : 'Accept Request',
+            ),
+            content: Text(
+          !completing
+                  ? 'Accept this request to arrange a donation. Confirm completion only after donating.'
+                  : 'This marks the request as fulfilled by you and adds it to your '
+                      'donation history. Only confirm once you\'ve actually donated.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryRed,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text('Confirm'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryRed,
-                foregroundColor: Colors.white),
-            child: Text('Confirm'),
-          ),
-        ],
-      ),
     );
     if (confirmed != true || !mounted) return;
 
     setState(() => _isSubmitting = true);
     try {
-      if (widget.requestData['status'] != 'accepted') {
+      if (!completing) {
         await context.read<DonorController>().acceptRequest(requestId);
       } else {
-      await context.read<DonorController>().confirmDonation(
-        donorId: uid,
-        bloodGroup: widget.requestData['bloodGroup'] ?? '',
-        requestId: requestId,
-      );
+        await context.read<DonorController>().confirmDonation(
+          donorId: uid,
+          bloodGroup: _data['bloodGroup'] ?? '',
+          requestId: requestId,
+        );
       }
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(widget.requestData['status'] == 'accepted' ? 'Donation confirmed — thank you!' : 'Request accepted. Confirm after donating.'),
+          content: Text(
+            completing
+                ? 'Donation confirmed — thank you!'
+                : 'Request accepted. Confirm after donating.',
+          ),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not confirm: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not confirm: $e')));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -102,14 +139,14 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
       );
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request declined.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Request declined.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not decline: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not decline: $e')));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -117,15 +154,19 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final d = widget.requestData;
+    if (_requestMissing || _requestError != null) return Scaffold(
+      appBar: AppBar(title: const Text('Request details')),
+      body: Center(child: Text(_requestError ?? 'This request is no longer available.')));
+    final d = _data;
     final urgency = d['urgency'] ?? 'Normal';
     final status = d['status'] ?? 'pending';
 
-    final urgencyColor = urgency == 'Critical'
-        ? Colors.red
-        : urgency == 'Urgent'
-        ? Colors.orange
-        : Colors.green;
+    final urgencyColor =
+        urgency == 'Critical'
+            ? Colors.red
+            : urgency == 'Urgent'
+            ? Colors.orange
+            : Colors.green;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -162,7 +203,9 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
                       shape: BoxShape.circle,
                       color: Colors.white.withValues(alpha: 0.2),
                       border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.5), width: 2),
+                        color: Colors.white.withValues(alpha: 0.5),
+                        width: 2,
+                      ),
                     ),
                     child: Center(
                       child: Text(
@@ -192,12 +235,15 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
                         // Urgency badge
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: urgencyColor.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.4)),
+                              color: Colors.white.withValues(alpha: 0.4),
+                            ),
                           ),
                           child: Text(
                             '⚠ $urgency',
@@ -212,7 +258,9 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
                         // Status
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
@@ -220,7 +268,9 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
                           child: Text(
                             'Status: $status',
                             style: TextStyle(
-                                color: Colors.white70, fontSize: 12),
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
@@ -235,14 +285,28 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
             // ── Patient Info ──
             _sectionTitle('Patient Information'),
             _infoCard([
-              _infoRow(Icons.person_outline, 'Patient Name',
-                  d['patientName'] ?? 'Not provided'),
-              _infoRow(Icons.cake_outlined, 'Age',
-                  d['patientAge'] != null ? '${d['patientAge']} years' : 'Not provided'),
-              _infoRow(Icons.transgender, 'Gender',
-                  d['patientGender'] ?? 'Not provided'),
-              _infoRow(Icons.info_outline, 'Reason',
-                  d['reason'] ?? 'Not provided'),
+              _infoRow(
+                Icons.person_outline,
+                'Patient Name',
+                d['patientName'] ?? 'Not provided',
+              ),
+              _infoRow(
+                Icons.cake_outlined,
+                'Age',
+                d['patientAge'] != null
+                    ? '${d['patientAge']} years'
+                    : 'Not provided',
+              ),
+              _infoRow(
+                Icons.transgender,
+                'Gender',
+                d['patientGender'] ?? 'Not provided',
+              ),
+              _infoRow(
+                Icons.info_outline,
+                'Reason',
+                d['reason'] ?? 'Not provided',
+              ),
             ]),
 
             const SizedBox(height: 16),
@@ -250,12 +314,21 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
             // ── Hospital Info ──
             _sectionTitle('Hospital Information'),
             _infoCard([
-              _infoRow(Icons.local_hospital_outlined, 'Hospital',
-                  d['hospitalName'] ?? 'Not provided'),
-              _infoRow(Icons.location_on_outlined, 'Hospital Address',
-                  d['hospitalAddress'] ?? 'Not provided'),
-              _infoRow(Icons.location_city_outlined, 'Location',
-                  d['location'] ?? 'Not provided'),
+              _infoRow(
+                Icons.local_hospital_outlined,
+                'Hospital',
+                d['hospitalName'] ?? 'Not provided',
+              ),
+              _infoRow(
+                Icons.location_on_outlined,
+                'Hospital Address',
+                d['hospitalAddress'] ?? 'Not provided',
+              ),
+              _infoRow(
+                Icons.location_city_outlined,
+                'Location',
+                d['location'] ?? 'Not provided',
+              ),
             ]),
 
             const SizedBox(height: 16),
@@ -263,16 +336,25 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
             // ── Request Info ──
             _sectionTitle('Request Information'),
             _infoCard([
-              _infoRow(Icons.calendar_today_outlined, 'Required By',
-                  d['requiredBy'] != null
-                      ? _formatDate(d['requiredBy'])
-                      : 'Not specified'),
-              _infoRow(Icons.access_time_outlined, 'Requested On',
-                  d['createdAt'] != null
-                      ? _formatDate(d['createdAt'])
-                      : 'Unknown'),
-              _infoRow(Icons.person_pin_outlined, 'Requested By',
-                  d['requesterName'] ?? 'Unknown'),
+              _infoRow(
+                Icons.calendar_today_outlined,
+                'Required By',
+                d['requiredBy'] != null
+                    ? _formatDate(d['requiredBy'])
+                    : 'Not specified',
+              ),
+              _infoRow(
+                Icons.access_time_outlined,
+                'Requested On',
+                d['createdAt'] != null
+                    ? _formatDate(d['createdAt'])
+                    : 'Unknown',
+              ),
+              _infoRow(
+                Icons.person_pin_outlined,
+                'Requested By',
+                d['requesterName'] ?? 'Unknown',
+              ),
             ]),
 
             const SizedBox(height: 4),
@@ -302,17 +384,21 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2)),
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
                   ],
                 ),
                 child: Column(
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.phone_outlined,
-                            color: AppColors.primaryRed, size: 20),
+                        Icon(
+                          Icons.phone_outlined,
+                          color: AppColors.primaryRed,
+                          size: 20,
+                        ),
                         const SizedBox(width: 10),
                         Text(
                           d['contactNumber'],
@@ -324,8 +410,9 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
                         const Spacer(),
                         GestureDetector(
                           onTap: () {
-                            Clipboard.setData(ClipboardData(
-                                text: d['contactNumber']));
+                            Clipboard.setData(
+                              ClipboardData(text: d['contactNumber']),
+                            );
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Number copied!'),
@@ -334,8 +421,7 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
                               ),
                             );
                           },
-                          child: Icon(Icons.copy,
-                              color: Colors.grey, size: 18),
+                          child: Icon(Icons.copy, color: Colors.grey, size: 18),
                         ),
                       ],
                     ),
@@ -348,24 +434,39 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
                         label: Text(
                           'Call Now',
                           style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryRed,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        onPressed: () {
-                          // url_launcher se call open kar sakte ho
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  'Calling ${d['contactNumber']}...'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
+                        onPressed: () async {
+                          try {
+                            if (!await launchUrl(
+                              Uri(
+                                scheme: 'tel',
+                                path: d['contactNumber'].toString(),
+                              ),
+                            )) {
+                              throw StateError(
+                                'Could not open the phone dialer.',
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Could not open dialer: $e'),
+                                ),
+                              );
+                            }
+                          }
                         },
                       ),
                     ),
@@ -376,7 +477,11 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
 
             // ── Accept / Decline (only when we know which request this is,
             // and it's still awaiting a donor) ──
-            if (widget.requestId != null && (status == 'pending' || (status == 'accepted' && d['acceptedDonorId'] == FirebaseAuth.instance.currentUser?.uid))) ...[
+            if (widget.requestId != null &&
+                (status == 'pending' ||
+                    (status == 'accepted' &&
+                        d['acceptedDonorId'] ==
+                            FirebaseAuth.instance.currentUser?.uid))) ...[
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -389,22 +494,29 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
                         side: BorderSide(color: Colors.grey[400]!),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      onPressed: _isSubmitting || status == 'accepted' ? null : _handleDecline,
+                      onPressed:
+                          _isSubmitting || status == 'accepted'
+                              ? null
+                              : _handleDecline,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      icon: _isSubmitting
-                          ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                          : Icon(Icons.check),
+                      icon:
+                          _isSubmitting
+                              ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : Icon(Icons.check),
                       label: Text(
                         status == 'accepted' ? 'Confirm Donation' : 'Accept',
                         style: TextStyle(fontWeight: FontWeight.bold),
@@ -415,7 +527,8 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: _isSubmitting ? null : _handleAccept,
                     ),
@@ -454,9 +567,10 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2)),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(children: children),
@@ -475,15 +589,19 @@ class _BloodRequestDetailScreenState extends State<BloodRequestDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w500)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(value,
-                    style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(
+                  value,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
               ],
             ),
           ),

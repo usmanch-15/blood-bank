@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../models/blood_request_model.dart';
 import '../models/donor_model.dart';
 import '../services/geo_location_service.dart';
@@ -76,6 +77,7 @@ class ReceiverController extends ChangeNotifier {
   Future<void> sendSosAlert({
     required String receiverId,
     required String bloodGroup,
+    String urgency = 'critical',
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -98,15 +100,11 @@ class ReceiverController extends ChangeNotifier {
         );
       }
 
-      final ref = FirebaseFirestore.instance.collection('sosRequests').doc();
-      await ref.set({
-        'id': ref.id,
-        'receiverId': receiverId,
+      await FirebaseFunctions.instance.httpsCallable('createSosAlert').call({
         'bloodGroup': bloodGroup,
         'latitude': position.latitude,
         'longitude': position.longitude,
-        'triggerTime': FieldValue.serverTimestamp(),
-        'isResolved': false,
+        'urgency': urgency,
       });
 
       _sosSent = true;

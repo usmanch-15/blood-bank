@@ -1,7 +1,7 @@
 // Explicit, operator-run migration. Defaults to DRY RUN; never run automatically.
 // GOOGLE_CLOUD_PROJECT and Application Default Credentials must target the
 // reviewed environment. Take a Firestore export first. No credentials in source.
-const admin=require('firebase-admin');
+const admin=require('./firebaseAdmin');
 if (!process.env.GOOGLE_CLOUD_PROJECT) throw Error('Set GOOGLE_CLOUD_PROJECT explicitly.');
 const apply=process.argv.includes('--apply');
 admin.initializeApp({projectId:process.env.GOOGLE_CLOUD_PROJECT});

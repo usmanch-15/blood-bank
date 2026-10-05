@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/donation_model.dart';
 import '../../../constants/app_colors.dart';
-import '../../../utils/paginated_query.dart';   // ← NEW
+import '../../../utils/paginated_query.dart'; // ← NEW
+
 class AdminWebDonations extends StatefulWidget {
   const AdminWebDonations({super.key});
 
@@ -19,10 +20,20 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
   static const int _pageSize = 25;
 
   final List<String> _bloodGroups = [
-    'All', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'
+    'All',
+    'A+',
+    'A-',
+    'B+',
+    'B-',
+    'AB+',
+    'AB-',
+    'O+',
+    'O-',
   ];
   final List<String> _sortOptions = [
-    'Newest First', 'Oldest First', 'Most Points'
+    'Newest First',
+    'Oldest First',
+    'Most Points',
   ];
 
   late var _pager = _buildPager();
@@ -32,14 +43,15 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
   // not something you can patch onto an already-paginated one).
   PaginatedQuery<DonationModel> _buildPager() {
     final String orderField =
-    _sortBy == 'Most Points' ? 'pointsEarned' : 'donationDate';
+        _sortBy == 'Most Points' ? 'pointsEarned' : 'donationDate';
     final bool descending = _sortBy != 'Oldest First';
 
     return PaginatedQuery<DonationModel>(
       pageSize: _pageSize,
-      queryBuilder: () => FirebaseFirestore.instance
-          .collection('donations')
-          .orderBy(orderField, descending: descending),
+      queryBuilder:
+          () => FirebaseFirestore.instance
+              .collection('donations')
+              .orderBy(orderField, descending: descending),
       fromDoc: (d) => DonationModel.fromFirestore(d.data(), d.id),
     );
   }
@@ -114,9 +126,7 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Row(
             children: [
-              Expanded(
-                child: _searchField(),
-              ),
+              Expanded(child: _searchField()),
               const SizedBox(width: 12),
               _dropdownFilter(
                 value: _bloodGroupFilter,
@@ -146,7 +156,8 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                 if (_pager.items.isEmpty && _pager.isLoading) {
                   return const Center(
                     child: CircularProgressIndicator(
-                        color: AppColors.primaryRed),
+                      color: AppColors.primaryRed,
+                    ),
                   );
                 }
                 if (_pager.items.isEmpty && _pager.error != null) {
@@ -159,23 +170,21 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                 var donations = _pager.items;
 
                 if (_searchQuery.isNotEmpty) {
-                  donations = donations.where((d) {
-                    return d.donorName
-                        .toLowerCase()
-                        .contains(_searchQuery) ||
-                        d.bloodGroup
-                            .toLowerCase()
-                            .contains(_searchQuery) ||
-                        d.location
-                            .toLowerCase()
-                            .contains(_searchQuery);
-                  }).toList();
+                  donations =
+                      donations.where((d) {
+                        return d.donorName.toLowerCase().contains(
+                              _searchQuery,
+                            ) ||
+                            d.bloodGroup.toLowerCase().contains(_searchQuery) ||
+                            d.location.toLowerCase().contains(_searchQuery);
+                      }).toList();
                 }
 
                 if (_bloodGroupFilter != 'All') {
-                  donations = donations
-                      .where((d) => d.bloodGroup == _bloodGroupFilter)
-                      .toList();
+                  donations =
+                      donations
+                          .where((d) => d.bloodGroup == _bloodGroupFilter)
+                          .toList();
                 }
 
                 if (donations.isEmpty) {
@@ -189,11 +198,12 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Text(
                         '${donations.length} donation${donations.length == 1 ? '' : 's'} loaded'
-                            '${_pager.hasMore ? ' (more available)' : ''}',
+                        '${_pager.hasMore ? ' (more available)' : ''}',
                         style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500),
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                     Expanded(
@@ -201,8 +211,7 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border:
-                          Border.all(color: Colors.grey.shade200),
+                          border: Border.all(color: Colors.grey.shade200),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.04),
@@ -217,9 +226,9 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                             child: Column(
                               children: [
                                 DataTable(
-                                  headingRowColor:
-                                  WidgetStateProperty.all(
-                                      Colors.grey.shade50),
+                                  headingRowColor: WidgetStateProperty.all(
+                                    Colors.grey.shade50,
+                                  ),
                                   headingTextStyle: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13,
@@ -235,25 +244,31 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
                                     DataColumn(label: Text('Points Earned')),
                                     DataColumn(label: Text('Health Data')),
                                   ],
-                                  rows: donations
-                                      .map((d) => _buildRow(d))
-                                      .toList(),
+                                  rows:
+                                      donations
+                                          .map((d) => _buildRow(d))
+                                          .toList(),
                                 ),
                                 if (_pager.hasMore)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
-                                    child: _pager.isLoading
-                                        ? const CircularProgressIndicator(
-                                        color: AppColors.primaryRed)
-                                        : OutlinedButton.icon(
-                                      onPressed: () async {
-                                        await _pager.loadNextPage();
-                                        if (mounted) setState(() {});
-                                      },
-                                      icon: const Icon(Icons.expand_more),
-                                      label: const Text('Load More'),
+                                      vertical: 16,
                                     ),
+                                    child:
+                                        _pager.isLoading
+                                            ? const CircularProgressIndicator(
+                                              color: AppColors.primaryRed,
+                                            )
+                                            : OutlinedButton.icon(
+                                              onPressed: () async {
+                                                await _pager.loadNextPage();
+                                                if (mounted) setState(() {});
+                                              },
+                                              icon: const Icon(
+                                                Icons.expand_more,
+                                              ),
+                                              label: const Text('Load More'),
+                                            ),
                                   ),
                               ],
                             ),
@@ -272,152 +287,161 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
   }
 
   DataRow _buildRow(DonationModel d) {
-    return DataRow(cells: [
-      DataCell(
-        Row(
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.red.shade100,
-              child: Text(
-                d.donorName.isNotEmpty ? d.donorName[0].toUpperCase() : '?',
-                style: TextStyle(
+    return DataRow(
+      cells: [
+        DataCell(
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.red.shade100,
+                child: Text(
+                  d.donorName.isNotEmpty ? d.donorName[0].toUpperCase() : '?',
+                  style: TextStyle(
                     color: Colors.red.shade700,
                     fontWeight: FontWeight.bold,
-                    fontSize: 12),
+                    fontSize: 12,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(d.donorName,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 13)),
-          ],
-        ),
-      ),
-      DataCell(
-        Container(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.red.shade50,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.red.shade200),
-          ),
-          child: Text(
-            d.bloodGroup,
-            style: TextStyle(
-              color: Colors.red.shade700,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      ),
-      DataCell(
-        Row(
-          children: [
-            Icon(Icons.location_on,
-                size: 14, color: Colors.grey.shade400),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                d.location,
-                style: TextStyle(
-                    color: Colors.grey.shade600, fontSize: 12),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-      DataCell(Text(
-        _formatDate(d.donationDate),
-        style:
-        TextStyle(color: Colors.grey.shade600, fontSize: 12),
-      )),
-      DataCell(
-        Container(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.amber.shade50,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.stars,
-                  size: 14, color: Colors.amber.shade700),
-              const SizedBox(width: 4),
+              const SizedBox(width: 10),
               Text(
-                '+${d.pointsEarned}',
-                style: TextStyle(
-                  color: Colors.amber.shade700,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                d.donorName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
               ),
             ],
           ),
         ),
-      ),
-      DataCell(
-        d.healthCheckData != null && d.healthCheckData!.isNotEmpty
-            ? TextButton.icon(
-          onPressed: () => _showHealthData(d),
-          icon: const Icon(Icons.monitor_heart, size: 16),
-          label: const Text('View', style: TextStyle(fontSize: 12)),
-          style: TextButton.styleFrom(
-              foregroundColor: Colors.blue.shade600),
-        )
-            : Text('—',
-            style: TextStyle(color: Colors.grey.shade400)),
-      ),
-    ]);
+        DataCell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.red.shade200),
+            ),
+            child: Text(
+              d.bloodGroup,
+              style: TextStyle(
+                color: Colors.red.shade700,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+        DataCell(
+          Row(
+            children: [
+              Icon(Icons.location_on, size: 14, color: Colors.grey.shade400),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  d.location,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        DataCell(
+          Text(
+            _formatDate(d.donationDate),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+          ),
+        ),
+        DataCell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.stars, size: 14, color: Colors.amber.shade700),
+                const SizedBox(width: 4),
+                Text(
+                  '+${d.pointsEarned}',
+                  style: TextStyle(
+                    color: Colors.amber.shade700,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        DataCell(
+          d.healthCheckData != null && d.healthCheckData!.isNotEmpty
+              ? TextButton.icon(
+                onPressed: () => _showHealthData(d),
+                icon: const Icon(Icons.monitor_heart, size: 16),
+                label: const Text('View', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.blue.shade600,
+                ),
+              )
+              : Text('—', style: TextStyle(color: Colors.grey.shade400)),
+        ),
+      ],
+    );
   }
 
   void _showHealthData(DonationModel d) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.monitor_heart, color: Colors.red.shade700),
-            const SizedBox(width: 10),
-            Text('Health Data — ${d.donorName}'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: d.healthCheckData!.entries
-              .map((e) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
+      builder:
+          (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
               children: [
-                Text(
-                  '${e.key}: ',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600),
-                ),
-                Text('${e.value}'),
+                Icon(Icons.monitor_heart, color: Colors.red.shade700),
+                const SizedBox(width: 10),
+                Text('Health Data — ${d.donorName}'),
               ],
             ),
-          ))
-              .toList(),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade700,
-              foregroundColor: Colors.white,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children:
+                  d.healthCheckData!.entries
+                      .map(
+                        (e) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              Text(
+                                '${e.key}: ',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text('${e.value}'),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
             ),
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -439,37 +463,46 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
             .get(),
         FirebaseFirestore.instance
             .collection('users')
-            .where('role', isEqualTo: 'donor')
+            .where('isDonor', isEqualTo: true)
             .count()
             .get(),
       ]),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Text('Unable to load donation totals');
+        }
+        if (!snapshot.hasData) return const CircularProgressIndicator();
         final totalDonations = snapshot.data?[0].count ?? 0;
         final totalPoints =
-        (snapshot.data?[1].getSum('pointsEarned') ?? 0).toInt();
+            (snapshot.data?[1].getSum('pointsEarned') ?? 0).toInt();
         final registeredDonors = snapshot.data?[2].count ?? 0;
 
         return Row(
           children: [
-            _miniCard('Total', '$totalDonations', Icons.favorite,
-                Colors.red),
-            const SizedBox(width: 12),
-            _miniCard('Registered Donors', '$registeredDonors',
-                Icons.people, Colors.blue),
+            _miniCard('Total', '$totalDonations', Icons.favorite, Colors.red),
             const SizedBox(width: 12),
             _miniCard(
-                'Points Given', '$totalPoints', Icons.stars, Colors.amber),
+              'Registered Donors',
+              '$registeredDonors',
+              Icons.people,
+              Colors.blue,
+            ),
+            const SizedBox(width: 12),
+            _miniCard(
+              'Points Given',
+              '$totalPoints',
+              Icons.stars,
+              Colors.amber,
+            ),
           ],
         );
       },
     );
   }
 
-  Widget _miniCard(
-      String label, String value, IconData icon, Color color) {
+  Widget _miniCard(String label, String value, IconData icon, Color color) {
     return Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
@@ -482,14 +515,18 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value,
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: color)),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 11, color: Colors.grey.shade600)),
+              Text(
+                value,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              ),
             ],
           ),
         ],
@@ -516,19 +553,17 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
         controller: _searchController,
         decoration: InputDecoration(
           hintText: 'Search by donor name, blood group or location...',
-          hintStyle:
-          TextStyle(color: Colors.grey.shade400, fontSize: 13),
-          prefixIcon:
-          Icon(Icons.search, color: Colors.grey.shade400, size: 20),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-            icon: const Icon(Icons.clear, size: 18),
-            onPressed: () => _searchController.clear(),
-          )
-              : null,
+          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+          prefixIcon: Icon(Icons.search, color: Colors.grey.shade400, size: 20),
+          suffixIcon:
+              _searchQuery.isNotEmpty
+                  ? IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed: () => _searchController.clear(),
+                  )
+                  : null,
           border: InputBorder.none,
-          contentPadding:
-          const EdgeInsets.symmetric(vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
       ),
     );
@@ -559,12 +594,15 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
         child: DropdownButton<String>(
           value: value,
           icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-          items: items
-              .map((i) => DropdownMenuItem(
-            value: i,
-            child: Text(i, style: const TextStyle(fontSize: 13)),
-          ))
-              .toList(),
+          items:
+              items
+                  .map(
+                    (i) => DropdownMenuItem(
+                      value: i,
+                      child: Text(i, style: const TextStyle(fontSize: 13)),
+                    ),
+                  )
+                  .toList(),
           onChanged: onChanged,
         ),
       ),
@@ -578,8 +616,7 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
         children: [
           Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
           const SizedBox(height: 12),
-          Text('Error: $error',
-              style: TextStyle(color: Colors.red.shade400)),
+          Text('Error: $error', style: TextStyle(color: Colors.red.shade400)),
         ],
       ),
     );
@@ -596,8 +633,7 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
             _searchQuery.isNotEmpty
                 ? 'No donations match your search'
                 : 'No donation records yet',
-            style:
-            TextStyle(fontSize: 16, color: Colors.grey.shade500),
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
           ),
         ],
       ),
@@ -610,8 +646,18 @@ class _AdminWebDonationsState extends State<AdminWebDonations> {
 
   String _month(int m) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return months[m - 1];
   }

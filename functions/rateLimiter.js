@@ -23,7 +23,7 @@
  *     });
  */
 
-const admin = require('firebase-admin');
+const admin = require('./firebaseAdmin');
 if (!admin.apps.length) {
   admin.initializeApp();
 }

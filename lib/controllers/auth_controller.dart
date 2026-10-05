@@ -1,15 +1,22 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/account_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
-import '../services/notification_service.dart';
 import '../models/user_model.dart';
 
 class AuthController extends ChangeNotifier {
   final AuthService _authService = AuthService();
 
   late final StreamSubscription<User?> _authSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+  _profileSubscription;
+  int _sessionGeneration = 0;
+  bool _sessionReady = false;
+  bool _accessRevoked = false;
+  bool get accessRevoked => _accessRevoked;
+  bool get sessionReady => _sessionReady;
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
@@ -38,30 +45,54 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> _onAuthStateChanged(User? firebaseUser) async {
+    final generation = ++_sessionGeneration;
+    await _profileSubscription?.cancel();
+    if (generation != _sessionGeneration) return;
+    _currentUser = null;
+    _accessRevoked = false;
+    _errorMessage = null;
+    _sessionReady = firebaseUser == null;
+    notifyListeners();
     if (firebaseUser == null) {
-      _currentUser = null;
-      notifyListeners();
       return;
     }
-    try {
-      final data = await _authService.getUserData(firebaseUser.uid);
-      if (FirebaseAuth.instance.currentUser?.uid != firebaseUser.uid) return;
-      if (AccountPolicy.isActive(data)) {
-        _currentUser = UserModel.fromFirestore(data!, firebaseUser.uid);
-        notifyListeners();
-      } else {
-        _currentUser = null;
-        notifyListeners();
-      }
-    } catch (e) {
-      // Network hiccup etc. — don't clear a possibly-valid currentUser
-      // over a transient read failure; just log it.
-      debugPrint('AuthController: failed to sync user data — $e');
-    }
+    _profileSubscription = FirebaseFirestore.instance
+        .doc('users/${firebaseUser.uid}')
+        .snapshots()
+        .listen(
+          (snapshot) {
+            if (generation != _sessionGeneration) return;
+            final data = snapshot.data();
+            if (_currentUser != null && !AccountPolicy.isActive(data)) {
+              _accessRevoked = true;
+            }
+            _sessionReady = true;
+            _currentUser =
+                AccountPolicy.isActive(data)
+                    ? UserModel.fromFirestore(data!, firebaseUser.uid)
+                    : null;
+            _errorMessage =
+                _currentUser == null
+                    ? 'This account is unavailable or suspended.'
+                    : null;
+            notifyListeners();
+          },
+          onError: (Object error) {
+            if (generation != _sessionGeneration) return;
+            if (_currentUser != null) _accessRevoked = true;
+            _sessionReady = true;
+            _currentUser = null;
+            _errorMessage =
+                'Unable to verify account access. Check your connection and sign in again.';
+            notifyListeners();
+          },
+        );
   }
 
   @override
   void dispose() {
+    _sessionGeneration++;
+    _profileSubscription?.cancel();
     _authSubscription.cancel();
     super.dispose();
   }
@@ -126,7 +157,6 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await NotificationService().clearDeviceToken(); // ✅ FIX: token cleanup
     await _authService.signOut();
     _currentUser = null;
     notifyListeners();

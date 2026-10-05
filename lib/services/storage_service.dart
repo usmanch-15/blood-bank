@@ -12,7 +12,7 @@ class StorageService {
   }) async {
     final ref = _storage
         .ref()
-        .child('${AppConstants.certificatesPath}/$donorId/$donationId.pdf');
+        .child('${AppConstants.certificatesPath}/$donorId/$donationId/certificate.pdf');
     final task = await ref.putData(bytes, SettableMetadata(contentType: 'application/pdf'));
     return await task.ref.getDownloadURL();
   }
@@ -21,11 +21,15 @@ class StorageService {
     required Uint8List bytes,
     required String userId,
   }) async {
+    if (bytes.isEmpty || bytes.length >= 3 * 1024 * 1024) {
+      throw ArgumentError('Choose an image smaller than 3 MB.');
+    }
     final ref = _storage
         .ref()
         .child('${AppConstants.profileImagesPath}/$userId/avatar.jpg');
     final task = await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-    return await task.ref.getDownloadURL();
+    final url = await task.ref.getDownloadURL();
+    return '$url&v=${DateTime.now().millisecondsSinceEpoch}';
   }
 
   Future<void> deleteFile(String downloadUrl) async {

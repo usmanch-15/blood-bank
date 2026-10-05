@@ -52,3 +52,4 @@ functions/.env.*
 .firebase/
 .firebase-cache/
 analysis-results.txt
+/audit-artifacts/

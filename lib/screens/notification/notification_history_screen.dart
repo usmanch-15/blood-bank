@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
+import '../../services/push_navigation_service.dart';
 
 /// ✅ PHASE 2 — Notification History
 /// Shows all past notifications for the logged-in user, newest first.
@@ -20,74 +21,108 @@ class NotificationHistoryScreen extends StatelessWidget {
         backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
       ),
-      body: uid == null
-          ? const Center(child: Text('Please log in.'))
-          : StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('notifications')
-            .where('userId', isEqualTo: uid)
-            .orderBy('createdAt', descending: true)
-            .limit(100)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          final docs = snapshot.data?.docs ?? [];
-          if (docs.isEmpty) {
-            return const Center(child: Text('No notifications yet.'));
-          }
-
-          return ListView.separated(
-            itemCount: docs.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              final isRead = data['isRead'] == true;
-              final createdAt = data['createdAt'] as Timestamp?;
-              final type = data['type']?.toString() ?? 'general';
-
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: isRead
-                      ? Colors.grey.shade300
-                      : AppColors.primaryRed.withValues(alpha: 0.15),
-                  child: Icon(
-                    _iconForType(type),
-                    color: isRead ? Colors.grey : AppColors.primaryRed,
-                    size: 20,
-                  ),
-                ),
-                title: Text(
-                  data['title']?.toString() ?? '',
-                  style: TextStyle(
-                    fontWeight:
-                    isRead ? FontWeight.normal : FontWeight.bold,
-                  ),
-                ),
-                subtitle: Text(data['body']?.toString() ?? ''),
-                trailing: createdAt != null
-                    ? Text(
-                  DateFormat('MMM d, h:mm a')
-                      .format(createdAt.toDate()),
-                  style: const TextStyle(
-                      fontSize: 11, color: Colors.grey),
-                )
-                    : null,
-                onTap: () {
-                  if (!isRead) {
-                    doc.reference.update({'isRead': true});
+      body:
+          uid == null
+              ? const Center(child: Text('Please log in.'))
+              : StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('notifications')
+                        .where('userId', isEqualTo: uid)
+                        .orderBy('createdAt', descending: true)
+                        .limit(100)
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
                   }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  final docs = snapshot.data?.docs ?? [];
+                  if (docs.isEmpty) {
+                    return const Center(child: Text('No notifications yet.'));
+                  }
+
+                  return ListView.separated(
+                    itemCount: docs.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final isRead = data['isRead'] == true;
+                      final createdAt = data['createdAt'] as Timestamp?;
+                      final type = data['type']?.toString() ?? 'general';
+
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor:
+                              isRead
+                                  ? Colors.grey.shade300
+                                  : AppColors.primaryRed.withValues(
+                                    alpha: 0.15,
+                                  ),
+                          child: Icon(
+                            _iconForType(type),
+                            color: isRead ? Colors.grey : AppColors.primaryRed,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          data['title']?.toString() ?? '',
+                          style: TextStyle(
+                            fontWeight:
+                                isRead ? FontWeight.normal : FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(data['body']?.toString() ?? ''),
+                        trailing:
+                            createdAt != null
+                                ? Text(
+                                  DateFormat(
+                                    'MMM d, h:mm a',
+                                  ).format(createdAt.toDate()),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                )
+                                : null,
+                        onTap: () async {
+                          try {
+                            if (!isRead) {
+                              await doc.reference.update({'isRead': true});
+                            }
+                            if ([
+                              'blood_request',
+                              'sosAlerts',
+                              'sos',
+                              'donation_confirmed',
+                              'rewardUpdates',
+                            ].contains(type)) {
+                              await PushNavigationService.instance
+                                  .openNotification(
+                                    type,
+                                    data['relatedId'] as String?,
+                                  );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Could not open notification: $e',
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      );
+                    },
+                  );
                 },
-              );
-            },
-          );
-        },
-      ),
+              ),
     );
   }
 
