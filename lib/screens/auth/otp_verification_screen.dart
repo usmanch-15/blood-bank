@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../services/auth_service.dart';
@@ -19,6 +20,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final _codeController = TextEditingController();
   String? _verificationId;
   bool _codeSent = false;
+  int _resendSeconds=0;
+  Timer? _resendTimer;
   bool _isLoading = false;
   String? _error;
 
@@ -40,8 +43,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         setState(() {
           _verificationId = id;
           _codeSent = true;
+          _resendSeconds=60;
           _isLoading = false;
         });
+        _resendTimer?.cancel();
+        _resendTimer=Timer.periodic(const Duration(seconds:1),(t){if(!mounted||_resendSeconds<=1){t.cancel();if(mounted)setState(()=>_resendSeconds=0);}else{setState(()=>_resendSeconds--);}});
       },
       onError: (err) {
         if (!mounted) return;
@@ -88,6 +94,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _codeController.dispose();
     super.dispose();
   }
@@ -151,8 +158,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             ),
             const SizedBox(height: 10),
             TextButton(
-              onPressed: _isLoading ? null : _sendCode,
-              child: const Text('Resend Code'),
+              onPressed: _isLoading || _resendSeconds>0 ? null : _sendCode,
+              child: Text(_resendSeconds>0?'Resend in $_resendSeconds s':'Resend Code'),
             ),
           ],
         ),

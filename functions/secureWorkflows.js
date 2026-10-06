@@ -1,8 +1,8 @@
 const { HttpsError } = require('firebase-functions/v2/https');
 const admin = require('./firebaseAdmin');
-const { active, eligible, compatible, INTERVAL_MS, POINTS } = require('./donationPolicy');
+const { active } = require('./donationPolicy');
 const db = admin.firestore();
-const {checkSosRateLimit} = require('./rateLimiter');
+
 const fail = (code, message) => { throw new HttpsError(code, message); };
 function id(value) {
   if (typeof value !== 'string' || !value.length || value.length > 128 || value.includes('/')) {
@@ -14,90 +14,12 @@ function caller(request) {
   if (!request.auth) fail('unauthenticated', 'Please sign in.');
   return request.auth.uid;
 }
-async function acceptDonation(request) {
-  const uid = caller(request);
-  const requestId = id(request.data?.requestId);
-  const ref = db.collection('blood_requests').doc(requestId);
-  return db.runTransaction(async tx => {
-    const [req, donor] = await Promise.all([tx.get(ref), tx.get(db.doc(`users/${uid}`))]);
-    const d = donor.data(), r = req.data();
-    if (!active(d) || d.isDonor !== true || !d.isAvailable) fail('permission-denied', 'An active, available donor account is required.');
-    if (!r || r.requesterId === uid) fail('permission-denied', 'You cannot accept this request.');
-    if (!active((await tx.get(db.doc(`users/${r.requesterId}`))).data())) fail('permission-denied', 'The request owner is inactive.');
-    if (r.status === 'accepted' && r.acceptedDonorId === uid) return { accepted: true };
-    if (r.status !== 'pending') fail('failed-precondition', 'This request is no longer open.');
-    if (!eligible(d, Date.now()) || !compatible(d.bloodGroup, r.bloodGroup)) fail('failed-precondition', 'Donor does not meet the matching and interval requirements.');
-    tx.update(ref, {status: 'accepted', acceptedDonorId: uid, acceptedAt: admin.firestore.Timestamp.now()});
-    tx.set(db.doc(`notifications/accepted_${requestId}`), {
-      userId: r.requesterId, title: 'Donor accepted your request',
-      body: `${d.name || 'A donor'} accepted your blood request. Open Find Donors to arrange the donation.`,
-      type: 'general', relatedId: requestId, isRead: false, createdAt: admin.firestore.Timestamp.now(),
-    });
-    return {accepted: true};
-  });
-}
-async function createSosAlert(request) {
-  const uid = caller(request);
-  const data = request.data || {};
-  const user = (await db.doc(`users/${uid}`).get()).data();
-  if (!active(user) || user.isReceiver !== true) fail('permission-denied','An active receiver account is required.');
-  if (!Number.isFinite(data.latitude) || Math.abs(data.latitude)>90 ||
-      !Number.isFinite(data.longitude) || Math.abs(data.longitude)>180 ||
-      !['A+','A-','B+','B-','AB+','AB-','O+','O-'].includes(data.bloodGroup) ||
-      !['urgent','critical','life_threatening'].includes(data.urgency)) {
-    fail('invalid-argument','Select a blood group, emergency level and valid location.');
-  }
-  if (!await checkSosRateLimit(uid)) fail('resource-exhausted','SOS limit reached. Try again later or contact emergency services.');
-  const ref = db.collection('sosRequests').doc();
-  await ref.set({id:ref.id,receiverId:uid,bloodGroup:data.bloodGroup,
-    latitude:data.latitude,longitude:data.longitude,urgency:data.urgency,
-    triggerTime:admin.firestore.Timestamp.now(),isResolved:false,status:'queued'});
-  return {id:ref.id};
-}
-async function confirmDonation(request) {
-  const uid = caller(request);
-  const requestId = id(request.data?.requestId), donorId = id(request.data?.donorId);
-  const requestRef = db.doc(`blood_requests/${requestId}`);
-  const donorRef = db.doc(`users/${donorId}`);
-  // One donation per request; retrying a completed request returns the same record.
-  const donationRef = db.doc(`donations/${requestId}`);
-  return db.runTransaction(async tx => {
-    const [req, donor, user, donation] = await Promise.all([
-      tx.get(requestRef), tx.get(donorRef), tx.get(db.doc(`users/${uid}`)), tx.get(donationRef),
-    ]);
-    const r=req.data(), d=donor.data();
-    if (!active(user.data()) || !active(d) || d.isDonor !== true || !r ||
-        ![donorId, r.requesterId].includes(uid) || r.acceptedDonorId !== donorId) {
-      fail('permission-denied', 'Only the assigned donor or request owner can confirm.');
-    }
-    if (!active((await tx.get(db.doc(`users/${r.requesterId}`))).data())) fail('permission-denied', 'The request owner is inactive.');
-    if (donation.exists) return {donationId: donation.id, alreadyConfirmed: true};
-    if (r.status !== 'accepted') fail('failed-precondition', 'The request must be accepted before confirmation.');
-    const now = admin.firestore.Timestamp.now();
-    if (!eligible(d, now.toMillis())) fail('failed-precondition', 'A minimum of 90 days is required between donations.');
-    if (!compatible(d.bloodGroup, r.bloodGroup)) fail('failed-precondition', 'Blood groups are incompatible.');
-    const nextEligible = admin.firestore.Timestamp.fromMillis(now.toMillis()+INTERVAL_MS);
-    tx.create(donationRef, {donorId, donorName: d.name || '', bloodGroup: d.bloodGroup,
-      donationDate: now, location: r.hospitalName || null, requestId,
-      pointsEarned: POINTS, confirmedBy: uid});
-    tx.update(donorRef, {lastDonationDate: now, nextEligibleDate: nextEligible,
-      isEligible: false, rewardPoints: admin.firestore.FieldValue.increment(POINTS)});
-    tx.update(requestRef, {status: 'fulfilled', fulfilledAt: now, fulfilledByDonorId: donorId});
-    tx.create(db.doc(`notifications/donation_${requestId}`), {userId: donorId,
-      title: 'Donation confirmed', body: `Thank you for donating. You earned ${POINTS} points.`,
-      type: 'donation_confirmed', relatedId: requestId, createdAt: now, isRead: false});
-    tx.create(db.doc(`notifications/fulfilled_${requestId}`), {userId: r.requesterId,
-      title: 'Blood request fulfilled', body: 'The donation has been confirmed and your request is fulfilled.',
-      type: 'general', relatedId: requestId, createdAt: now, isRead: false});
-    return {donationId: donationRef.id, nextEligibleDate: nextEligible.toMillis()};
-  });
-}
 async function deleteQuery(query) {
   for (;;) {
     const page = await query.limit(200).get();
     if (page.empty) return;
     const batch = db.batch();
-    page.docs.forEach(doc => batch.delete(doc.ref));
+    for (const doc of page.docs) { if(doc.ref.parent.id==='blood_requests') await db.recursiveDelete(doc.ref); else batch.delete(doc.ref); }
     await batch.commit();
   }
 }
@@ -117,15 +39,19 @@ async function deleteAccount(request, adminAction = false) {
     ['donations','donorId'], ['rewards','donorId'], ['reports','reportedBy'],
     ['misuse_reports','reporterId'], ['misuse_reports','reportedUserId'], ['audit_logs','viewedBy'], ['audit_logs','donorId'],
   ]) await deleteQuery(db.collection(collection).where(field,'==',uid));
-  // Remove assignment references on other people's still-open requests.
-  for (;;) {
-    const page = await db.collection('blood_requests').where('acceptedDonorId','==',uid).limit(200).get();
-    if (page.empty) break;
-    const batch = db.batch();
-    page.docs.forEach(doc => batch.update(doc.ref, {acceptedDonorId: admin.firestore.FieldValue.delete(),
-      ...(doc.data().status === 'accepted' ? {status:'pending'} : {})}));
-    await batch.commit();
+  // Release every active commitment before deleting the donor profile.
+  const requests=await db.collection('blood_requests').where('acceptedDonorIds','array-contains',uid).get();
+  for (const doc of requests.docs) {
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(doc.ref),r=snap.data();
+      const commitments={...(r.commitments || {})};delete commitments[uid];
+      const ids=(r.acceptedDonorIds || []).filter(k=>k!==uid);
+      tx.update(doc.ref,{commitments,acceptedDonorIds:ids,participantIds:(r.participantIds || []).filter(k=>k!==uid),...(require('./requestWorkflows').openStatuses.includes(r.status)?{status:r.donatedUnits?'partially_fulfilled':ids.length?'accepted':'pending'}:{})});
+    });
   }
+  const completed=await db.collection('blood_requests').where('participantIds','array-contains',uid).get();
+  for(const doc of completed.docs){await doc.ref.update({participantIds:admin.firestore.FieldValue.arrayRemove(uid),[`commitments.${uid}`]:admin.firestore.FieldValue.delete()});}
+  await deleteQuery(db.collection('feedback').where('reporterId','==',uid));
   await db.doc(`rate_limits/${uid}`).delete();
   await db.doc(`rate_limits/contact_${uid}`).delete();
   await admin.storage().bucket().deleteFiles({prefix: `profile_images/${uid}/`});
@@ -133,6 +59,7 @@ async function deleteAccount(request, adminAction = false) {
   await db.recursiveDelete(db.doc(`users/${uid}`));
   try { await admin.auth().deleteUser(uid); }
   catch (e) { if (e.code !== 'auth/user-not-found') throw e; }
+  if(adminAction) await db.collection('audit_logs').add({action:'admin_delete_account',actorId:actor,recordId:uid,createdAt:admin.firestore.Timestamp.now()});
   return {deleted: true};
 }
-module.exports = {acceptDonation, confirmDonation, deleteAccount, createSosAlert};
+module.exports = {deleteAccount, ...require('./requestWorkflows')};

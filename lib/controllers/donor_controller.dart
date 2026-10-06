@@ -49,27 +49,6 @@ class DonorController extends ChangeNotifier {
     }
   }
 
-  Future<void> loadDonationHistory(String uid) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final snapshot =
-          await FirebaseFirestore.instance
-              .collection(AppConstants.donationsCollection)
-              .where('donorId', isEqualTo: uid)
-              .orderBy('donationDate', descending: true)
-              .limit(100)
-              .get();
-      _donationHistory =
-          snapshot.docs
-              .map((d) => DonationModel.fromFirestore(d.data(), d.id))
-              .toList();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
   /// ⚠️ SECURITY FIX: this method used to write `phoneNumber`, `latitude`,
   /// and `longitude` straight onto the top-level `users/{uid}` doc — which
   /// `firestore.rules` allows ANY signed-in user to read

@@ -143,6 +143,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                 ] else ...[
                   _EmptyCertificates(),
                 ],
+                if(controller.hasMore)TextButton(onPressed:controller.loadingMore?null:()async{try{await controller.loadMore();}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Could not load older certificates: $e')));}},child:Text(controller.loadingMore?'Loading…':'Load older certificates')),
               ],
             ),
           );

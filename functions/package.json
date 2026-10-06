@@ -22,7 +22,9 @@
   },
   "private": true,
   "overrides": {
-    "gaxios": {"uuid": "11.1.1"}
+    "gaxios": {
+      "uuid": "11.1.1"
+    }
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",

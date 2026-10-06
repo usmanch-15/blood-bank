@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'workflow_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -167,77 +169,15 @@ class SettingsService {
 
   /// ✅ NEW — "Download My Data" (Privacy Policy §6).
   Future<String> exportUserData() async {
-    final uid = _uid;
-    if (uid == null) {
-      throw Exception('No user is currently logged in.');
+    final uid=_uid;if(uid==null)throw StateError('Sign in first.');
+    final output=<String,dynamic>{'generatedAt':DateTime.now().toIso8601String()};
+    final contact=await _privateContactDoc.get();
+    output['privateContact']=contact.data();
+    for(final collection in ['users','blood_requests','donations','sosRequests','misuse_reports','feedback','notifications']) {
+      final items=<dynamic>[];String? cursor;
+      do{final page=await WorkflowService.call('exportPage',{'collection':collection,'cursor':cursor});items.addAll(page['items'] as List);cursor=page['cursor'];}while(cursor!=null);
+      output[collection]=items;
     }
-
-    final profileDoc = await _userDoc.get();
-    final profile = profileDoc.data() ?? {};
-    final phone = await getPhoneOnce();
-
-    final donationsSnap = await _firestore
-        .collection(AppConstants.donationsCollection)
-        .where('donorId', isEqualTo: uid)
-        .get();
-
-    final notificationsSnap = await _firestore
-        .collection(AppConstants.notificationsCollection)
-        .where('userId', isEqualTo: uid)
-        .limit(100)
-        .get();
-
-    final buffer = StringBuffer();
-    buffer.writeln('SMART BLOOD BANK — MY DATA EXPORT');
-    buffer.writeln('Generated: ${DateTime.now().toIso8601String()}');
-    buffer.writeln('User ID: $uid');
-    buffer.writeln('=' * 50);
-
-    buffer.writeln('\nPROFILE');
-    buffer.writeln('-' * 20);
-    buffer.writeln('Name: ${profile['name'] ?? '-'}');
-    buffer.writeln('Email: ${profile['email'] ?? '-'}');
-    buffer.writeln('Phone: ${phone ?? '-'}');
-    buffer.writeln('Role: ${profile['role'] ?? '-'}');
-    buffer.writeln('Blood Group: ${profile['bloodGroup'] ?? '-'}');
-    buffer.writeln('Location: ${profile['location'] ?? '-'}');
-    buffer.writeln('Status: ${profile['status'] ?? '-'}');
-    buffer.writeln('Reward Points: ${profile['rewardPoints'] ?? 0}');
-    buffer.writeln(
-        'Location Sharing Enabled: ${profile['locationSharingEnabled'] ?? true}');
-    buffer.writeln('Available to Donate: ${profile['isAvailable'] ?? false}');
-
-    buffer.writeln('\nDONATION HISTORY (${donationsSnap.docs.length})');
-    buffer.writeln('-' * 20);
-    if (donationsSnap.docs.isEmpty) {
-      buffer.writeln('No donations recorded.');
-    }
-    for (final doc in donationsSnap.docs) {
-      final d = doc.data();
-      final date = d['donationDate'];
-      final dateStr = date is Timestamp
-          ? date.toDate().toIso8601String()
-          : (date?.toString() ?? '-');
-      buffer.writeln(
-          '• $dateStr — ${d['bloodGroup'] ?? '-'} — ${d['location'] ?? '-'} — ${d['pointsEarned'] ?? 0} pts');
-    }
-
-    buffer.writeln(
-        '\nRECENT NOTIFICATIONS (last ${notificationsSnap.docs.length})');
-    buffer.writeln('-' * 20);
-    if (notificationsSnap.docs.isEmpty) {
-      buffer.writeln('No notifications recorded.');
-    }
-    for (final doc in notificationsSnap.docs) {
-      final d = doc.data();
-      buffer.writeln('• ${d['title'] ?? '-'}: ${d['body'] ?? '-'}');
-    }
-
-    buffer.writeln('\n${'=' * 50}');
-    buffer.writeln(
-        'This export contains the personal data Smart Blood Bank holds '
-            'about your account, as described in our Privacy Policy.');
-
-    return buffer.toString();
+    return const JsonEncoder.withIndent('  ').convert(output);
   }
 }

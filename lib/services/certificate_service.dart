@@ -33,7 +33,7 @@ class CertificateService {
               mainAxisAlignment: pw.MainAxisAlignment.center,
               children: [
                 pw.Text(
-                  'BLOOD DONATION CERTIFICATE',
+                  'DONATION ACKNOWLEDGEMENT',
                   style: pw.TextStyle(
                     fontSize: 26,
                     fontWeight: pw.FontWeight.bold,
@@ -50,7 +50,7 @@ class CertificateService {
                     style: pw.TextStyle(
                         fontSize: 24, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 8),
-                pw.Text('has generously donated blood, helping save a life',
+                pw.Text('has a confirmed donation recorded in Smart Blood Bank',
                     style: const pw.TextStyle(fontSize: 15)),
                 pw.SizedBox(height: 22),
                 pw.Row(
@@ -69,7 +69,7 @@ class CertificateService {
                   height: 70,
                 ),
                 pw.SizedBox(height: 6),
-                pw.Text('Certificate ID: $donationId',
+                pw.Text('Record ID: $donationId — not a medical credential',
                     style: const pw.TextStyle(fontSize: 9)),
                 pw.SizedBox(height: 20),
                 pw.Text(

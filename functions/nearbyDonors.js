@@ -16,7 +16,7 @@ async function nearbyDonors(lat, lng, bloodGroup, radiusKm) {
     const page = await (last ? query.startAfter(last) : query).get();
     for (const doc of page.docs) {
       const d=doc.data();
-      if (Number.isFinite(d.longitude) && compatible(d.bloodGroup,bloodGroup) && eligible(d,Date.now()) &&
+      if (Number.isFinite(d.longitude) && (!bloodGroup || compatible(d.bloodGroup,bloodGroup)) && eligible(d,Date.now()) && !d.activeRequestId &&
           distanceKm(lat,lng,d.latitude,d.longitude)<=radiusKm) matches.push(doc.id);
     }
     if (page.size<200) break;

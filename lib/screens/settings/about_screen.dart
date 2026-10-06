@@ -73,6 +73,7 @@ class AboutScreen extends StatelessWidget {
                                 try {
                                   await ReportService().submitReport(
                                     reason: 'App rating: $selectedStars/5',
+                                    feedback: true,
                                     details: 'Submitted from the About screen.',
                                   );
                                   if (!dialogContext.mounted ||

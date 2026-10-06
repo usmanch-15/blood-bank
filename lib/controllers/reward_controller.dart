@@ -7,6 +7,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 /// Rewards are awarded by the confirmation transaction, never by the client.
 class RewardController extends ChangeNotifier {
   RewardModel? _reward;
+  DocumentSnapshot<Map<String,dynamic>>? _lastDonation;
+  bool hasMore = true;
+  bool loadingMore = false;
   bool _isLoading = false;
   String? _error;
   final Set<String> _generating = {};
@@ -21,6 +24,7 @@ class RewardController extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     _reward = null;
+    _lastDonation=null;hasMore=true;
     notifyListeners();
     try {
       final db = FirebaseFirestore.instance;
@@ -29,7 +33,9 @@ class RewardController extends ChangeNotifier {
           .where('donorId', isEqualTo: donorId).limit(1).get();
       final donations = await db.collection('donations')
           .where('donorId', isEqualTo: donorId)
-          .orderBy('donationDate', descending: true).limit(100).get();
+          .orderBy('donationDate', descending: true).limit(30).get();
+      _lastDonation=donations.docs.isEmpty?null:donations.docs.last;
+      hasMore=donations.size==30;
       final certificates = <String, Certificate>{};
       for (final doc in legacy.docs) {
         for (final cert in RewardModel.fromFirestore(doc.data(), doc.id).certificates) {
@@ -57,6 +63,33 @@ class RewardController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> loadMore() async {
+    final uid=FirebaseAuth.instance.currentUser?.uid;
+    if(uid==null||_reward==null||!hasMore||loadingMore)return;
+    loadingMore=true;notifyListeners();
+    try{
+      var query=FirebaseFirestore.instance.collection('donations').where('donorId',isEqualTo:uid).orderBy('donationDate',descending:true).limit(30);
+      if(_lastDonation!=null)query=query.startAfterDocument(_lastDonation!);
+      final page=await query.get();
+      if(FirebaseAuth.instance.currentUser?.uid!=uid)return;
+      final certificates=[..._reward!.certificates];
+      for (final doc in page.docs) {
+        final d = doc.data();
+        certificates.add(Certificate(
+          id: doc.id,
+          title: 'Donation acknowledgement',
+          description: 'Blood group: ${d['bloodGroup']}',
+          imageUrl: d['certificateUrl'] as String?,
+          issuedDate: (d['donationDate'] as Timestamp).toDate(),
+          criteria: 'Confirmed donation',
+          pointsEarned: (d['pointsEarned'] as num?)?.toInt() ?? 0,
+        ));
+      }
+      if(page.docs.isNotEmpty)_lastDonation=page.docs.last;hasMore=page.size==30;
+      _reward=RewardModel(id:uid,donorId:uid,totalPoints:totalPoints,certificates:certificates,lastUpdated:DateTime.now(),tier:tier);
+    }finally{loadingMore=false;notifyListeners();}
   }
 
   Future<void> generateCertificate(String donationId) async {

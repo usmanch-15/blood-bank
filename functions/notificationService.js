@@ -65,91 +65,36 @@ function isNotificationAllowed(userData, category) {
  * so the user can see it in-app even if the push itself failed.
  */
 async function sendPushToUser(uid, { title, body, data = {}, record = true }) {
-  const userRef = db.collection('users').doc(uid);
-  const userSnap = await userRef.get();
-
-  if (!userSnap.exists) {
-    console.warn(`sendPushToUser: user ${uid} not found`);
-    return { uid, sent: false, reason: 'user-not-found' };
+  const userRef=db.doc('users/'+uid),user=(await userRef.get()).data();
+  if(!user)return {uid,sent:false,reason:'user-not-found'};
+  let inbox;
+  if(record){
+    const key=require('node:crypto').createHash('sha256').update(uid+':'+(data.type||'general')+':'+(data.relatedId||data.requestId||title+body)).digest('hex');
+    inbox=db.doc('notifications/'+key);
+    try {await inbox.create({userId:uid,title,body,type:data.type||'general',relatedId:data.relatedId||data.requestId||null,isRead:false,createdAt:admin.firestore.Timestamp.now(),pushSentDirectly:true,pushStatus:'pending'});}
+    catch(e){if(e.code!==6)throw e;if((await inbox.get()).data()?.pushStatus==='sent')return {uid,sent:true,reason:'already-sent'};}
   }
-
-  const userData = userSnap.data();
-  const category = data.type;
-
-  // Always record the notification in-app, even if push is disabled —
-  // the in-app notification history should still show it.
-  // pushSentDirectly=true tells the legacy sendPushNotification trigger
-  // (in index.js) to NOT send a second push for this same doc.
-  if (record) await db.collection('notifications').add({
-    userId: uid,
-    title,
-    body,
-    type: category || 'general',
-    relatedId: data.requestId || data.relatedId || null,
-    isRead: false,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    pushSentDirectly: true,
-  });
-
-  if (!isNotificationAllowed(userData, category)) {
-    return { uid, sent: false, reason: 'user-opted-out' };
-  }
-
-  const deviceRef = userRef.collection('private').doc('device');
-  const token = (await deviceRef.get()).data()?.fcmToken;
-  if (!token) {
-    return { uid, sent: false, reason: 'no-token' };
-  }
-
-  const message = {
-    token,
-    notification: { title, body },
-    data: Object.fromEntries(
-      Object.entries(data).map(([k, v]) => [k, String(v)])
-    ),
-    android: { priority: 'high', notification: {channelId: 'blood_requests'} },
-    apns: { headers: { 'apns-priority': '10' } },
-  };
-
-  let lastError;
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      await messaging.send(message);
-      return { uid, sent: true };
-    } catch (err) {
-      lastError = err;
-
-      // Dead token — clean it up immediately, no point retrying.
-      if (
-        err.code === 'messaging/registration-token-not-registered' ||
-        err.code === 'messaging/invalid-registration-token'
-      ) {
-        await db.runTransaction(async tx => {
-          const current = (await tx.get(deviceRef)).data();
-          if (current?.fcmToken === token) tx.update(deviceRef, {
-            fcmToken: admin.firestore.FieldValue.delete(),
-            fcmUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        });
-        console.warn(`Removed dead FCM token for user ${uid}`);
-        return { uid, sent: false, reason: 'dead-token-cleaned' };
+  if(!isNotificationAllowed(user,data.type)){if(inbox)await inbox.update({pushStatus:'opted_out'});return {uid,sent:false,reason:'user-opted-out'};}
+  const devices=await userRef.collection('devices').get();
+  const legacy=await userRef.collection('private').doc('device').get();
+  const refs=[...devices.docs,...(legacy.exists?[legacy]:[])];
+  const seen=new Set();let sent=false,attempted=false;
+  for(const device of refs){
+    const token=device.data()?.fcmToken;
+    if(!token||seen.has(token))continue;seen.add(token);attempted=true;
+    for(let attempt=0;attempt<MAX_RETRIES;attempt++){
+      try{
+        await messaging.send({token,notification:{title,body},data:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,String(v)])),android:{priority:'high',notification:{channelId:'blood_requests',tag:data.relatedId||'blood-bank'}},apns:{headers:{'apns-priority':'10'}}});sent=true;break;
+      }catch(e){
+        if(['messaging/registration-token-not-registered','messaging/invalid-registration-token'].includes(e.code)){
+          await db.runTransaction(async tx=>{const current=await tx.get(device.ref);if(current.data()?.fcmToken===token)tx.delete(device.ref);});break;
+        }
+        if(attempt<MAX_RETRIES-1)await sleep(RETRY_BASE_DELAY_MS*Math.pow(2,attempt));
       }
-
-      // Transient error — retry with exponential backoff.
-      const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
-      console.warn(
-        `sendPushToUser: attempt ${attempt + 1} failed for ${uid}: ` +
-          `${err.code || err.message}. Retrying in ${delay}ms.`
-      );
-      await sleep(delay);
     }
   }
-
-  console.error(
-    `sendPushToUser: all ${MAX_RETRIES} attempts failed for ${uid}`,
-    lastError
-  );
-  return { uid, sent: false, reason: 'max-retries-exceeded', error: String(lastError) };
+  if(inbox)await inbox.update({pushStatus:sent?'sent':attempted?'failed':'no_token'});
+  return {uid,sent,reason:sent?'sent':attempted?'max-retries-exceeded':'no-token'};
 }
 
 /**

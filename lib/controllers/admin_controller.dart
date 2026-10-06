@@ -1,3 +1,4 @@
+import '../services/workflow_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart'; // ✅ NEW — adminDeleteUser Cloud Function
@@ -57,18 +58,12 @@ class AdminController extends ChangeNotifier {
   }
 
   Future<void> approveUser(String uid) async {
-    await FirebaseFirestore.instance
-        .collection(AppConstants.usersCollection)
-        .doc(uid)
-        .update({'status': 'approved'});
+    await WorkflowService.call('adminAction',{'collection':'users','id':uid,'updates':{'status':'approved'}});
     await loadAllUsers();
   }
 
   Future<void> suspendUser(String uid) async {
-    await FirebaseFirestore.instance
-        .collection(AppConstants.usersCollection)
-        .doc(uid)
-        .update({'status': 'rejected'});
+    await WorkflowService.call('adminAction',{'collection':'users','id':uid,'updates':{'status':'rejected'}});
     await loadAllUsers();
   }
 

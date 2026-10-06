@@ -1,3 +1,5 @@
+import '../../../services/workflow_service.dart';
+import '../../requests/request_tracking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -51,6 +53,7 @@ Future<void> showAdminRequestDetails(
             ),
           ),
           actions: [
+            if(!sos)TextButton(onPressed:(){Navigator.pop(ctx);Navigator.push(context,MaterialPageRoute(builder:(_)=>RequestTrackingScreen(requestId:ref.id)));},child:const Text('Track / Manage donors')),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Close'),
@@ -64,7 +67,7 @@ Future<void> showAdminRequestDetails(
               ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, 'delete'),
-              child: const Text('Delete'),
+              child: const Text('Archive'),
             ),
           ],
         ),
@@ -76,14 +79,14 @@ Future<void> showAdminRequestDetails(
         (ctx) => AlertDialog(
           title: Text(
             action == 'delete'
-                ? 'Delete this record?'
+                ? 'Archive this record?'
                 : sos
                 ? 'Resolve this SOS?'
                 : 'Cancel this request?',
           ),
           content: Text(
             action == 'delete'
-                ? 'This permanently removes the record.'
+                ? 'This closes the request and preserves its history for audit.'
                 : 'The requester will see the updated status.',
           ),
           actions: [
@@ -100,45 +103,7 @@ Future<void> showAdminRequestDetails(
   );
   if (confirmed != true) return;
   try {
-    final db = FirebaseFirestore.instance;
-    await db.runTransaction((tx) async {
-      final snapshot = await tx.get(ref);
-      if (!snapshot.exists) {
-        throw StateError('This record has already been removed.');
-      }
-      final current = snapshot.data() as Map<String, dynamic>;
-      if (action == 'delete') {
-        tx.delete(ref);
-        return;
-      }
-      if (!sos && !['pending', 'accepted'].contains(current['status'])) {
-        throw StateError('This request is no longer open.');
-      }
-      tx.update(
-        ref,
-        sos
-            ? {'isResolved': true}
-            : {
-              'status': 'cancelled',
-              'cancelledAt': FieldValue.serverTimestamp(),
-            },
-      );
-      final uid = current[sos ? 'receiverId' : 'requesterId'];
-      if (uid is String && uid.isNotEmpty) {
-        tx.set(db.collection('notifications').doc(), {
-          'userId': uid,
-          'title': sos ? 'SOS resolved' : 'Request cancelled',
-          'body':
-              sos
-                  ? 'An administrator marked your SOS as resolved.'
-                  : 'An administrator cancelled your blood request.',
-          'type': 'general',
-          'relatedId': ref.id,
-          'isRead': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
-    });
+    await WorkflowService.call('adminRequestAction',{'id':ref.id,'sos':sos,'action':action=='delete'?'archive':'close'});
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Request updated successfully.')),
@@ -275,9 +240,7 @@ class _PendingUsersTab extends StatelessWidget {
   const _PendingUsersTab();
 
   Future<void> _approveUser(String uid, BuildContext context) async {
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      'status': 'approved',
-    });
+    await WorkflowService.call('adminAction', {'collection':'users','id':uid,'updates':{'status':'approved'}});
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -317,9 +280,7 @@ class _PendingUsersTab extends StatelessWidget {
     );
 
     if (confirm == true) {
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'status': 'rejected',
-      });
+      await WorkflowService.call('adminAction', {'collection':'users','id':uid,'updates':{'status':'rejected'}});
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(

@@ -65,7 +65,6 @@ class _AdminWebNotificationsState extends State<AdminWebNotifications>
     return FirebaseFirestore.instance
         .collection('broadcasts')
         .orderBy('createdAt', descending: true)
-        .limit(100)
         .snapshots()
         .map(
           (snap) =>

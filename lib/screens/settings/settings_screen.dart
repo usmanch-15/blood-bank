@@ -1,3 +1,5 @@
+import 'my_reports_screen.dart';
+import 'phone_settings_screen.dart';
 import '../../widgets/change_password_form.dart';
 import '../donor/donor_profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -184,6 +186,8 @@ class _ProfileTile extends StatelessWidget {
               return ListTile(
                 leading: const Icon(Icons.phone_outlined),
                 title: const Text('Phone'),
+                trailing: const Icon(Icons.verified_user_outlined),
+                onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const PhoneSettingsScreen())),
                 subtitle: Text(
                   (snapshot.data == null || snapshot.data!.isEmpty)
                       ? 'Not set'
@@ -482,6 +486,11 @@ class _SupportAboutTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
         children: [
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('My Reports / Support Status'),
+            onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const MyReportsScreen())),
+          ),
           ListTile(
             leading: const Icon(Icons.help_outline),
             title: const Text('Help & Support'),

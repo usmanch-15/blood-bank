@@ -1,3 +1,4 @@
+import '../../../services/workflow_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -780,9 +781,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
     if (confirm != true) return;
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'status': newStatus,
-      });
+      await WorkflowService.call('adminAction',{'collection':'users','id':uid,'updates':{'status':newStatus}});
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -863,12 +862,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                 onPressed: () async {
                   if (!form.currentState!.validate()) return;
                   try {
-                    await FirebaseFirestore.instance
-                        .doc('users/${user.uid}')
-                        .update({
-                          'name': name.text.trim(),
-                          'bloodGroup': bloodGroup,
-                        });
+                    await WorkflowService.call('adminAction',{'collection':'users','id':user.uid,'updates':{'name':name.text.trim(),'bloodGroup':bloodGroup}});
                     if (ctx.mounted) Navigator.pop(ctx);
                   } catch (e) {
                     if (ctx.mounted) {

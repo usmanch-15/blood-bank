@@ -1,3 +1,5 @@
+import 'admin_audit_screen.dart';
+import '../../settings/my_reports_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -77,6 +79,8 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
     ('Donations', Icons.favorite_rounded),
     ('Reports', Icons.flag_rounded),
     ('Notifications', Icons.notifications_rounded),
+    ('Support', Icons.support_agent),
+    ('Audit & Export', Icons.history),
   ];
 
   @override
@@ -90,6 +94,8 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
       AdminWebDonations(),
       AdminWebReports(),
       AdminWebNotifications(),
+      const MyReportsScreen(admin:true),
+      const AdminAuditScreen(),
     ];
   }
 
@@ -586,21 +592,21 @@ class _DashboardHome extends StatelessWidget {
   Future<Map<String, int>> _fetchStats() async {
     final db = FirebaseFirestore.instance;
 
-    final users = await db.collection('users').get();
-    final requests = await db.collection('blood_requests').get();
-    final donations = await db.collection('donations').get();
+    final users = await db.collection('users').count().get();
+    final requests = await db.collection('blood_requests').count().get();
+    final donations = await db.collection('donations').count().get();
 
     final pendingUsers =
         await db
             .collection('users')
             .where('status', isEqualTo: 'pending')
-            .get();
+            .count().get();
 
     return {
-      'users': users.size,
-      'requests': requests.size,
-      'donations': donations.size,
-      'pendingUsers': pendingUsers.size,
+      'users': users.count ?? 0,
+      'requests': requests.count ?? 0,
+      'donations': donations.count ?? 0,
+      'pendingUsers': pendingUsers.count ?? 0,
     };
   }
 

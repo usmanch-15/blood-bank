@@ -1,24 +1,26 @@
+import '../requests/request_list_screen.dart';
 import '../../utils/eligibility_checker.dart';
 import '../../utils/feedback.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
-import '../../services/geo_location_service.dart';
+
 import '../notification/notification_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import '../../services/auth_service.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../utils/app_animations.dart';
-import '../../widgets/loading_shimmer.dart';
-import '../../widgets/status_badge.dart';
-import '../../widgets/empty_state.dart';
+
+
+
 import '../../widgets/app_custom_widgets.dart';
+import '../../widgets/status_badge.dart';
 import 'donor_profile_screen.dart';
 import 'donation_history_screen.dart';
-import 'blood_request_detail_screen.dart';
+
 import 'rewards_screen.dart'; // ✅ FIX — see note below
 import '../settings/settings_screen.dart'; // ✅ NEW — was never reachable anywhere in the app
 
@@ -95,17 +97,6 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
   Future<void> _logout() async {
     await AuthService().signOut();
     if (mounted) Navigator.of(context).pushReplacementNamed('/login');
-  }
-
-  Future<void> _callNumber(String number) async {
-    final uri = Uri(scheme: 'tel', path: number);
-    if (!await launchUrl(uri)) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Could not open dialer.')));
-      }
-    }
   }
 
   @override
@@ -338,238 +329,8 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              StreamBuilder<QuerySnapshot>(
-                stream:
-                    FirebaseFirestore.instance
-                        .collection('blood_requests')
-                        .where('status', whereIn: ['pending', 'accepted'])
-                        .orderBy('createdAt', descending: true)
-                        .limit(100)
-                        .snapshots(),
-                builder: (context, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const LoadingShimmerList(itemCount: 2);
-                  }
-                  // ✅ NEW — hide requests this donor already declined
-                  // (recorded on their own user doc via
-                  // DonorController.declineRequest; see blood_request_detail_screen.dart).
-                  final declinedIds = List<String>.from(
-                    _userData?['declinedRequestIds'] ?? const [],
-                  );
-                  final myUid = _auth.currentUser?.uid;
-                  // ✅ BUG FIX — a receiver who is ALSO a donor (dual role)
-                  // was seeing their own blood request show up inside their
-                  // own "Blood Requests Near You" feed, because the query
-                  // only filtered by status == pending and never excluded
-                  // requests where requesterId == the signed-in user. Now
-                  // we filter those out client-side (Firestore doesn't
-                  // support a "not equal to me" + other filters combo
-                  // cleanly without a composite index for this shape).
-                  if (snap.hasError) {
-                    return Text(AppFeedback.message(snap.error!));
-                  }
-                  final docs =
-                      (snap.data?.docs ?? [])
-                          .where((doc) => !declinedIds.contains(doc.id))
-                          .where(
-                            (doc) =>
-                                (doc.data()
-                                        as Map<String, dynamic>)['status'] ==
-                                    'pending' ||
-                                (doc.data()
-                                        as Map<
-                                          String,
-                                          dynamic
-                                        >)['acceptedDonorId'] ==
-                                    myUid,
-                          )
-                          .where((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            if (data['requesterId'] == myUid) return false;
-                            if (data['acceptedDonorId'] == myUid) return true;
-                            return isEligible && _userData?['isAvailable'] == true &&
-                                (GeoLocationService.compatibleDonorGroups[data['bloodGroup']] ?? []).contains(bloodGroup);
-                          })
-                          .toList();
-                  if (docs.isEmpty) {
-                    return const EmptyState(
-                      icon: Icons.bloodtype_outlined,
-                      title: 'No pending requests right now',
-                      message:
-                          'Compatible requests will show up here as they come in.',
-                    );
-                  }
-                  return Column(
-                    children:
-                        docs.map((doc) {
-                          final d = doc.data() as Map<String, dynamic>;
-                          final urgency = d['urgency'] ?? 'Normal';
-
-                          return GestureDetector(
-                            onTap: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (_) => BloodRequestDetailScreen(
-                                        requestData: d,
-                                        requestId: doc.id,
-                                      ),
-                                ),
-                              );
-                              // Accept/Decline both change this donor's own doc
-                              // (declinedRequestIds) or the request's status —
-                              // refresh so the list reflects it right away.
-                              _loadUserData();
-                            },
-                            child: Card(
-                              margin: const EdgeInsets.only(
-                                bottom: AppSpacing.md,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppSpacing.radiusLg,
-                                ),
-                              ),
-                              elevation: AppSpacing.elevationLow,
-                              child: Padding(
-                                padding: const EdgeInsets.all(AppSpacing.lg),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        BloodTypeBadge(
-                                          bloodGroup: d['bloodGroup'] ?? '?',
-                                        ),
-                                        UrgencyBadge(urgency: urgency),
-                                      ],
-                                    ),
-                                    const SizedBox(height: AppSpacing.sm + 2),
-                                    // Patient name
-                                    if (d['patientName'] != null)
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.person_outline,
-                                            size: AppSpacing.iconSm,
-                                            color: Colors.grey,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            d['patientName'],
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    const SizedBox(height: 4),
-                                    // Hospital
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.local_hospital_outlined,
-                                          size: AppSpacing.iconSm,
-                                          color: Colors.grey,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            d['hospitalName'] ?? 'Unknown',
-                                            style: TextStyle(
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    // Location
-                                    if (d['location'] != null &&
-                                        d['location'].toString().isNotEmpty)
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.location_on_outlined,
-                                            size: AppSpacing.iconSm,
-                                            color: Colors.grey,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              d['location'],
-                                              style: TextStyle(
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    const SizedBox(height: 4),
-                                    // Units
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.bloodtype_outlined,
-                                          size: AppSpacing.iconSm,
-                                          color: Colors.grey,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          '${d['unitsRequired'] ?? d['quantity'] ?? 1} units required',
-                                          style: TextStyle(color: Colors.grey),
-                                        ),
-                                      ],
-                                    ),
-                                    // Contact number — ✅ FIX: now actually opens the dialer
-                                    if (d['contactNumber'] != null &&
-                                        d['contactNumber']
-                                            .toString()
-                                            .isNotEmpty) ...[
-                                      const SizedBox(height: AppSpacing.sm + 2),
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: OutlinedButton.icon(
-                                          icon: Icon(
-                                            Icons.call,
-                                            size: AppSpacing.iconSm,
-                                          ),
-                                          label: Text(
-                                            'Contact: ${d['contactNumber']}',
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor:
-                                                AppColors.primaryRed,
-                                            side: BorderSide(
-                                              color: AppColors.primaryRed
-                                                  .withValues(alpha: 0.4),
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                    AppSpacing.radiusSm + 2,
-                                                  ),
-                                            ),
-                                          ),
-                                          onPressed:
-                                              () => _callNumber(
-                                                d['contactNumber'],
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                  );
-                },
-              ),
+              _buildActionTile(title:'My Active Donations',icon:Icons.volunteer_activism,color:AppColors.primaryRed,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RequestListScreen(mode:'active')))),
+              _buildActionTile(title:'Browse matching requests',icon:Icons.search,color:Colors.teal,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RequestListScreen(mode:'discover')))),
 
               const SizedBox(height: AppSpacing.xxl + 1),
 

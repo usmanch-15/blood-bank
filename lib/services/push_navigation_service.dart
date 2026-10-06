@@ -1,8 +1,10 @@
+import '../screens/requests/request_tracking_screen.dart';
+import '../screens/settings/my_reports_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
-import '../screens/donor/blood_request_detail_screen.dart';
+
 import '../screens/notification/sos_alert_detail_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -151,27 +153,9 @@ class PushNavigationService {
     final auth = navigator.context.read<AuthController>();
     if (!auth.isLoggedIn) return;
     try {
-      if (type == 'blood_request' &&
-          relatedId != null &&
-          !relatedId.contains('/')) {
-        final doc =
-            await FirebaseFirestore.instance
-                .doc('blood_requests/$relatedId')
-                .get();
-        if (!doc.exists ||
-            FirebaseAuth.instance.currentUser?.uid != auth.currentUser?.uid) {
-          return;
-        }
-        navigator.push(
-          MaterialPageRoute(
-            builder:
-                (_) => BloodRequestDetailScreen(
-                  requestId: auth.isDonor ? relatedId : null,
-                  requestData: doc.data()!,
-                ),
-          ),
-        );
-        return;
+      if (type == 'report_update') {navigator.push(MaterialPageRoute(builder:(_)=>const MyReportsScreen()));return;}
+      if (['blood_request','request_update','general','donation_confirmed'].contains(type) && relatedId!=null && relatedId.isNotEmpty && !relatedId.contains('/')) {
+        navigator.push(MaterialPageRoute(builder:(_)=>RequestTrackingScreen(requestId:relatedId)));return;
       }
       if ((type == 'sosAlerts' || type == 'sos') &&
           relatedId != null &&

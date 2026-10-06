@@ -1,18 +1,16 @@
+import '../services/workflow_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+
 import '../models/blood_request_model.dart';
 import '../models/donor_model.dart';
-import '../services/geo_location_service.dart';
-import '../services/notification_service.dart';
+import '../services/workflow_service.dart';
 import '../constants/app_constants.dart';
 
 class ReceiverController extends ChangeNotifier {
-  final GeoLocationService _geoService = GeoLocationService();
-  final NotificationService _notifService = NotificationService();
 
   List<BloodRequestModel> _myRequests = [];
-  List<DonorModel> _nearbyDonors = [];
+  final List<DonorModel> _nearbyDonors = [];
   bool _isLoading = false;
   bool _sosSent = false;
 
@@ -34,98 +32,27 @@ class ReceiverController extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final ref =
-          FirebaseFirestore.instance
-              .collection(AppConstants.bloodRequestsCollection)
-              .doc();
-      await ref.set({
-        'id': ref.id,
-        'requesterId': receiverId,
-        'bloodGroup': bloodGroup,
-        'urgency': urgency,
-        'hospitalName': hospitalName,
-        'location': location,
-        'latitude': latitude,
-        'longitude': longitude,
-        'quantity': quantity,
-        'status': 'pending',
-        'createdAt': FieldValue.serverTimestamp(),
-        'notifiedDonors': [],
-      });
-
-      final donors = await _geoService.findNearbyDonors(
-        receiverLat: latitude,
-        receiverLng: longitude,
-        bloodGroup: bloodGroup,
-      );
-
-      if (donors.isNotEmpty) {
-        await _notifService.sendToUsers(
-          userIds: donors.map((d) => d.uid).toList(),
-          title: 'Blood Needed: $bloodGroup',
-          body: 'A patient at $hospitalName needs $bloodGroup blood.',
-          type: 'blood_request',
-          relatedId: ref.id,
-        );
+      if (latitude.abs() > 90 || longitude.abs() > 180) {
+        throw ArgumentError('A valid hospital pin is required.');
       }
+      final result = await WorkflowService.call('createBloodRequest', {
+        'requestId': FirebaseFirestore.instance.collection('blood_requests').doc().id,
+        'bloodGroup': bloodGroup, 'urgency': urgency, 'hospitalName': hospitalName,
+        'hospitalAddress': location, 'latitude': latitude, 'longitude': longitude,
+        'quantity': quantity, 'requiredBy': DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch,
+        'contactNumber': '',
+      });
+      if (result['id'] == null) throw StateError('Request was not created.');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> sendSosAlert({
-    required String receiverId,
-    required String bloodGroup,
-    String urgency = 'critical',
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final position = await _geoService.getCurrentLocation();
-
-      _nearbyDonors = await _geoService.findNearbyDonors(
-        receiverLat: position.latitude,
-        receiverLng: position.longitude,
-        bloodGroup: bloodGroup,
-        radiusKm: AppConstants.nearbyRadius,
-      );
-
-      if (_nearbyDonors.isEmpty) {
-        _nearbyDonors = await _geoService.findNearbyDonors(
-          receiverLat: position.latitude,
-          receiverLng: position.longitude,
-          bloodGroup: bloodGroup,
-          radiusKm: 30.0,
-        );
-      }
-
-      await FirebaseFunctions.instance.httpsCallable('createSosAlert').call({
-        'bloodGroup': bloodGroup,
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'urgency': urgency,
-      });
-
-      _sosSent = true;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  Future<String> sendSosAlert({required String receiverId, required String bloodGroup,String urgency='critical',required double latitude,required double longitude,required String hospitalName,required String contactNumber}) async {
+    _isLoading=true;notifyListeners();
+    try {final result=await WorkflowService.call('createSosAlert',{'bloodGroup':bloodGroup,'latitude':latitude,'longitude':longitude,'urgency':urgency,'hospitalName':hospitalName,'contactNumber':contactNumber});_sosSent=true;return result['requestId'] as String;}
+    finally{_isLoading=false;notifyListeners();}
   }
 
-  Future<void> loadMyRequests(String receiverId) async {
-    final snapshot =
-        await FirebaseFirestore.instance
-            .collection(AppConstants.bloodRequestsCollection)
-            .where('requesterId', isEqualTo: receiverId)
-            .orderBy('createdAt', descending: true)
-            .limit(100)
-            .get();
-    _myRequests =
-        snapshot.docs
-            .map((d) => BloodRequestModel.fromFirestore(d.data(), d.id))
-            .toList();
-    notifyListeners();
-  }
 }

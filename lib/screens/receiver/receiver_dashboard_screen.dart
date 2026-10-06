@@ -1,3 +1,6 @@
+import '../requests/request_tracking_screen.dart';
+import '../requests/request_list_screen.dart';
+import '../../services/workflow_service.dart';
 import '../../utils/feedback.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
@@ -12,10 +15,11 @@ import '../../utils/app_animations.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/loading_shimmer.dart';
+import '../../widgets/paged_records.dart';
 import 'blood_request_form_screen.dart';
 import 'sos_emergency_screen.dart';
 import '../maps/nearby_donors_map_screen.dart'; // Nearby Donors map
-import 'donor_matching_screen.dart'; // Find Donors for a specific request
+ // Find Donors for a specific request
 import '../settings/settings_screen.dart'; // ✅ NEW — was never reachable anywhere in the app
 
 /// ✅ UI POLISH ONLY — all 3 features added earlier this session (SOS
@@ -245,8 +249,10 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
 
                 const SizedBox(height: AppSpacing.xxl + 6),
 
+                _actionTile(title:'All requests & history',icon:Icons.history,color:Colors.teal,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RequestListScreen()))),
+                _actionTile(title:'Active SOS & history',icon:Icons.emergency,color:Colors.red,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RequestListScreen(mode:'sos')))),
                 Text(
-                  'My Requests',
+                  'Recent Requests',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -257,14 +263,24 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
 
                 // ── Real Firebase Requests (StreamBuilder) — unchanged query ──
                 uid.isEmpty
-                    ? Center(child: Text('Not logged in'))
+                    ? const Center(child: Text('Not logged in'))
+                    : PagedRecords(
+                      query: _firestore
+                          .collection('blood_requests')
+                          .where('requesterId', isEqualTo: uid)
+                          .orderBy('createdAt', descending: true),
+                      itemBuilder: (context, doc) => _requestCard(
+                        BloodRequestModel.fromFirestore(doc.data(), doc.id),
+                      ),
+                    ),
+                /*
                     : StreamBuilder<QuerySnapshot>(
                       stream:
                           _firestore
                               .collection('blood_requests')
                               .where('requesterId', isEqualTo: uid)
                               .orderBy('createdAt', descending: true)
-                              .limit(100)
+                              .limit(30)
                               .snapshots(),
                       builder: (context, snap) {
                         if (snap.connectionState == ConnectionState.waiting) {
@@ -295,7 +311,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                               }).toList(),
                         );
                       },
-                    ),
+                    ),*/
 
                 const SizedBox(height: AppSpacing.xxl),
               ]),
@@ -417,7 +433,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
               const SizedBox(height: AppSpacing.sm),
               UrgencyBadge(urgency: request.urgency),
             ],
-            if (['pending', 'accepted'].contains(request.status))
+            if (['pending', 'accepted', 'partially_fulfilled'].contains(request.status))
               TextButton.icon(
                 icon: Icon(Icons.cancel_outlined),
                 label: Text('Cancel request'),
@@ -441,12 +457,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                   );
                   if (confirmed != true) return;
                   try {
-                    await FirebaseFirestore.instance
-                        .doc('blood_requests/${request.id}')
-                        .update({
-                          'status': 'cancelled',
-                          'cancelledAt': FieldValue.serverTimestamp(),
-                        });
+                    await WorkflowService.call('closeRequest',{'requestId':request.id});
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -468,15 +479,12 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       context,
                       MaterialPageRoute(
                         builder:
-                            (_) => DonorMatchingScreen(
-                              initialBloodGroup: request.bloodGroup,
-                              requestId: request.id,
-                            ),
+                            (_) => RequestTrackingScreen(requestId:request.id),
                       ),
                     );
                   },
                   icon: Icon(Icons.search, size: 16),
-                  label: Text('Find Donors'),
+                  label: Text('Track request / donors'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primaryRed,
                     side: const BorderSide(color: AppColors.primaryRed),

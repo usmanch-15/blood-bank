@@ -1,3 +1,4 @@
+import '../../../services/workflow_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/misuse_report_model.dart';
@@ -484,14 +485,7 @@ class _AdminWebReportsState extends State<AdminWebReports>
     String title,
   ) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('misuse_reports')
-          .doc(id)
-          .update({
-            'status': newStatus,
-            if (newStatus == 'resolved')
-              'resolvedAt': FieldValue.serverTimestamp(),
-          });
+      await WorkflowService.call('adminAction',{'collection':'misuse_reports','id':id,'updates':{'status':newStatus}});
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -555,10 +549,7 @@ class _AdminWebReportsState extends State<AdminWebReports>
                 ),
                 onPressed: () async {
                   try {
-                    await FirebaseFirestore.instance
-                        .collection('misuse_reports')
-                        .doc(report.id)
-                        .update({'adminNotes': ctrl.text.trim()});
+                    await WorkflowService.call('adminAction',{'collection':'misuse_reports','id':report.id,'updates':{'adminNotes':ctrl.text.trim()}});
                     if (dialogContext.mounted) Navigator.pop(dialogContext);
                   } catch (e) {
                     if (mounted) {

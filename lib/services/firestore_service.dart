@@ -1,3 +1,4 @@
+import 'workflow_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/user_model.dart';
@@ -73,39 +74,19 @@ class FirestoreService {
 
   Future<String> createBloodRequest(BloodRequestModel request) async {
     try {
-      final doc = await _firestore
-          .collection(AppConstants.bloodRequestsCollection)
-          .add(request.toFirestore());
-      return doc.id;
+      final id = request.id.isEmpty ? _firestore.collection('blood_requests').doc().id : request.id;
+      final data = request.toFirestore();
+      data['requiredBy'] = request.requiredBy?.millisecondsSinceEpoch;
+      final result = await WorkflowService.call('createBloodRequest', {...data,'requestId':id});
+      return result['id'] as String;
     } catch (e) {
       throw FirestoreException('Error creating blood request: $e');
     }
   }
 
-  Stream<List<BloodRequestModel>> getAllBloodRequests() {
-    return _firestore
-        .collection(AppConstants.bloodRequestsCollection)
-        .orderBy('createdAt', descending: true)
-        .limit(100)
-        .snapshots()
-        .map(
-          (snap) =>
-              snap.docs
-                  .map((d) => BloodRequestModel.fromFirestore(d.data(), d.id))
-                  .toList(),
-        );
-  }
-
   Future<void> updateBloodRequestStatus(String id, String status) async {
     try {
-      await _firestore
-          .collection(AppConstants.bloodRequestsCollection)
-          .doc(id)
-          .update({
-            'status': status,
-            if (status == 'cancelled')
-              'cancelledAt': FieldValue.serverTimestamp(),
-          });
+      await WorkflowService.call('closeRequest', {'requestId':id});
     } catch (e) {
       throw FirestoreException('Error updating request: $e');
     }

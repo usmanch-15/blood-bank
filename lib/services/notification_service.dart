@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -47,9 +48,16 @@ class NotificationService {
     }
   }
 
-  Future<void> _save(String uid, String token) => FirebaseFirestore.instance
-      .doc('users/$uid/private/device')
-      .set({'fcmToken': token, 'fcmUpdatedAt': FieldValue.serverTimestamp()});
+  Future<String> _deviceId() async {
+    final prefs=await SharedPreferences.getInstance();
+    var id=prefs.getString('notification_device_id');
+    if(id==null){id=FirebaseFirestore.instance.collection('device_ids').doc().id;await prefs.setString('notification_device_id',id);}
+    return id;
+  }
+  Future<void> _save(String uid,String token) async {
+    final device=await _deviceId();
+    await FirebaseFirestore.instance.doc('users/$uid/devices/$device').set({'fcmToken':token,'fcmUpdatedAt':FieldValue.serverTimestamp()});
+  }
 
   Future<void> clearDeviceToken() async {
     await _refresh?.cancel();
@@ -59,7 +67,7 @@ class NotificationService {
     try {
       if (uid != null) {
         await FirebaseFirestore.instance
-            .doc('users/$uid/private/device')
+            .doc('users/$uid/devices/${await _deviceId()}')
             .delete();
       }
     } catch (e) {

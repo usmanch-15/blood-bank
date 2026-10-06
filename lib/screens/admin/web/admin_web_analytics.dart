@@ -42,59 +42,40 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
     try {
       final db = FirebaseFirestore.instance;
 
-      // Parallel fetches
+      // Use Firestore aggregation queries instead of downloading entire
+      // collections into the browser. Blood-group charts are eight bounded
+      // count queries, while totals/statuses use count and sum aggregation.
+      const groups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+      final userTotal = db.collection('users').count().get();
+      final donorTotal = db.collection('users').where('isDonor', isEqualTo: true).count().get();
+      final receiverTotal = db.collection('users').where('isReceiver', isEqualTo: true).count().get();
+      final pendingUserTotal = db.collection('users').where('status', isEqualTo: 'pending').count().get();
+      final donationTotal = db.collection('donations').count().get();
+      final pointsTotal = db.collection('donations').aggregate(sum('pointsEarned')).get();
+      final requestTotal = db.collection('blood_requests').count().get();
+      final pendingRequestTotal = db.collection('blood_requests').where('status', isEqualTo: 'pending').count().get();
+      final fulfilledRequestTotal = db.collection('blood_requests').where('status', isEqualTo: 'fulfilled').count().get();
+      final donationGroups = Future.wait(groups.map((g) => db.collection('donations').where('bloodGroup', isEqualTo: g).count().get()));
+      final requestGroups = Future.wait(groups.map((g) => db.collection('blood_requests').where('bloodGroup', isEqualTo: g).count().get()));
       final results = await Future.wait([
-        db.collection('users').get(),
-        db.collection('donations').get(),
-        db.collection('blood_requests').get(),
+        userTotal, donorTotal, receiverTotal, pendingUserTotal, donationTotal,
+        pointsTotal, requestTotal, pendingRequestTotal, fulfilledRequestTotal,
+        donationGroups, requestGroups,
       ]);
-
-      final usersSnap = results[0];
-      final donationsSnap = results[1];
-      final requestsSnap = results[2];
-
-      // Users breakdown
-      int donors = 0, receivers = 0, pending = 0;
-      for (final doc in usersSnap.docs) {
-        final data = doc.data();
-        if (data['isDonor'] == true) donors++;
-        if (data['isReceiver'] == true) receivers++;
-        if (data['status'] == 'pending') pending++;
-      }
-
-      // Donations breakdown by blood group
-      final bgDonations = <String, int>{};
-      int totalPts = 0;
-      for (final doc in donationsSnap.docs) {
-        final data = doc.data();
-        final bg = data['bloodGroup'] as String? ?? 'Unknown';
-        bgDonations[bg] = (bgDonations[bg] ?? 0) + 1;
-        totalPts += (data['pointsEarned'] as int? ?? 0);
-      }
-
-      // Requests breakdown
-      int pendingReq = 0, fulfilledReq = 0;
-      final bgRequests = <String, int>{};
-      for (final doc in requestsSnap.docs) {
-        final data = doc.data();
-        final status = data['status'] as String? ?? '';
-        if (status == 'pending') pendingReq++;
-        if (status == 'fulfilled') fulfilledReq++;
-        final bg = data['bloodGroup'] as String? ?? 'Unknown';
-        bgRequests[bg] = (bgRequests[bg] ?? 0) + 1;
-      }
+      final bgDonations = <String, int>{for (var i = 0; i < groups.length; i++) groups[i]: (results[9] as List<AggregateQuerySnapshot>)[i].count ?? 0};
+      final bgRequests = <String, int>{for (var i = 0; i < groups.length; i++) groups[i]: (results[10] as List<AggregateQuerySnapshot>)[i].count ?? 0};
 
       if (!mounted) return;
       setState(() {
-        _totalUsers = usersSnap.size;
-        _totalDonors = donors;
-        _totalReceivers = receivers;
-        _pendingUsers = pending;
-        _totalDonations = donationsSnap.size;
-        _totalRequests = requestsSnap.size;
-        _pendingRequests = pendingReq;
-        _fulfilledRequests = fulfilledReq;
-        _totalPoints = totalPts;
+        _totalUsers = (results[0] as AggregateQuerySnapshot).count ?? 0;
+        _totalDonors = (results[1] as AggregateQuerySnapshot).count ?? 0;
+        _totalReceivers = (results[2] as AggregateQuerySnapshot).count ?? 0;
+        _pendingUsers = (results[3] as AggregateQuerySnapshot).count ?? 0;
+        _totalDonations = (results[4] as AggregateQuerySnapshot).count ?? 0;
+        _totalRequests = (results[6] as AggregateQuerySnapshot).count ?? 0;
+        _pendingRequests = (results[7] as AggregateQuerySnapshot).count ?? 0;
+        _fulfilledRequests = (results[8] as AggregateQuerySnapshot).count ?? 0;
+        _totalPoints = ((results[5] as AggregateQuerySnapshot).getSum('pointsEarned') ?? 0).toInt();
         _bloodGroupDonations = bgDonations;
         _bloodGroupRequests = bgRequests;
         _isLoading = false;

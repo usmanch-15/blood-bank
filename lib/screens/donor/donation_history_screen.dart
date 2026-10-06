@@ -1,10 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../widgets/paged_records.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shimmer/shimmer.dart';
+
 import 'package:intl/intl.dart';
 
 import '../../constants/app_colors.dart';
-import '../../services/firestore_service.dart';
+
 import '../../models/donation_model.dart';
 
 /// Donation History Screen - View all past donations
@@ -16,116 +18,18 @@ class DonationHistoryScreen extends StatefulWidget {
 }
 
 class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
-  late FirestoreService _firestoreService;
+
   final user = FirebaseAuth.instance.currentUser;
-  int _limit = 100;
+
 
   @override
   void initState() {
     super.initState();
-    _firestoreService = FirestoreService();
+
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (user == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Donation History'),
-          backgroundColor: AppColors.primaryRed,
-        ),
-        body: const Center(
-          child: Text('Please login to view donation history'),
-        ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Donation History'),
-        backgroundColor: AppColors.primaryRed,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-
-      body: StreamBuilder<List<DonationModel>>(
-        stream: _firestoreService.getDonationHistory(user!.uid, limit: _limit),
-        builder: (context, snapshot) {
-          // Loading
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: 5,
-              itemBuilder:
-                  (context, index) => Shimmer.fromColors(
-                    baseColor: Colors.grey[300]!,
-                    highlightColor: Colors.grey[100]!,
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-            );
-          }
-
-          // Error
-          if (snapshot.hasError) {
-            return const Center(child: Text('Error loading donation history'));
-          }
-
-          final donations = snapshot.data ?? [];
-
-          // Empty state
-          if (donations.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.bloodtype_outlined,
-                    size: 80,
-                    color: AppColors.textLight,
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'No donations yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Your donation history will appear here',
-                    style: TextStyle(fontSize: 14, color: AppColors.textLight),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // List
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: donations.length + (donations.length == _limit ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index == donations.length) {
-                return TextButton(
-                  onPressed: () => setState(() => _limit += 100),
-                  child: const Text('Load older donations'),
-                );
-              }
-              return _buildDonationCard(donations[index]);
-            },
-          );
-        },
-      ),
-    );
-  }
+  Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Donation History')),body:user==null?const Center(child:Text('Please sign in.')):PagedRecords(query:FirebaseFirestore.instance.collection('donations').where('donorId',isEqualTo:user!.uid).orderBy('donationDate',descending:true),itemBuilder:(context,doc)=>_buildDonationCard(DonationModel.fromFirestore(doc.data(),doc.id))));
 
   Widget _buildDonationCard(DonationModel donation) {
     final dateFormat = DateFormat('MMM dd, yyyy');

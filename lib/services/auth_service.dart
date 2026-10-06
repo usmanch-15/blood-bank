@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../utils/account_policy.dart';
 import '../utils/validators.dart';
 import 'notification_service.dart';
@@ -198,6 +199,7 @@ class AuthService {
     required void Function(PhoneAuthCredential credential) onAutoVerified,
   }) async {
     try {
+      if(kIsWeb){final confirmation=await _auth.signInWithPhoneNumber(phoneNumber);onCodeSent(confirmation.verificationId);return;}
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         timeout: const Duration(seconds: 60),
@@ -284,8 +286,21 @@ class AuthService {
       }
       await NotificationService().init();
       return data!;
-    } catch (_) {
+    } on FirebaseAuthException {
+      // Authentication failures such as revoked credentials should end the
+      // session. Network/server failures must remain recoverable so a brief
+      // outage does not silently sign the user out.
       await _auth.signOut();
+      rethrow;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied' || e.code == 'unauthenticated') {
+        await _auth.signOut();
+      }
+      rethrow;
+    } catch (e) {
+      if (e is StateError && e.toString().contains('unavailable')) {
+        await _auth.signOut();
+      }
       rethrow;
     }
   }

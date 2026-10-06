@@ -13,7 +13,9 @@ const { checkEligibilityReminders } = require("./eligibilityReminder");
 
 const workflows = require('./secureWorkflows');
 const {nearbyDonors} = require('./nearbyDonors');
-exports.acceptDonation = onCall(workflows.acceptDonation);
+for (const name of ['createBloodRequest','acceptDonation','updateAssignment','closeRequest','getRequest','discoverRequests','findDonors','getSos','resolveSos']) exports[name] = onCall(workflows[name]);
+const administration = require('./adminWorkflows');
+for (const name of ['adminAction','submitReport','exportPage','adminRequestAction']) exports[name] = onCall(administration[name]);
 exports.confirmDonation = onCall(workflows.confirmDonation);
 exports.deleteAccount = onCall(request => workflows.deleteAccount(request));
 exports.createSosAlert = onCall(workflows.createSosAlert);
@@ -25,11 +27,12 @@ exports.sendPushNotification = onDocumentCreated(
     if (!data || !data.userId) return;
     if (data.pushSentDirectly) return; // already sent by notificationService — avoid duplicate push
 
-    await sendPushToUser(data.userId, {
+    const delivery = await sendPushToUser(data.userId, {
       title: data.title || 'Smart Blood Bank', body: data.body || '',
       data: {type: data.type || 'general', relatedId: data.relatedId || ''},
       record: false,
     });
+    await event.data.ref.update({pushStatus:delivery.sent?'sent':delivery.reason});
   }
 );
 
@@ -110,64 +113,7 @@ exports.onBroadcastCreated = onDocumentCreated(
   }
 );
 
-exports.getDonorContact = onCall(async (request) => {
-  const auth = request.auth;
-  if (!auth) {
-    throw new HttpsError("unauthenticated", "Login required.");
-  }
-
-  const callerData = (await db.doc(`users/${auth.uid}`).get()).data();
-  if (callerData?.status !== 'approved') throw new HttpsError('permission-denied','Active account required.');
-  if (callerData.isReceiver !== true) throw new HttpsError('permission-denied','Switch to receiver mode before requesting donor contact.');
-  const contactLimit = db.doc(`rate_limits/contact_${auth.uid}`);
-  await db.runTransaction(async tx => {
-    const data = (await tx.get(contactLimit)).data();
-    const recent = (data?.timestamps || []).filter(time => time > Date.now() - 3600000);
-    if (recent.length >= 20) throw new HttpsError('resource-exhausted','Contact lookup limit reached. Try again later.');
-    tx.set(contactLimit, {timestamps: [...recent, Date.now()]});
-  });
-  const { donorId } = request.data || {};
-  if (typeof donorId !== 'string' || donorId.includes('/')) throw new HttpsError('invalid-argument','Invalid donor.');
-  if (!donorId) {
-    throw new HttpsError("invalid-argument", "donorId zaroori hai.");
-  }
-
-  const donorSnap = await db.collection("users").doc(donorId).get();
-  if (!donorSnap.exists) {
-    throw new HttpsError("not-found", "Donor account nahi mila.");
-  }
-  const donorData = donorSnap.data();
-  if (donorData.isDonor !== true || donorData.status !== "approved" || donorData.isAvailable !== true) {
-    // Sirf approved donors ka number diya jaye — random pending/rejected
-    // accounts ya receivers ka number is function se kabhi na mile.
-    throw new HttpsError(
-      "permission-denied",
-      "Ye user donor nahi hai ya approved nahi hai."
-    );
-  }
-
-  const contactSnap = await db
-      .collection("users")
-      .doc(donorId)
-      .collection("private")
-      .doc("contact")
-      .get();
-
-  const phoneNumber = contactSnap.exists ? contactSnap.data().phoneNumber : null;
-
-  // Audit trail — kisne kis donor ka number kab dekha.
-  await db.collection("audit_logs").add({
-    action: "donor_contact_viewed",
-    viewedBy: auth.uid,
-    donorId,
-    createdAt: admin.firestore.Timestamp.now(),
-  });
-
-  if (!phoneNumber) {
-    return { phoneNumber: null };
-  }
-  return { phoneNumber };
-});
+exports.getDonorContact = onCall(workflows.getDonorContact);
 
 exports.adminDeleteUser = onCall(request => workflows.deleteAccount(request, true));
 
@@ -184,7 +130,7 @@ async function notifyRequest(request) {
   const ref = db.doc(`blood_requests/${requestId}`);
   const [req, user] = await Promise.all([ref.get(), db.doc(`users/${request.auth.uid}`).get()]);
   const r=req.data();
-  if (!r || r.requesterId !== request.auth.uid || user.data()?.status !== 'approved' || !['pending','accepted'].includes(r.status)) {
+  if (!r || r.requesterId !== request.auth.uid || user.data()?.status !== 'approved' || !workflows.openStatuses.includes(r.status) || workflows.expired(r)) {
     throw new HttpsError('permission-denied','An active request belonging to you is required.');
   }
   const ids = await nearbyDonors(r.latitude,r.longitude,r.bloodGroup,50);
@@ -207,7 +153,7 @@ exports.notifyRequest = onCall(notifyRequest);
 // Matching runs on the server even if the client closes after saving.
 exports.onBloodRequestCreated = onDocumentCreated('blood_requests/{requestId}', async event => {
   const data = event.data?.data();
-  if (!data || data.status !== 'pending' || !Number.isFinite(data.latitude) || !Number.isFinite(data.longitude)) return;
+  if (!data || data.sosId || data.status !== 'pending' || !Number.isFinite(data.latitude) || !Number.isFinite(data.longitude)) return;
   let recipients = [];
   for (const radius of [10, 30, 50]) {
     recipients = (await nearbyDonors(data.latitude, data.longitude, data.bloodGroup, radius))
@@ -218,3 +164,5 @@ exports.onBloodRequestCreated = onDocumentCreated('blood_requests/{requestId}', 
     requestId: event.params.requestId, userIds: recipients,
   }});
 });
+
+exports.expireOpenRequests = onSchedule('every 15 minutes', workflows.expireRequests);
