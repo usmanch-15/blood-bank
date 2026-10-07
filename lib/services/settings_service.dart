@@ -53,8 +53,10 @@ class SettingsService {
     String? bloodGroup,
     String? address,
   }) async {
-    if (name != null && AppValidators.validateName(name) != null) throw ArgumentError(AppValidators.validateName(name));
-    if (phoneNumber != null) throw StateError('Use phone verification to change your number.');
+    if (name != null && AppValidators.validateName(name) != null)
+      throw ArgumentError(AppValidators.validateName(name));
+    if (phoneNumber != null)
+      throw StateError('Use phone verification to change your number.');
     final data = <String, dynamic>{};
     if (name != null) data['name'] = name.trim();
     if (bloodGroup != null) data['bloodGroup'] = bloodGroup;
@@ -66,10 +68,9 @@ class SettingsService {
     }
 
     if (phoneNumber != null) {
-      await _privateContactDoc.set(
-        {'phoneNumber': phoneNumber.trim()},
-        SetOptions(merge: true),
-      );
+      await _privateContactDoc.set({
+        'phoneNumber': phoneNumber.trim(),
+      }, SetOptions(merge: true));
     }
   }
 
@@ -105,9 +106,7 @@ class SettingsService {
   }
 
   Future<void> setLocationSharing(bool enabled) async {
-    final data = <String, dynamic>{
-      'locationSharingEnabled': enabled,
-    };
+    final data = <String, dynamic>{'locationSharingEnabled': enabled};
     if (enabled) {
       final position = await GeoLocationService().getCurrentLocation();
       data['latitude'] = LocationHelper.roundForPrivacy(position.latitude);
@@ -125,6 +124,7 @@ class SettingsService {
     await NotificationService().clearDeviceToken();
     await _auth.signOut();
   }
+
   Future<void> deleteAccount() async {
     await FirebaseFunctions.instance.httpsCallable('deleteAccount').call();
     await NotificationService().clearDeviceToken();
@@ -169,14 +169,33 @@ class SettingsService {
 
   /// ✅ NEW — "Download My Data" (Privacy Policy §6).
   Future<String> exportUserData() async {
-    final uid=_uid;if(uid==null)throw StateError('Sign in first.');
-    final output=<String,dynamic>{'generatedAt':DateTime.now().toIso8601String()};
-    final contact=await _privateContactDoc.get();
-    output['privateContact']=contact.data();
-    for(final collection in ['users','blood_requests','donations','sosRequests','misuse_reports','feedback','notifications']) {
-      final items=<dynamic>[];String? cursor;
-      do{final page=await WorkflowService.call('exportPage',{'collection':collection,'cursor':cursor});items.addAll(page['items'] as List);cursor=page['cursor'];}while(cursor!=null);
-      output[collection]=items;
+    final uid = _uid;
+    if (uid == null) throw StateError('Sign in first.');
+    final output = <String, dynamic>{
+      'generatedAt': DateTime.now().toIso8601String(),
+    };
+    final contact = await _privateContactDoc.get();
+    output['privateContact'] = contact.data();
+    for (final collection in [
+      'users',
+      'blood_requests',
+      'donations',
+      'sosRequests',
+      'misuse_reports',
+      'feedback',
+      'notifications',
+    ]) {
+      final items = <dynamic>[];
+      String? cursor;
+      do {
+        final page = await WorkflowService.call('exportPage', {
+          'collection': collection,
+          'cursor': cursor,
+        });
+        items.addAll(page['items'] as List);
+        cursor = page['cursor'];
+      } while (cursor != null);
+      output[collection] = items;
     }
     return const JsonEncoder.withIndent('  ').convert(output);
   }

@@ -49,14 +49,21 @@ class NotificationService {
   }
 
   Future<String> _deviceId() async {
-    final prefs=await SharedPreferences.getInstance();
-    var id=prefs.getString('notification_device_id');
-    if(id==null){id=FirebaseFirestore.instance.collection('device_ids').doc().id;await prefs.setString('notification_device_id',id);}
+    final prefs = await SharedPreferences.getInstance();
+    var id = prefs.getString('notification_device_id');
+    if (id == null) {
+      id = FirebaseFirestore.instance.collection('device_ids').doc().id;
+      await prefs.setString('notification_device_id', id);
+    }
     return id;
   }
-  Future<void> _save(String uid,String token) async {
-    final device=await _deviceId();
-    await FirebaseFirestore.instance.doc('users/$uid/devices/$device').set({'fcmToken':token,'fcmUpdatedAt':FieldValue.serverTimestamp()});
+
+  Future<void> _save(String uid, String token) async {
+    final device = await _deviceId();
+    await FirebaseFirestore.instance.doc('users/$uid/devices/$device').set({
+      'fcmToken': token,
+      'fcmUpdatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> clearDeviceToken() async {

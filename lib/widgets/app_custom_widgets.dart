@@ -48,19 +48,32 @@ class PrimaryButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           ),
         ),
-        child: isLoading
-            ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-        )
-            : Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[Icon(icon, size: 18), const SizedBox(width: 8)],
-            Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ],
-        ),
+        child:
+            isLoading
+                ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+                : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, size: 18),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      text,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
       ),
     );
   }
@@ -97,8 +110,14 @@ class SecondaryButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[Icon(icon, size: 18), const SizedBox(width: 8)],
-            Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            if (icon != null) ...[
+              Icon(icon, size: 18),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              text,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
@@ -169,23 +188,39 @@ class ProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: AppSpacing.elevationLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      ),
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.all(AppSpacing.md),
         leading: CircleAvatar(
           radius: 26,
           backgroundColor: AppColors.primaryRed.withValues(alpha: 0.15),
-          backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty ? NetworkImage(avatarUrl!) : null,
-          child: (avatarUrl == null || avatarUrl!.isEmpty)
-              ? Text(
-            name.isNotEmpty ? name[0].toUpperCase() : '?',
-            style: const TextStyle(color: AppColors.primaryRed, fontWeight: FontWeight.bold, fontSize: 18),
-          )
-              : null,
+          backgroundImage:
+              avatarUrl != null && avatarUrl!.isNotEmpty
+                  ? NetworkImage(avatarUrl!)
+                  : null,
+          child:
+              (avatarUrl == null || avatarUrl!.isEmpty)
+                  ? Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      color: AppColors.primaryRed,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  )
+                  : null,
         ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: Text(subtitle, style: const TextStyle(color: AppColors.textSecondary)),
+        title: Text(
+          name,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
         trailing: trailing,
       ),
     );
@@ -232,7 +267,9 @@ class RequestCard extends StatelessWidget {
     return Card(
       elevation: AppSpacing.elevationLow,
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
@@ -253,23 +290,45 @@ class RequestCard extends StatelessWidget {
                       ],
                     ],
                   ),
-                  StatusBadge(status: _badgeStatus, customLabel: status, customColor: null),
+                  StatusBadge(
+                    status: _badgeStatus,
+                    customLabel: status,
+                    customColor: null,
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  const Icon(Icons.local_hospital_outlined, size: AppSpacing.iconSm, color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.local_hospital_outlined,
+                    size: AppSpacing.iconSm,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(hospitalName, style: const TextStyle(color: AppColors.textSecondary))),
+                  Expanded(
+                    child: Text(
+                      hospitalName,
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.location_on_outlined, size: AppSpacing.iconSm, color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: AppSpacing.iconSm,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(location, style: const TextStyle(color: AppColors.textSecondary))),
+                  Expanded(
+                    child: Text(
+                      location,
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
                 ],
               ),
               if (trailing != null) ...[
@@ -307,14 +366,29 @@ class DonorCard extends StatelessWidget {
     return Card(
       elevation: AppSpacing.elevationLow,
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      ),
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.all(AppSpacing.md),
         leading: BloodTypeBadge(bloodGroup: bloodGroup, fontSize: 14),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: subtitle != null ? Text(subtitle!, style: const TextStyle(color: AppColors.textSecondary)) : null,
-        trailing: onCall != null ? CustomIconButton(icon: Icons.call, onPressed: onCall, size: 40) : null,
+        subtitle:
+            subtitle != null
+                ? Text(
+                  subtitle!,
+                  style: const TextStyle(color: AppColors.textSecondary),
+                )
+                : null,
+        trailing:
+            onCall != null
+                ? CustomIconButton(
+                  icon: Icons.call,
+                  onPressed: onCall,
+                  size: 40,
+                )
+                : null,
       ),
     );
   }
@@ -343,16 +417,31 @@ class StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        boxShadow: [BoxShadow(color: AppColors.shadowLight, blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowLight,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: resolvedColor, size: AppSpacing.iconMd),
           const SizedBox(height: AppSpacing.sm),
-          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );

@@ -23,7 +23,10 @@ class NotificationModel {
   });
 
   /// Create NotificationModel from Firestore document
-  factory NotificationModel.fromFirestore(Map<String, dynamic> json, String id) {
+  factory NotificationModel.fromFirestore(
+    Map<String, dynamic> json,
+    String id,
+  ) {
     return NotificationModel(
       id: id,
       userId: json['userId'] ?? '',
@@ -125,8 +128,9 @@ class BloodDriveModel {
       startDate: json['startDate']?.toDate() ?? DateTime.now(),
       endDate: json['endDate']?.toDate() ?? DateTime.now(),
       imageUrl: json['imageUrl'],
-      bloodGroupsNeeded:
-          List<String>.from(json['bloodGroupsNeeded'] ?? ['O+', 'O-', 'A+']),
+      bloodGroupsNeeded: List<String>.from(
+        json['bloodGroupsNeeded'] ?? ['O+', 'O-', 'A+'],
+      ),
       targetDonations: json['targetDonations'] ?? 100,
       currentDonations: json['currentDonations'] ?? 0,
     );

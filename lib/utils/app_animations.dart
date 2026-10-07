@@ -19,7 +19,8 @@ class FadeInAnimation extends StatefulWidget {
   State<FadeInAnimation> createState() => _FadeInAnimationState();
 }
 
-class _FadeInAnimationState extends State<FadeInAnimation> with SingleTickerProviderStateMixin {
+class _FadeInAnimationState extends State<FadeInAnimation>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _opacity;
 
@@ -63,7 +64,8 @@ class SlideInAnimation extends StatefulWidget {
   State<SlideInAnimation> createState() => _SlideInAnimationState();
 }
 
-class _SlideInAnimationState extends State<SlideInAnimation> with SingleTickerProviderStateMixin {
+class _SlideInAnimationState extends State<SlideInAnimation>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<Offset> _offset;
   late final Animation<double> _opacity;
@@ -72,8 +74,10 @@ class _SlideInAnimationState extends State<SlideInAnimation> with SingleTickerPr
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: widget.duration);
-    _offset = Tween<Offset>(begin: widget.beginOffset, end: Offset.zero)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _offset = Tween<Offset>(
+      begin: widget.beginOffset,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     Future.delayed(widget.delay, () {
       if (mounted) _controller.forward();
@@ -111,7 +115,8 @@ class ScaleInAnimation extends StatefulWidget {
   State<ScaleInAnimation> createState() => _ScaleInAnimationState();
 }
 
-class _ScaleInAnimationState extends State<ScaleInAnimation> with SingleTickerProviderStateMixin {
+class _ScaleInAnimationState extends State<ScaleInAnimation>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scale;
 
@@ -156,16 +161,20 @@ class PulseAnimation extends StatefulWidget {
   State<PulseAnimation> createState() => _PulseAnimationState();
 }
 
-class _PulseAnimationState extends State<PulseAnimation> with SingleTickerProviderStateMixin {
+class _PulseAnimationState extends State<PulseAnimation>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scale;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: widget.duration)..repeat(reverse: true);
-    _scale = Tween<double>(begin: widget.minScale, end: widget.maxScale)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _controller = AnimationController(vsync: this, duration: widget.duration)
+      ..repeat(reverse: true);
+    _scale = Tween<double>(
+      begin: widget.minScale,
+      end: widget.maxScale,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -195,7 +204,8 @@ class BounceAnimation extends StatefulWidget {
   State<BounceAnimation> createState() => _BounceAnimationState();
 }
 
-class _BounceAnimationState extends State<BounceAnimation> with SingleTickerProviderStateMixin {
+class _BounceAnimationState extends State<BounceAnimation>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scale;
 

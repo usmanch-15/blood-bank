@@ -74,10 +74,16 @@ class FirestoreService {
 
   Future<String> createBloodRequest(BloodRequestModel request) async {
     try {
-      final id = request.id.isEmpty ? _firestore.collection('blood_requests').doc().id : request.id;
+      final id =
+          request.id.isEmpty
+              ? _firestore.collection('blood_requests').doc().id
+              : request.id;
       final data = request.toFirestore();
       data['requiredBy'] = request.requiredBy?.millisecondsSinceEpoch;
-      final result = await WorkflowService.call('createBloodRequest', {...data,'requestId':id});
+      final result = await WorkflowService.call('createBloodRequest', {
+        ...data,
+        'requestId': id,
+      });
       return result['id'] as String;
     } catch (e) {
       throw FirestoreException('Error creating blood request: $e');
@@ -86,7 +92,7 @@ class FirestoreService {
 
   Future<void> updateBloodRequestStatus(String id, String status) async {
     try {
-      await WorkflowService.call('closeRequest', {'requestId':id});
+      await WorkflowService.call('closeRequest', {'requestId': id});
     } catch (e) {
       throw FirestoreException('Error updating request: $e');
     }

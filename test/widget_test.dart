@@ -61,8 +61,11 @@ void main() {
     // Blood group
     test('valid blood group passes', () {
       for (final bg in ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']) {
-        expect(AppValidators.validateBloodGroup(bg), isNull,
-            reason: '$bg should be valid');
+        expect(
+          AppValidators.validateBloodGroup(bg),
+          isNull,
+          reason: '$bg should be valid',
+        );
       }
     });
 
@@ -86,7 +89,9 @@ void main() {
   //   1) flutter_test + firebase_core_platform_interface mock setup
   //   2) Ya integration_test package use karein real device par
   // Abhi class reference check karta hai (compile-time safety):
-  testWidgets('BloodBankApp class exists and is a Widget', (WidgetTester tester) async {
+  testWidgets('BloodBankApp class exists and is a Widget', (
+    WidgetTester tester,
+  ) async {
     // ✅ FIXED: MyApp → BloodBankApp (actual class name in main.dart)
     expect(BloodBankApp, isNotNull);
     expect(const BloodBankApp(), isA<Widget>());

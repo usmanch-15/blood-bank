@@ -5,6 +5,7 @@ import '../../controllers/reward_controller.dart';
 import '../../models/reward_model.dart';
 import '../../constants/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({super.key});
 
@@ -64,10 +65,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
       appBar: AppBar(
         title: const Text(
           'My Rewards',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
@@ -86,13 +84,21 @@ class _RewardsScreenState extends State<RewardsScreen> {
 
           final reward = controller.reward;
           if (controller.error != null) {
-            return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(controller.error!),
-              TextButton(onPressed: () {
-                final uid = FirebaseAuth.instance.currentUser?.uid;
-                if (uid != null) controller.loadReward(uid);
-              }, child: const Text('Retry')),
-            ]));
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(controller.error!),
+                  TextButton(
+                    onPressed: () {
+                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      if (uid != null) controller.loadReward(uid);
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
           }
           final points = controller.totalPoints;
           final tier = controller.tier;
@@ -108,19 +114,11 @@ class _RewardsScreenState extends State<RewardsScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 // ── Points & Tier Card ──
-                _PointsCard(
-                  points: points,
-                  tier: tier,
-                  config: config,
-                ),
+                _PointsCard(points: points, tier: tier, config: config),
                 const SizedBox(height: 16),
 
                 // ── Tier Progress ──
-                _TierProgressCard(
-                  points: points,
-                  tier: tier,
-                  config: config,
-                ),
+                _TierProgressCard(points: points, tier: tier, config: config),
                 const SizedBox(height: 16),
 
                 // ── How to Earn ──
@@ -138,12 +136,36 @@ class _RewardsScreenState extends State<RewardsScreen> {
                   ),
                   const SizedBox(height: 10),
                   ...reward.certificates.map(
-                        (cert) => _CertificateCard(certificate: cert),
+                    (cert) => _CertificateCard(certificate: cert),
                   ),
                 ] else ...[
                   _EmptyCertificates(),
                 ],
-                if(controller.hasMore)TextButton(onPressed:controller.loadingMore?null:()async{try{await controller.loadMore();}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Could not load older certificates: $e')));}},child:Text(controller.loadingMore?'Loading…':'Load older certificates')),
+                if (controller.hasMore)
+                  TextButton(
+                    onPressed:
+                        controller.loadingMore
+                            ? null
+                            : () async {
+                              try {
+                                await controller.loadMore();
+                              } catch (e) {
+                                if (context.mounted)
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Could not load older certificates: $e',
+                                      ),
+                                    ),
+                                  );
+                              }
+                            },
+                    child: Text(
+                      controller.loadingMore
+                          ? 'Loading…'
+                          : 'Load older certificates',
+                    ),
+                  ),
               ],
             ),
           );
@@ -192,17 +214,16 @@ class _PointsCard extends StatelessWidget {
               const Flexible(
                 child: Text(
                   'Total Points',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -263,11 +284,12 @@ class _TierProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPlatinum = tier == 'platinum';
-    final progress = isPlatinum
-        ? 1.0
-        : ((points - config.minPoints) /
-        (config.nextPoints - config.minPoints))
-        .clamp(0.0, 1.0);
+    final progress =
+        isPlatinum
+            ? 1.0
+            : ((points - config.minPoints) /
+                    (config.nextPoints - config.minPoints))
+                .clamp(0.0, 1.0);
     final remaining = isPlatinum ? 0 : config.nextPoints - points;
 
     return Container(
@@ -288,8 +310,11 @@ class _TierProgressCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.trending_up,
-                  color: AppColors.primaryRed, size: 20),
+              const Icon(
+                Icons.trending_up,
+                color: AppColors.primaryRed,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               const Text(
                 'Tier Progress',
@@ -306,45 +331,51 @@ class _TierProgressCard extends StatelessWidget {
           // bare icons, so it reads as a proper progress stepper.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: ['bronze', 'silver', 'gold', 'platinum'].map((t) {
-              final tc = _RewardsScreen._tiers[t]!;
-              final isActive = _tierIndex(tier) >= _tierIndex(t);
-              final isCurrent = tier == t;
-              return Column(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isActive
-                          ? tc.color.withValues(alpha: 0.15)
-                          : Colors.grey[100],
-                      border: Border.all(
-                        color: isCurrent
-                            ? tc.color
-                            : (isActive ? tc.color.withValues(alpha: 0.4) : Colors.grey[300]!),
-                        width: isCurrent ? 2 : 1,
+            children:
+                ['bronze', 'silver', 'gold', 'platinum'].map((t) {
+                  final tc = _RewardsScreen._tiers[t]!;
+                  final isActive = _tierIndex(tier) >= _tierIndex(t);
+                  final isCurrent = tier == t;
+                  return Column(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color:
+                              isActive
+                                  ? tc.color.withValues(alpha: 0.15)
+                                  : Colors.grey[100],
+                          border: Border.all(
+                            color:
+                                isCurrent
+                                    ? tc.color
+                                    : (isActive
+                                        ? tc.color.withValues(alpha: 0.4)
+                                        : Colors.grey[300]!),
+                            width: isCurrent ? 2 : 1,
+                          ),
+                        ),
+                        child: Icon(
+                          tc.icon,
+                          color: isActive ? tc.color : Colors.grey[400],
+                          size: 20,
+                        ),
                       ),
-                    ),
-                    child: Icon(
-                      tc.icon,
-                      color: isActive ? tc.color : Colors.grey[400],
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    tc.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-                      color: isActive ? tc.color : Colors.grey[400],
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
+                      const SizedBox(height: 6),
+                      Text(
+                        tc.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight:
+                              isCurrent ? FontWeight.w700 : FontWeight.w500,
+                          color: isActive ? tc.color : Colors.grey[400],
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
           ),
           const SizedBox(height: 16),
           ClipRRect(
@@ -434,7 +465,7 @@ class _HowToEarnCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ..._perks.map(
-                (p) => Padding(
+            (p) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
@@ -444,18 +475,23 @@ class _HowToEarnCard extends StatelessWidget {
                       color: AppColors.primaryRed.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(p.icon,
-                        color: AppColors.primaryRed, size: 18),
+                    child: Icon(p.icon, color: AppColors.primaryRed, size: 18),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(p.label,
-                        style: const TextStyle(
-                            fontSize: 14, color: AppColors.textPrimary)),
+                    child: Text(
+                      p.label,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 3),
+                      horizontal: 10,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -515,8 +551,11 @@ class _CertificateCard extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.workspace_premium,
-                color: Colors.white, size: 26),
+            child: const Icon(
+              Icons.workspace_premium,
+              color: Colors.white,
+              size: 26,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -535,13 +574,17 @@ class _CertificateCard extends StatelessWidget {
                 Text(
                   certificate.description,
                   style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   _formatDate(certificate.issuedDate),
                   style: const TextStyle(
-                      fontSize: 11, color: AppColors.textLight),
+                    fontSize: 11,
+                    color: AppColors.textLight,
+                  ),
                 ),
               ],
             ),
@@ -549,30 +592,53 @@ class _CertificateCard extends StatelessWidget {
           if (certificate.imageUrl == null)
             IconButton(
               tooltip: 'Generate certificate',
-              icon: context.watch<RewardController>().generating(certificate.id)
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.description_outlined),
-              onPressed: context.watch<RewardController>().generating(certificate.id) ? null : () async {
-                try {
-                  await context.read<RewardController>().generateCertificate(certificate.id);
-                } catch (_) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Unable to create the certificate. Please try again.')));
-                  }
-                }
-              },
+              icon:
+                  context.watch<RewardController>().generating(certificate.id)
+                      ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Icon(Icons.description_outlined),
+              onPressed:
+                  context.watch<RewardController>().generating(certificate.id)
+                      ? null
+                      : () async {
+                        try {
+                          await context
+                              .read<RewardController>()
+                              .generateCertificate(certificate.id);
+                        } catch (_) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Unable to create the certificate. Please try again.',
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      },
             ),
           if (certificate.imageUrl != null)
             IconButton(
-              icon: const Icon(Icons.download,
-                  color: AppColors.primaryRed, size: 22),
+              icon: const Icon(
+                Icons.download,
+                color: AppColors.primaryRed,
+                size: 22,
+              ),
               onPressed: () async {
                 final url = Uri.parse(certificate.imageUrl!);
-                if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+                if (!await launchUrl(
+                  url,
+                  mode: LaunchMode.externalApplication,
+                )) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Could not open certificate.')),
+                      const SnackBar(
+                        content: Text('Could not open certificate.'),
+                      ),
                     );
                   }
                 }
@@ -615,8 +681,11 @@ class _EmptyCertificates extends StatelessWidget {
               color: AppColors.primaryRed.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.card_membership,
-                size: 34, color: AppColors.primaryRed.withValues(alpha: 0.6)),
+            child: Icon(
+              Icons.card_membership,
+              size: 34,
+              color: AppColors.primaryRed.withValues(alpha: 0.6),
+            ),
           ),
           const SizedBox(height: 14),
           const Text(
@@ -659,11 +728,7 @@ class _Perk {
   final IconData icon;
   final String label;
   final String points;
-  const _Perk({
-    required this.icon,
-    required this.label,
-    required this.points,
-  });
+  const _Perk({required this.icon, required this.label, required this.points});
 }
 
 // Allow _PointsCard / _TierProgressCard to access _tiers map

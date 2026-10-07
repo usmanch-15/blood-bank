@@ -27,9 +27,10 @@ class RewardModel {
       id: id,
       donorId: json['donorId'] ?? '',
       totalPoints: json['totalPoints'] ?? 0,
-      certificates: (json['certificates'] as List?)
-          ?.map((cert) => Certificate.fromMap(cert))
-          .toList() ??
+      certificates:
+          (json['certificates'] as List?)
+              ?.map((cert) => Certificate.fromMap(cert))
+              .toList() ??
           [],
       lastUpdated: json['lastUpdated']?.toDate() ?? DateTime.now(),
       tier: json['tier'] ?? 'bronze',

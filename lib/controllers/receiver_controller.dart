@@ -8,7 +8,6 @@ import '../services/workflow_service.dart';
 import '../constants/app_constants.dart';
 
 class ReceiverController extends ChangeNotifier {
-
   List<BloodRequestModel> _myRequests = [];
   final List<DonorModel> _nearbyDonors = [];
   bool _isLoading = false;
@@ -36,10 +35,17 @@ class ReceiverController extends ChangeNotifier {
         throw ArgumentError('A valid hospital pin is required.');
       }
       final result = await WorkflowService.call('createBloodRequest', {
-        'requestId': FirebaseFirestore.instance.collection('blood_requests').doc().id,
-        'bloodGroup': bloodGroup, 'urgency': urgency, 'hospitalName': hospitalName,
-        'hospitalAddress': location, 'latitude': latitude, 'longitude': longitude,
-        'quantity': quantity, 'requiredBy': DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch,
+        'requestId':
+            FirebaseFirestore.instance.collection('blood_requests').doc().id,
+        'bloodGroup': bloodGroup,
+        'urgency': urgency,
+        'hospitalName': hospitalName,
+        'hospitalAddress': location,
+        'latitude': latitude,
+        'longitude': longitude,
+        'quantity': quantity,
+        'requiredBy':
+            DateTime.now().add(const Duration(days: 7)).millisecondsSinceEpoch,
         'contactNumber': '',
       });
       if (result['id'] == null) throw StateError('Request was not created.');
@@ -49,10 +55,31 @@ class ReceiverController extends ChangeNotifier {
     }
   }
 
-  Future<String> sendSosAlert({required String receiverId, required String bloodGroup,String urgency='critical',required double latitude,required double longitude,required String hospitalName,required String contactNumber}) async {
-    _isLoading=true;notifyListeners();
-    try {final result=await WorkflowService.call('createSosAlert',{'bloodGroup':bloodGroup,'latitude':latitude,'longitude':longitude,'urgency':urgency,'hospitalName':hospitalName,'contactNumber':contactNumber});_sosSent=true;return result['requestId'] as String;}
-    finally{_isLoading=false;notifyListeners();}
+  Future<String> sendSosAlert({
+    required String receiverId,
+    required String bloodGroup,
+    String urgency = 'critical',
+    required double latitude,
+    required double longitude,
+    required String hospitalName,
+    required String contactNumber,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final result = await WorkflowService.call('createSosAlert', {
+        'bloodGroup': bloodGroup,
+        'latitude': latitude,
+        'longitude': longitude,
+        'urgency': urgency,
+        'hospitalName': hospitalName,
+        'contactNumber': contactNumber,
+      });
+      _sosSent = true;
+      return result['requestId'] as String;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
-
 }

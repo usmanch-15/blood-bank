@@ -53,7 +53,19 @@ Future<void> showAdminRequestDetails(
             ),
           ),
           actions: [
-            if(!sos)TextButton(onPressed:(){Navigator.pop(ctx);Navigator.push(context,MaterialPageRoute(builder:(_)=>RequestTrackingScreen(requestId:ref.id)));},child:const Text('Track / Manage donors')),
+            if (!sos)
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RequestTrackingScreen(requestId: ref.id),
+                    ),
+                  );
+                },
+                child: const Text('Track / Manage donors'),
+              ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Close'),
@@ -103,7 +115,11 @@ Future<void> showAdminRequestDetails(
   );
   if (confirmed != true) return;
   try {
-    await WorkflowService.call('adminRequestAction',{'id':ref.id,'sos':sos,'action':action=='delete'?'archive':'close'});
+    await WorkflowService.call('adminRequestAction', {
+      'id': ref.id,
+      'sos': sos,
+      'action': action == 'delete' ? 'archive' : 'close',
+    });
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Request updated successfully.')),
@@ -240,7 +256,11 @@ class _PendingUsersTab extends StatelessWidget {
   const _PendingUsersTab();
 
   Future<void> _approveUser(String uid, BuildContext context) async {
-    await WorkflowService.call('adminAction', {'collection':'users','id':uid,'updates':{'status':'approved'}});
+    await WorkflowService.call('adminAction', {
+      'collection': 'users',
+      'id': uid,
+      'updates': {'status': 'approved'},
+    });
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -280,7 +300,11 @@ class _PendingUsersTab extends StatelessWidget {
     );
 
     if (confirm == true) {
-      await WorkflowService.call('adminAction', {'collection':'users','id':uid,'updates':{'status':'rejected'}});
+      await WorkflowService.call('adminAction', {
+        'collection': 'users',
+        'id': uid,
+        'updates': {'status': 'rejected'},
+      });
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(

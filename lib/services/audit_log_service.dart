@@ -9,9 +9,11 @@ class AuditLogService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void> logAction({
-    required String action, // e.g. 'approve_user', 'suspend_user', 'update_request_status', 'send_broadcast'
+    required String
+    action, // e.g. 'approve_user', 'suspend_user', 'update_request_status', 'send_broadcast'
     required String targetId, // uid, requestId, etc.
-    Map<String, dynamic>? changes, // e.g. {'status': {'from': 'pending', 'to': 'approved'}}
+    Map<String, dynamic>?
+    changes, // e.g. {'status': {'from': 'pending', 'to': 'approved'}}
   }) async {
     final admin = FirebaseAuth.instance.currentUser;
     if (admin == null) return;

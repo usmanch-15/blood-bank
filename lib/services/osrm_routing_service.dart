@@ -74,18 +74,18 @@ class OsrmRoutingService {
   }
 
   Future<RouteEta?> _fetchRoute(
-      double originLat,
-      double originLng,
-      double destLat,
-      double destLng,
-      ) async {
+    double originLat,
+    double originLng,
+    double destLat,
+    double destLng,
+  ) async {
     try {
       // OSRM expects coordinates as longitude,latitude — the opposite
       // order from how most of this app stores lat/lng.
       final url = Uri.parse(
         '$_baseUrl/route/v1/driving/'
-            '$originLng,$originLat;$destLng,$destLat'
-            '?overview=false',
+        '$originLng,$originLat;$destLng,$destLat'
+        '?overview=false',
       );
 
       final response = await http.get(url).timeout(_timeout);

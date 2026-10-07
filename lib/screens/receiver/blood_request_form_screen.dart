@@ -11,14 +11,12 @@ import 'package:intl/intl.dart';
 import '../../models/blood_request_model.dart';
 import '../../services/firestore_service.dart';
 
-
-
 import '../../utils/validators.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/status_badge.dart';
- // ✅ NEW — post-submit map redirect
+// ✅ NEW — post-submit map redirect
 
 /// ✅ UI POLISH ONLY — every piece of logic below (Firestore save, geo
 /// location fetch, nearby-donor search + notify, validators) is byte-for-
@@ -54,7 +52,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
 
   bool _isLoading = false;
   bool _dirty = false;
-  final String _submissionId = FirebaseFirestore.instance.collection('blood_requests').doc().id;
+  final String _submissionId =
+      FirebaseFirestore.instance.collection('blood_requests').doc().id;
   double? _currentLat;
   double? _currentLng;
 
@@ -76,12 +75,29 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   @override
   void initState() {
     super.initState();
-
   }
 
   Future<void> _pickHospital() async {
-    final point=await Navigator.push<LatLng>(context,MaterialPageRoute(builder:(_)=>HospitalLocationScreen(initial:_currentLat==null?null:LatLng(_currentLat!,_currentLng!))));
-    if(point!=null&&mounted)setState((){_currentLat=point.latitude;_currentLng=point.longitude;_latitudeController.text=point.latitude.toStringAsFixed(6);_longitudeController.text=point.longitude.toStringAsFixed(6);_dirty=true;});
+    final point = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(
+        builder:
+            (_) => HospitalLocationScreen(
+              initial:
+                  _currentLat == null
+                      ? null
+                      : LatLng(_currentLat!, _currentLng!),
+            ),
+      ),
+    );
+    if (point != null && mounted)
+      setState(() {
+        _currentLat = point.latitude;
+        _currentLng = point.longitude;
+        _latitudeController.text = point.latitude.toStringAsFixed(6);
+        _longitudeController.text = point.longitude.toStringAsFixed(6);
+        _dirty = true;
+      });
   }
 
   Future<void> _selectDate() async {
@@ -95,7 +111,13 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
     if (picked != null) {
       if (mounted) {
         setState(() {
-          _requiredByDate = DateTime(picked.year,picked.month,picked.day,23,59);
+          _requiredByDate = DateTime(
+            picked.year,
+            picked.month,
+            picked.day,
+            23,
+            59,
+          );
           _dirty = true;
         });
       }
@@ -104,7 +126,14 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
 
   Future<void> _submitRequest() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_currentLat == null || _currentLng == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Select and confirm the hospital meeting point.'))); return; }
+    if (_currentLat == null || _currentLng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select and confirm the hospital meeting point.'),
+        ),
+      );
+      return;
+    }
 
     if (_requiredByDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -198,8 +227,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder:
-                (_) => RequestTrackingScreen(requestId: requestId),
+            builder: (_) => RequestTrackingScreen(requestId: requestId),
           ),
         );
       }
@@ -421,7 +449,15 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
 
                 const SizedBox(height: AppSpacing.xxl),
 
-                OutlinedButton.icon(onPressed:_pickHospital,icon:const Icon(Icons.pin_drop),label:Text(_currentLat==null?'Select hospital location':'Change confirmed hospital pin')),
+                OutlinedButton.icon(
+                  onPressed: _pickHospital,
+                  icon: const Icon(Icons.pin_drop),
+                  label: Text(
+                    _currentLat == null
+                        ? 'Select hospital location'
+                        : 'Change confirmed hospital pin',
+                  ),
+                ),
                 SizedBox(
                   width: double.infinity,
                   height: 54,

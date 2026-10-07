@@ -53,7 +53,9 @@ class AppColors {
   // Shadow colors — for card/button elevation effects
   static const Color shadowLight = Color(0x14000000); // 8% black
   static const Color shadowMedium = Color(0x29000000); // 16% black
-  static const Color shadowRed = Color(0x33DC143C); // 20% primaryRed — for red-tinted button/card shadows
+  static const Color shadowRed = Color(
+    0x33DC143C,
+  ); // 20% primaryRed — for red-tinted button/card shadows
 
   // Additional gradients
   static const LinearGradient redToOrangeGradient = LinearGradient(
@@ -92,7 +94,9 @@ class AppColors {
   // AppTheme to give cards/surfaces more depth and hierarchy than plain
   // Colors.white everywhere.
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceAlt = Color(0xFFFAFAFC); // faint off-white for grouped sections
+  static const Color surfaceAlt = Color(
+    0xFFFAFAFC,
+  ); // faint off-white for grouped sections
   static const Color border = Color(0xFFE8E8ED);
   static const Color borderStrong = Color(0xFFD8D8E0);
 

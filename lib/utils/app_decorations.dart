@@ -36,7 +36,14 @@ class AppDecorations {
     return BoxDecoration(
       gradient: gradient,
       borderRadius: BorderRadius.circular(radius),
-      boxShadow: withShadow ? boxShadow(color: AppColors.shadowMedium, blurRadius: 12, offset: const Offset(0, 4)) : null,
+      boxShadow:
+          withShadow
+              ? boxShadow(
+                color: AppColors.shadowMedium,
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              )
+              : null,
     );
   }
 
@@ -49,7 +56,10 @@ class AppDecorations {
     return BoxDecoration(
       color: color,
       borderRadius: BorderRadius.circular(radius),
-      border: borderColor != null ? Border.all(color: borderColor, width: borderWidth) : null,
+      border:
+          borderColor != null
+              ? Border.all(color: borderColor, width: borderWidth)
+              : null,
     );
   }
 }

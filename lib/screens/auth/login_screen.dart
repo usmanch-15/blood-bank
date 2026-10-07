@@ -73,8 +73,8 @@ class _LoginScreenState extends State<LoginScreen>
       // ✅ FIX (Issue #8): admin access used to be granted purely by
       // matching a hardcoded email list (AdminConfig.adminEmails). If that
       // list ever leaked, anyone using one of those emails became admin.
-      // Now we check the user's actual role + approval status stored in
-      // Firestore, which only an existing admin can set.
+      // Authorization comes from the protected Firestore role, never from a
+      // client-side email or password allowlist.
       final userData = await _authService.getUserData(userCredential.user!.uid);
       if (!mounted) return;
 
@@ -97,14 +97,6 @@ class _LoginScreenState extends State<LoginScreen>
           title: 'Verify Your Email',
           message:
               'Please verify your email address before logging in. Check your inbox for the verification link we sent when you signed up.',
-        );
-      } else if (message == 'pending') {
-        _showStatusDialog(
-          icon: Icons.hourglass_top_rounded,
-          iconColor: const Color(0xFFFFB300),
-          title: 'Approval Pending',
-          message:
-              'Your account is registered and awaiting admin approval. You will be notified once your account is approved.',
         );
       } else if (message == 'rejected') {
         _showStatusDialog(

@@ -29,7 +29,10 @@ class MisuseReportModel {
   });
 
   /// Create MisuseReportModel from Firestore document
-  factory MisuseReportModel.fromFirestore(Map<String, dynamic> json, String id) {
+  factory MisuseReportModel.fromFirestore(
+    Map<String, dynamic> json,
+    String id,
+  ) {
     return MisuseReportModel(
       id: id,
       reporterId: json['reporterId'] ?? '',

@@ -2,7 +2,8 @@
 class AccountPolicy {
   static bool isActive(Map<String, dynamic>? data) =>
       data != null &&
-      data['status'] == 'approved' &&
+      data['status'] != 'suspended' &&
+      data['status'] != 'rejected' &&
       const ['donor', 'receiver', 'admin'].contains(data['role']);
 
   static String route(Map<String, dynamic> data) =>

@@ -785,7 +785,7 @@ class _SignUpScreenState extends State<SignUpScreen>
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Your account will be reviewed by admin before activation.',
+              'Your account is ready to use immediately after registration.',
               style: TextStyle(
                 color: Color(0xFF9E9E9E),
                 fontSize: 12,

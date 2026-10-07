@@ -14,8 +14,9 @@ class AppDateUtils {
   }
 
   static DateTime nextEligibleDate(DateTime lastDonationDate) {
-    return lastDonationDate
-        .add(Duration(days: AppConstants.minDaysBetweenDonations));
+    return lastDonationDate.add(
+      Duration(days: AppConstants.minDaysBetweenDonations),
+    );
   }
 
   static String formatDate(DateTime date) {

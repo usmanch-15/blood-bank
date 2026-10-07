@@ -14,8 +14,6 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../utils/app_animations.dart';
 
-
-
 import '../../widgets/app_custom_widgets.dart';
 import '../../widgets/status_badge.dart';
 import 'donor_profile_screen.dart';
@@ -329,8 +327,31 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              _buildActionTile(title:'My Active Donations',icon:Icons.volunteer_activism,color:AppColors.primaryRed,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RequestListScreen(mode:'active')))),
-              _buildActionTile(title:'Browse matching requests',icon:Icons.search,color:Colors.teal,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RequestListScreen(mode:'discover')))),
+              _buildActionTile(
+                title: 'My Active Donations',
+                icon: Icons.volunteer_activism,
+                color: AppColors.primaryRed,
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RequestListScreen(mode: 'active'),
+                      ),
+                    ),
+              ),
+              _buildActionTile(
+                title: 'Browse matching requests',
+                icon: Icons.search,
+                color: Colors.teal,
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => const RequestListScreen(mode: 'discover'),
+                      ),
+                    ),
+              ),
 
               const SizedBox(height: AppSpacing.xxl + 1),
 

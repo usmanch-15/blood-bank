@@ -35,20 +35,31 @@ class EmptyState extends StatelessWidget {
                 color: AppColors.backgroundLight,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: AppSpacing.iconXl, color: AppColors.textLight),
+              child: Icon(
+                icon,
+                size: AppSpacing.iconXl,
+                color: AppColors.textLight,
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
             if (message != null) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
                 message!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
             if (actionLabel != null && onAction != null) ...[
@@ -92,12 +103,19 @@ class AppErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: AppSpacing.iconXl, color: AppColors.error),
+            const Icon(
+              Icons.error_outline,
+              size: AppSpacing.iconXl,
+              color: AppColors.error,
+            ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
             ),
             if (onRetry != null) ...[
               const SizedBox(height: AppSpacing.lg),

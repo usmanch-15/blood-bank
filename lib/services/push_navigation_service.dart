@@ -153,9 +153,27 @@ class PushNavigationService {
     final auth = navigator.context.read<AuthController>();
     if (!auth.isLoggedIn) return;
     try {
-      if (type == 'report_update') {navigator.push(MaterialPageRoute(builder:(_)=>const MyReportsScreen()));return;}
-      if (['blood_request','request_update','general','donation_confirmed'].contains(type) && relatedId!=null && relatedId.isNotEmpty && !relatedId.contains('/')) {
-        navigator.push(MaterialPageRoute(builder:(_)=>RequestTrackingScreen(requestId:relatedId)));return;
+      if (type == 'report_update') {
+        navigator.push(
+          MaterialPageRoute(builder: (_) => const MyReportsScreen()),
+        );
+        return;
+      }
+      if ([
+            'blood_request',
+            'request_update',
+            'general',
+            'donation_confirmed',
+          ].contains(type) &&
+          relatedId != null &&
+          relatedId.isNotEmpty &&
+          !relatedId.contains('/')) {
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => RequestTrackingScreen(requestId: relatedId),
+          ),
+        );
+        return;
       }
       if ((type == 'sosAlerts' || type == 'sos') &&
           relatedId != null &&

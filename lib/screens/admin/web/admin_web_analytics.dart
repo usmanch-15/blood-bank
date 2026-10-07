@@ -47,23 +47,82 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
       // count queries, while totals/statuses use count and sum aggregation.
       const groups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
       final userTotal = db.collection('users').count().get();
-      final donorTotal = db.collection('users').where('isDonor', isEqualTo: true).count().get();
-      final receiverTotal = db.collection('users').where('isReceiver', isEqualTo: true).count().get();
-      final pendingUserTotal = db.collection('users').where('status', isEqualTo: 'pending').count().get();
+      final donorTotal =
+          db
+              .collection('users')
+              .where('isDonor', isEqualTo: true)
+              .count()
+              .get();
+      final receiverTotal =
+          db
+              .collection('users')
+              .where('isReceiver', isEqualTo: true)
+              .count()
+              .get();
+      final pendingUserTotal =
+          db
+              .collection('users')
+              .where('status', isEqualTo: 'pending')
+              .count()
+              .get();
       final donationTotal = db.collection('donations').count().get();
-      final pointsTotal = db.collection('donations').aggregate(sum('pointsEarned')).get();
+      final pointsTotal =
+          db.collection('donations').aggregate(sum('pointsEarned')).get();
       final requestTotal = db.collection('blood_requests').count().get();
-      final pendingRequestTotal = db.collection('blood_requests').where('status', isEqualTo: 'pending').count().get();
-      final fulfilledRequestTotal = db.collection('blood_requests').where('status', isEqualTo: 'fulfilled').count().get();
-      final donationGroups = Future.wait(groups.map((g) => db.collection('donations').where('bloodGroup', isEqualTo: g).count().get()));
-      final requestGroups = Future.wait(groups.map((g) => db.collection('blood_requests').where('bloodGroup', isEqualTo: g).count().get()));
+      final pendingRequestTotal =
+          db
+              .collection('blood_requests')
+              .where('status', isEqualTo: 'pending')
+              .count()
+              .get();
+      final fulfilledRequestTotal =
+          db
+              .collection('blood_requests')
+              .where('status', isEqualTo: 'fulfilled')
+              .count()
+              .get();
+      final donationGroups = Future.wait(
+        groups.map(
+          (g) =>
+              db
+                  .collection('donations')
+                  .where('bloodGroup', isEqualTo: g)
+                  .count()
+                  .get(),
+        ),
+      );
+      final requestGroups = Future.wait(
+        groups.map(
+          (g) =>
+              db
+                  .collection('blood_requests')
+                  .where('bloodGroup', isEqualTo: g)
+                  .count()
+                  .get(),
+        ),
+      );
       final results = await Future.wait([
-        userTotal, donorTotal, receiverTotal, pendingUserTotal, donationTotal,
-        pointsTotal, requestTotal, pendingRequestTotal, fulfilledRequestTotal,
-        donationGroups, requestGroups,
+        userTotal,
+        donorTotal,
+        receiverTotal,
+        pendingUserTotal,
+        donationTotal,
+        pointsTotal,
+        requestTotal,
+        pendingRequestTotal,
+        fulfilledRequestTotal,
+        donationGroups,
+        requestGroups,
       ]);
-      final bgDonations = <String, int>{for (var i = 0; i < groups.length; i++) groups[i]: (results[9] as List<AggregateQuerySnapshot>)[i].count ?? 0};
-      final bgRequests = <String, int>{for (var i = 0; i < groups.length; i++) groups[i]: (results[10] as List<AggregateQuerySnapshot>)[i].count ?? 0};
+      final bgDonations = <String, int>{
+        for (var i = 0; i < groups.length; i++)
+          groups[i]: (results[9] as List<AggregateQuerySnapshot>)[i].count ?? 0,
+      };
+      final bgRequests = <String, int>{
+        for (var i = 0; i < groups.length; i++)
+          groups[i]:
+              (results[10] as List<AggregateQuerySnapshot>)[i].count ?? 0,
+      };
 
       if (!mounted) return;
       setState(() {
@@ -75,7 +134,9 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
         _totalRequests = (results[6] as AggregateQuerySnapshot).count ?? 0;
         _pendingRequests = (results[7] as AggregateQuerySnapshot).count ?? 0;
         _fulfilledRequests = (results[8] as AggregateQuerySnapshot).count ?? 0;
-        _totalPoints = ((results[5] as AggregateQuerySnapshot).getSum('pointsEarned') ?? 0).toInt();
+        _totalPoints =
+            ((results[5] as AggregateQuerySnapshot).getSum('pointsEarned') ?? 0)
+                .toInt();
         _bloodGroupDonations = bgDonations;
         _bloodGroupRequests = bgRequests;
         _isLoading = false;

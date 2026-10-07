@@ -26,8 +26,12 @@ class AdminController extends ChangeNotifier {
     try {
       final db = FirebaseFirestore.instance;
       final counts = await Future.wait([
-        db.collection('users').where('isDonor',isEqualTo:true).count().get(),
-        db.collection('users').where('isReceiver',isEqualTo:true).count().get(),
+        db.collection('users').where('isDonor', isEqualTo: true).count().get(),
+        db
+            .collection('users')
+            .where('isReceiver', isEqualTo: true)
+            .count()
+            .get(),
         db.collection('blood_requests').count().get(),
         db.collection('donations').count().get(),
       ]);
@@ -45,12 +49,14 @@ class AdminController extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection(AppConstants.usersCollection)
-          .get();
-      _allUsers = snapshot.docs
-          .map((d) => UserModel.fromFirestore(d.data(), d.id))
-          .toList();
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection(AppConstants.usersCollection)
+              .get();
+      _allUsers =
+          snapshot.docs
+              .map((d) => UserModel.fromFirestore(d.data(), d.id))
+              .toList();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -58,12 +64,20 @@ class AdminController extends ChangeNotifier {
   }
 
   Future<void> approveUser(String uid) async {
-    await WorkflowService.call('adminAction',{'collection':'users','id':uid,'updates':{'status':'approved'}});
+    await WorkflowService.call('adminAction', {
+      'collection': 'users',
+      'id': uid,
+      'updates': {'status': 'approved'},
+    });
     await loadAllUsers();
   }
 
   Future<void> suspendUser(String uid) async {
-    await WorkflowService.call('adminAction',{'collection':'users','id':uid,'updates':{'status':'rejected'}});
+    await WorkflowService.call('adminAction', {
+      'collection': 'users',
+      'id': uid,
+      'updates': {'status': 'rejected'},
+    });
     await loadAllUsers();
   }
 
@@ -80,7 +94,9 @@ class AdminController extends ChangeNotifier {
   /// which verifies the caller is an approved admin, deletes the Firestore
   /// doc + private/contact subdoc, AND deletes the real Auth account.
   Future<void> deleteUser(String uid) async {
-    final callable = FirebaseFunctions.instance.httpsCallable('adminDeleteUser');
+    final callable = FirebaseFunctions.instance.httpsCallable(
+      'adminDeleteUser',
+    );
     await callable.call({'uid': uid});
     await loadAllUsers();
   }

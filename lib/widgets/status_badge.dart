@@ -21,31 +21,31 @@ class StatusBadge extends StatelessWidget {
     this.customColor,
     this.icon,
   }) : assert(
-  status != BadgeStatus.custom ||
-      (customLabel != null && customColor != null),
-  'BadgeStatus.custom requires both customLabel and customColor',
-  );
+         status != BadgeStatus.custom ||
+             (customLabel != null && customColor != null),
+         'BadgeStatus.custom requires both customLabel and customColor',
+       );
 
   /// Verified (green) shortcut.
   const StatusBadge.verified({super.key})
-      : status = BadgeStatus.verified,
-        customLabel = null,
-        customColor = null,
-        icon = null;
+    : status = BadgeStatus.verified,
+      customLabel = null,
+      customColor = null,
+      icon = null;
 
   /// Pending (orange) shortcut.
   const StatusBadge.pending({super.key})
-      : status = BadgeStatus.pending,
-        customLabel = null,
-        customColor = null,
-        icon = null;
+    : status = BadgeStatus.pending,
+      customLabel = null,
+      customColor = null,
+      icon = null;
 
   /// Rejected (red) shortcut.
   const StatusBadge.rejected({super.key})
-      : status = BadgeStatus.rejected,
-        customLabel = null,
-        customColor = null,
-        icon = null;
+    : status = BadgeStatus.rejected,
+      customLabel = null,
+      customColor = null,
+      icon = null;
 
   String get _label {
     switch (status) {
@@ -107,7 +107,11 @@ class StatusBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             _label,
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -121,19 +125,30 @@ class BloodTypeBadge extends StatelessWidget {
   final String bloodGroup;
   final double fontSize;
 
-  const BloodTypeBadge({super.key, required this.bloodGroup, this.fontSize = 13});
+  const BloodTypeBadge({
+    super.key,
+    required this.bloodGroup,
+    this.fontSize = 13,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm + 2, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm + 2,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
         borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
       ),
       child: Text(
         bloodGroup,
-        style: TextStyle(color: Colors.white, fontSize: fontSize, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: fontSize,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -160,7 +175,10 @@ class UrgencyBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _color;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm + 2, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm + 2,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
@@ -168,7 +186,11 @@ class UrgencyBadge extends StatelessWidget {
       ),
       child: Text(
         urgency,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

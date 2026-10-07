@@ -199,7 +199,11 @@ class AuthService {
     required void Function(PhoneAuthCredential credential) onAutoVerified,
   }) async {
     try {
-      if(kIsWeb){final confirmation=await _auth.signInWithPhoneNumber(phoneNumber);onCodeSent(confirmation.verificationId);return;}
+      if (kIsWeb) {
+        final confirmation = await _auth.signInWithPhoneNumber(phoneNumber);
+        onCodeSent(confirmation.verificationId);
+        return;
+      }
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         timeout: const Duration(seconds: 60),

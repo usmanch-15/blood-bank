@@ -19,7 +19,7 @@ import '../../widgets/paged_records.dart';
 import 'blood_request_form_screen.dart';
 import 'sos_emergency_screen.dart';
 import '../maps/nearby_donors_map_screen.dart'; // Nearby Donors map
- // Find Donors for a specific request
+// Find Donors for a specific request
 import '../settings/settings_screen.dart'; // ✅ NEW — was never reachable anywhere in the app
 
 /// ✅ UI POLISH ONLY — all 3 features added earlier this session (SOS
@@ -249,8 +249,30 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
 
                 const SizedBox(height: AppSpacing.xxl + 6),
 
-                _actionTile(title:'All requests & history',icon:Icons.history,color:Colors.teal,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RequestListScreen()))),
-                _actionTile(title:'Active SOS & history',icon:Icons.emergency,color:Colors.red,onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const RequestListScreen(mode:'sos')))),
+                _actionTile(
+                  title: 'All requests & history',
+                  icon: Icons.history,
+                  color: Colors.teal,
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RequestListScreen(),
+                        ),
+                      ),
+                ),
+                _actionTile(
+                  title: 'Active SOS & history',
+                  icon: Icons.emergency,
+                  color: Colors.red,
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RequestListScreen(mode: 'sos'),
+                        ),
+                      ),
+                ),
                 Text(
                   'Recent Requests',
                   style: TextStyle(
@@ -269,10 +291,12 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                           .collection('blood_requests')
                           .where('requesterId', isEqualTo: uid)
                           .orderBy('createdAt', descending: true),
-                      itemBuilder: (context, doc) => _requestCard(
-                        BloodRequestModel.fromFirestore(doc.data(), doc.id),
-                      ),
+                      itemBuilder:
+                          (context, doc) => _requestCard(
+                            BloodRequestModel.fromFirestore(doc.data(), doc.id),
+                          ),
                     ),
+
                 /*
                     : StreamBuilder<QuerySnapshot>(
                       stream:
@@ -312,7 +336,6 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                         );
                       },
                     ),*/
-
                 const SizedBox(height: AppSpacing.xxl),
               ]),
             ),
@@ -433,7 +456,11 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
               const SizedBox(height: AppSpacing.sm),
               UrgencyBadge(urgency: request.urgency),
             ],
-            if (['pending', 'accepted', 'partially_fulfilled'].contains(request.status))
+            if ([
+              'pending',
+              'accepted',
+              'partially_fulfilled',
+            ].contains(request.status))
               TextButton.icon(
                 icon: Icon(Icons.cancel_outlined),
                 label: Text('Cancel request'),
@@ -457,7 +484,9 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                   );
                   if (confirmed != true) return;
                   try {
-                    await WorkflowService.call('closeRequest',{'requestId':request.id});
+                    await WorkflowService.call('closeRequest', {
+                      'requestId': request.id,
+                    });
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -479,7 +508,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       context,
                       MaterialPageRoute(
                         builder:
-                            (_) => RequestTrackingScreen(requestId:request.id),
+                            (_) => RequestTrackingScreen(requestId: request.id),
                       ),
                     );
                   },

@@ -77,31 +77,35 @@ class CustomButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedHeight = height ?? _defaultHeight;
-    final resolvedTextStyle = textStyle ??
+    final resolvedTextStyle =
+        textStyle ??
         TextStyle(fontSize: _fontSize, fontWeight: FontWeight.bold);
 
-    final content = isLoading
-        ? SizedBox(
-      width: 20,
-      height: 20,
-      child: CircularProgressIndicator(
-        strokeWidth: 2,
-        valueColor: AlwaysStoppedAnimation<Color>(
-          variant == ButtonVariant.primary ? loadingColor : AppColors.primaryRed,
-        ),
-      ),
-    )
-        : Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (icon != null) ...[
-          Icon(icon, size: AppSpacing.iconSm),
-          const SizedBox(width: AppSpacing.sm),
-        ],
-        Text(text, style: resolvedTextStyle),
-      ],
-    );
+    final content =
+        isLoading
+            ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  variant == ButtonVariant.primary
+                      ? loadingColor
+                      : AppColors.primaryRed,
+                ),
+              ),
+            )
+            : Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: AppSpacing.iconSm),
+                  const SizedBox(width: AppSpacing.sm),
+                ],
+                Text(text, style: resolvedTextStyle),
+              ],
+            );
 
     // ── Ghost — no background, no border, just colored text ──
     if (variant == ButtonVariant.ghost) {
@@ -150,7 +154,9 @@ class CustomButton extends StatelessWidget {
             elevation: AppSpacing.elevationLow,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(borderRadius.toDouble()),
-              side: BorderSide(color: AppColors.primaryRed.withValues(alpha: 0.3)),
+              side: BorderSide(
+                color: AppColors.primaryRed.withValues(alpha: 0.3),
+              ),
             ),
           ),
           child: content,
@@ -162,7 +168,10 @@ class CustomButton extends StatelessWidget {
     final button = ElevatedButton(
       onPressed: isLoading ? null : onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: gradient != null ? Colors.transparent : (backgroundColor ?? AppColors.primaryRed),
+        backgroundColor:
+            gradient != null
+                ? Colors.transparent
+                : (backgroundColor ?? AppColors.primaryRed),
         foregroundColor: textColor ?? Colors.white,
         shadowColor: AppColors.shadowRed,
         elevation: gradient != null ? 0 : AppSpacing.elevationLow,
@@ -174,7 +183,11 @@ class CustomButton extends StatelessWidget {
     );
 
     if (gradient == null) {
-      return SizedBox(width: width ?? double.infinity, height: resolvedHeight, child: button);
+      return SizedBox(
+        width: width ?? double.infinity,
+        height: resolvedHeight,
+        child: button,
+      );
     }
 
     // Gradient variant needs a wrapping Container since ElevatedButton
@@ -186,7 +199,11 @@ class CustomButton extends StatelessWidget {
         gradient: gradient,
         borderRadius: BorderRadius.circular(borderRadius.toDouble()),
         boxShadow: [
-          BoxShadow(color: AppColors.shadowRed, blurRadius: 8, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: AppColors.shadowRed,
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: button,

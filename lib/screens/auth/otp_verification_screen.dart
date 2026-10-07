@@ -20,7 +20,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final _codeController = TextEditingController();
   String? _verificationId;
   bool _codeSent = false;
-  int _resendSeconds=0;
+  int _resendSeconds = 0;
   Timer? _resendTimer;
   bool _isLoading = false;
   String? _error;
@@ -43,11 +43,18 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         setState(() {
           _verificationId = id;
           _codeSent = true;
-          _resendSeconds=60;
+          _resendSeconds = 60;
           _isLoading = false;
         });
         _resendTimer?.cancel();
-        _resendTimer=Timer.periodic(const Duration(seconds:1),(t){if(!mounted||_resendSeconds<=1){t.cancel();if(mounted)setState(()=>_resendSeconds=0);}else{setState(()=>_resendSeconds--);}});
+        _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+          if (!mounted || _resendSeconds <= 1) {
+            t.cancel();
+            if (mounted) setState(() => _resendSeconds = 0);
+          } else {
+            setState(() => _resendSeconds--);
+          }
+        });
       },
       onError: (err) {
         if (!mounted) return;
@@ -61,7 +68,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           await _authService.linkVerifiedPhone(credential);
           if (mounted) Navigator.pop(context, true);
         } catch (e) {
-          if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
+          if (mounted)
+            setState(() {
+              _error = e.toString();
+              _isLoading = false;
+            });
         }
       },
     );
@@ -147,19 +158,29 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 backgroundColor: AppColors.primaryRed,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              child: _isLoading
-                  ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2))
-                  : const Text('Verify',
-                  style: TextStyle(color: Colors.white, fontSize: 16)),
+              child:
+                  _isLoading
+                      ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                      : const Text(
+                        'Verify',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
             ),
             const SizedBox(height: 10),
             TextButton(
-              onPressed: _isLoading || _resendSeconds>0 ? null : _sendCode,
-              child: Text(_resendSeconds>0?'Resend in $_resendSeconds s':'Resend Code'),
+              onPressed: _isLoading || _resendSeconds > 0 ? null : _sendCode,
+              child: Text(
+                _resendSeconds > 0
+                    ? 'Resend in $_resendSeconds s'
+                    : 'Resend Code',
+              ),
             ),
           ],
         ),

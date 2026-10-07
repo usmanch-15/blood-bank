@@ -10,10 +10,13 @@ class StorageService {
     required String donorId,
     required String donationId,
   }) async {
-    final ref = _storage
-        .ref()
-        .child('${AppConstants.certificatesPath}/$donorId/$donationId/certificate.pdf');
-    final task = await ref.putData(bytes, SettableMetadata(contentType: 'application/pdf'));
+    final ref = _storage.ref().child(
+      '${AppConstants.certificatesPath}/$donorId/$donationId/certificate.pdf',
+    );
+    final task = await ref.putData(
+      bytes,
+      SettableMetadata(contentType: 'application/pdf'),
+    );
     return await task.ref.getDownloadURL();
   }
 
@@ -24,10 +27,13 @@ class StorageService {
     if (bytes.isEmpty || bytes.length >= 3 * 1024 * 1024) {
       throw ArgumentError('Choose an image smaller than 3 MB.');
     }
-    final ref = _storage
-        .ref()
-        .child('${AppConstants.profileImagesPath}/$userId/avatar.jpg');
-    final task = await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+    final ref = _storage.ref().child(
+      '${AppConstants.profileImagesPath}/$userId/avatar.jpg',
+    );
+    final task = await ref.putData(
+      bytes,
+      SettableMetadata(contentType: 'image/jpeg'),
+    );
     final url = await task.ref.getDownloadURL();
     return '$url&v=${DateTime.now().millisecondsSinceEpoch}';
   }

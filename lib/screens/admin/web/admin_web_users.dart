@@ -47,123 +47,143 @@ class _AdminWebUsersState extends State<AdminWebUsers>
         // ── Header ──────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
-          child: Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'User Management',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
+          child: LayoutBuilder(
+            builder:
+                (context, constraints) => Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'User Management',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF14161F),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'A live directory of every donor, receiver and administrator.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Manage donors, receivers and admin accounts',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              // Stats chips
-              _buildStatChip('pending'),
-            ],
+                    if (constraints.maxWidth > 520) _buildStatChip('pending'),
+                  ],
+                ),
           ),
         ),
-
         const SizedBox(height: 20),
 
         // ── Search + Filter Bar ──────────────────────────────────
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Row(
-            children: [
-              // Search field
-              Expanded(
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey.shade200),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+          child: LayoutBuilder(
+            builder:
+                (context, constraints) => Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    // Search field
+                    SizedBox(
+                      width:
+                          constraints.maxWidth > 560
+                              ? constraints.maxWidth - 160
+                              : constraints.maxWidth,
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search by name, email or blood group...',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 13,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Colors.grey.shade400,
+                              size: 20,
+                            ),
+                            suffixIcon:
+                                _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 18),
+                                      onPressed:
+                                          () => _searchController.clear(),
+                                    )
+                                    : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search by name, email or blood group...',
-                      hintStyle: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 13,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: Colors.grey.shade400,
-                        size: 20,
-                      ),
-                      suffixIcon:
-                          _searchQuery.isNotEmpty
-                              ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () => _searchController.clear(),
-                              )
-                              : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
+                    const SizedBox(width: 132, child: SizedBox.shrink()),
 
-              // Role filter
-              Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey.shade200),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                    // Role filter
+                    Container(
+                      height: 44,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade200),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _roleFilter,
+                          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                          items:
+                              _roles
+                                  .map(
+                                    (r) => DropdownMenuItem(
+                                      value: r,
+                                      child: Text(
+                                        r == 'All'
+                                            ? 'All Roles'
+                                            : r[0].toUpperCase() +
+                                                r.substring(1),
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (v) => setState(() => _roleFilter = v!),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _roleFilter,
-                    icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-                    items:
-                        _roles
-                            .map(
-                              (r) => DropdownMenuItem(
-                                value: r,
-                                child: Text(
-                                  r == 'All'
-                                      ? 'All Roles'
-                                      : r[0].toUpperCase() + r.substring(1),
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (v) => setState(() => _roleFilter = v!),
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
 
@@ -781,7 +801,11 @@ class _AdminWebUsersState extends State<AdminWebUsers>
     if (confirm != true) return;
 
     try {
-      await WorkflowService.call('adminAction',{'collection':'users','id':uid,'updates':{'status':newStatus}});
+      await WorkflowService.call('adminAction', {
+        'collection': 'users',
+        'id': uid,
+        'updates': {'status': newStatus},
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -862,7 +886,14 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                 onPressed: () async {
                   if (!form.currentState!.validate()) return;
                   try {
-                    await WorkflowService.call('adminAction',{'collection':'users','id':user.uid,'updates':{'name':name.text.trim(),'bloodGroup':bloodGroup}});
+                    await WorkflowService.call('adminAction', {
+                      'collection': 'users',
+                      'id': user.uid,
+                      'updates': {
+                        'name': name.text.trim(),
+                        'bloodGroup': bloodGroup,
+                      },
+                    });
                     if (ctx.mounted) Navigator.pop(ctx);
                   } catch (e) {
                     if (ctx.mounted) {

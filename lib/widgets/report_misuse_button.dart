@@ -29,88 +29,95 @@ class ReportMisuseButton extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Report Misuse'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('What\'s the issue?'),
-                const SizedBox(height: 8),
-                ...reasons.map(
-                      (reason) => RadioListTile<String>(
-                    value: reason,
-                    // ignore: deprecated_member_use
-                    groupValue: selectedReason,
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    title: Text(reason, style: const TextStyle(fontSize: 14)),
-                    activeColor: AppColors.primaryRed,
-                    // ignore: deprecated_member_use
-                    onChanged: (v) {
-                      if (v != null) {
-                        setDialogState(() => selectedReason = v);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: detailsController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: 'Additional details (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-                try {
-                  await ReportService().submitReport(
-                    reason: selectedReason,
-                    targetUserId: targetUserId,
-                    targetRequestId: targetRequestId,
-                    details: detailsController.text.trim(),
-                  );
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Report submitted. Thank you for helping keep the '
-                              'community safe.',
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (dialogContext, setDialogState) => AlertDialog(
+                  title: const Text('Report Misuse'),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('What\'s the issue?'),
+                        const SizedBox(height: 8),
+                        ...reasons.map(
+                          (reason) => RadioListTile<String>(
+                            value: reason,
+                            // ignore: deprecated_member_use
+                            groupValue: selectedReason,
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            title: Text(
+                              reason,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            activeColor: AppColors.primaryRed,
+                            // ignore: deprecated_member_use
+                            onChanged: (v) {
+                              if (v != null) {
+                                setDialogState(() => selectedReason = v);
+                              }
+                            },
+                          ),
                         ),
-                        backgroundColor: AppColors.success,
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: detailsController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            hintText: 'Additional details (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(dialogContext);
+                        try {
+                          await ReportService().submitReport(
+                            reason: selectedReason,
+                            targetUserId: targetUserId,
+                            targetRequestId: targetRequestId,
+                            details: detailsController.text.trim(),
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Report submitted. Thank you for helping keep the '
+                                  'community safe.',
+                                ),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Could not submit report: $e'),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryRed,
+                        foregroundColor: Colors.white,
                       ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Could not submit report: $e')),
-                    );
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryRed,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Submit Report'),
-            ),
-          ],
-        ),
-      ),
+                      child: const Text('Submit Report'),
+                    ),
+                  ],
+                ),
+          ),
     );
   }
 

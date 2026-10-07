@@ -53,7 +53,10 @@ class BloodRequestModel {
   });
 
   /// Create BloodRequestModel from Firestore document
-  factory BloodRequestModel.fromFirestore(Map<String, dynamic> json, String id) {
+  factory BloodRequestModel.fromFirestore(
+    Map<String, dynamic> json,
+    String id,
+  ) {
     return BloodRequestModel(
       id: id,
       requesterId: json['requesterId'] ?? '',

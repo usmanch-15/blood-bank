@@ -6,9 +6,7 @@ class EligibilityChecker {
   static DateTime? nextEligibleDate(DateTime? lastDonationDate) {
     if (lastDonationDate == null) return null;
     final lastUtc = lastDonationDate.toUtc();
-    return lastUtc.add(
-      Duration(days: AppConstants.minDaysBetweenDonations),
-    );
+    return lastUtc.add(Duration(days: AppConstants.minDaysBetweenDonations));
   }
 
   /// Check if donor is eligible based on last donation date.

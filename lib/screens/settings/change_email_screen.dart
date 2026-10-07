@@ -66,13 +66,15 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
         default:
           message = e.message ?? 'Could not change email.';
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -87,100 +89,112 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
         backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
       ),
-      body: _sent
-          ? _buildConfirmationSent(context)
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Current email: $currentEmail',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _newEmailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'New Email Address',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Enter your new email address';
-                  }
-                  if (!v.contains('@') || !v.contains('.')) {
-                    return 'Enter a valid email address';
-                  }
-                  if (v.trim().toLowerCase() ==
-                      currentEmail.toLowerCase()) {
-                    return 'This is already your current email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: 'Current Password',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined),
-                    onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
+      body:
+          _sent
+              ? _buildConfirmationSent(context)
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Current email: $currentEmail',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _newEmailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'New Email Address',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Enter your new email address';
+                          }
+                          if (!v.contains('@') || !v.contains('.')) {
+                            return 'Enter a valid email address';
+                          }
+                          if (v.trim().toLowerCase() ==
+                              currentEmail.toLowerCase()) {
+                            return 'This is already your current email';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Current Password',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
+                            onPressed:
+                                () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                          ),
+                        ),
+                        validator:
+                            (v) =>
+                                (v == null || v.isEmpty)
+                                    ? 'Enter your current password to confirm'
+                                    : null,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'For your security, we\'ll send a confirmation link '
+                        'to your new email. Your login email won\'t change '
+                        'until you click that link.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryRed,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child:
+                              _isLoading
+                                  ? const SizedBox(
+                                    height: 22,
+                                    width: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                  : const Text('Send Confirmation Link'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                validator: (v) => (v == null || v.isEmpty)
-                    ? 'Enter your current password to confirm'
-                    : null,
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'For your security, we\'ll send a confirmation link '
-                    'to your new email. Your login email won\'t change '
-                    'until you click that link.',
-                style: TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryRed,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                      : const Text('Send Confirmation Link'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -191,8 +205,11 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.mark_email_read_outlined,
-                size: 64, color: AppColors.success),
+            const Icon(
+              Icons.mark_email_read_outlined,
+              size: 64,
+              color: AppColors.success,
+            ),
             const SizedBox(height: 16),
             const Text(
               'Confirmation link sent!',
@@ -201,8 +218,8 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
             const SizedBox(height: 8),
             Text(
               'We\'ve sent a link to ${_newEmailController.text.trim()}. '
-                  'Click it to finish changing your email. Until then, keep '
-                  'logging in with your current email.',
+              'Click it to finish changing your email. Until then, keep '
+              'logging in with your current email.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textSecondary),
             ),

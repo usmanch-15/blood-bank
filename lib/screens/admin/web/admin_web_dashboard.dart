@@ -66,8 +66,10 @@ class AdminWebDashboard extends StatefulWidget {
   State<AdminWebDashboard> createState() => _AdminWebDashboardState();
 }
 
-class _AdminWebDashboardState extends State<AdminWebDashboard> {
+class _AdminWebDashboardState extends State<AdminWebDashboard>
+    with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
+  late final AnimationController _sectionController;
 
   late final List<Widget> _screens;
 
@@ -86,6 +88,10 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
   @override
   void initState() {
     super.initState();
+    _sectionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 360),
+    )..forward();
     _screens = [
       const _DashboardHome(),
       AdminWebUsers(),
@@ -94,9 +100,15 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
       AdminWebDonations(),
       AdminWebReports(),
       AdminWebNotifications(),
-      const MyReportsScreen(admin:true),
+      const MyReportsScreen(admin: true),
       const AdminAuditScreen(),
     ];
+  }
+
+  @override
+  void dispose() {
+    _sectionController.dispose();
+    super.dispose();
   }
 
   void _logout() async {
@@ -123,14 +135,14 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
                   _Sidebar(
                     selectedIndex: _selectedIndex,
                     sections: _sections,
-                    onTap: (i) => setState(() => _selectedIndex = i),
+                    onTap: _selectSection,
                     onLogout: _logout,
                   ),
                   Expanded(
                     child: Column(
                       children: [
                         _TopBar(title: _sections[_selectedIndex].$1),
-                        Expanded(child: _screens[_selectedIndex]),
+                        Expanded(child: _animatedScreen),
                       ],
                     ),
                   ),
@@ -143,7 +155,7 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
                     compact: true,
                     onLogout: _logout,
                   ),
-                  Expanded(child: _screens[_selectedIndex]),
+                  Expanded(child: _animatedScreen),
                 ],
               ),
       bottomNavigationBar:
@@ -157,7 +169,7 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
                 child: SafeArea(
                   child: BottomNavigationBar(
                     currentIndex: _selectedIndex,
-                    onTap: (i) => setState(() => _selectedIndex = i),
+                    onTap: _selectSection,
                     backgroundColor: Colors.transparent,
                     elevation: 0,
                     selectedItemColor: _T.crimson,
@@ -187,6 +199,27 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
                 ),
               ),
     );
+  }
+
+  Widget get _animatedScreen => FadeTransition(
+    opacity: CurvedAnimation(parent: _sectionController, curve: Curves.easeOut),
+    child: SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0.02, 0),
+        end: Offset.zero,
+      ).animate(
+        CurvedAnimation(parent: _sectionController, curve: Curves.easeOutCubic),
+      ),
+      child: _screens[_selectedIndex],
+    ),
+  );
+
+  void _selectSection(int index) {
+    if (index == _selectedIndex) return;
+    setState(() => _selectedIndex = index);
+    _sectionController
+      ..reset()
+      ..forward();
   }
 }
 
@@ -596,17 +629,11 @@ class _DashboardHome extends StatelessWidget {
     final requests = await db.collection('blood_requests').count().get();
     final donations = await db.collection('donations').count().get();
 
-    final pendingUsers =
-        await db
-            .collection('users')
-            .where('status', isEqualTo: 'pending')
-            .count().get();
-
     return {
       'users': users.count ?? 0,
       'requests': requests.count ?? 0,
       'donations': donations.count ?? 0,
-      'pendingUsers': pendingUsers.count ?? 0,
+      'activeUsers': users.count ?? 0,
     };
   }
 
@@ -632,12 +659,7 @@ class _DashboardHome extends StatelessWidget {
               }
               final data =
                   snap.data ??
-                  {
-                    'users': 0,
-                    'requests': 0,
-                    'donations': 0,
-                    'pendingUsers': 0,
-                  };
+                  {'users': 0, 'requests': 0, 'donations': 0, 'activeUsers': 0};
               if (snap.hasError) {
                 return Text('Unable to load statistics: ${snap.error}');
               }
@@ -665,10 +687,10 @@ class _DashboardHome extends StatelessWidget {
                     color: _T.emerald,
                   ),
                   _StatCard(
-                    label: 'Pending Approvals',
-                    value: '${data['pendingUsers']}',
-                    icon: Icons.person_add_alt_1_rounded,
-                    color: _T.amber,
+                    label: 'Active Users',
+                    value: '${data['activeUsers']}',
+                    icon: Icons.verified_user_rounded,
+                    color: _T.emerald,
                   ),
                 ],
               );

@@ -485,7 +485,11 @@ class _AdminWebReportsState extends State<AdminWebReports>
     String title,
   ) async {
     try {
-      await WorkflowService.call('adminAction',{'collection':'misuse_reports','id':id,'updates':{'status':newStatus}});
+      await WorkflowService.call('adminAction', {
+        'collection': 'misuse_reports',
+        'id': id,
+        'updates': {'status': newStatus},
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -549,7 +553,11 @@ class _AdminWebReportsState extends State<AdminWebReports>
                 ),
                 onPressed: () async {
                   try {
-                    await WorkflowService.call('adminAction',{'collection':'misuse_reports','id':report.id,'updates':{'adminNotes':ctrl.text.trim()}});
+                    await WorkflowService.call('adminAction', {
+                      'collection': 'misuse_reports',
+                      'id': report.id,
+                      'updates': {'adminNotes': ctrl.text.trim()},
+                    });
                     if (dialogContext.mounted) Navigator.pop(dialogContext);
                   } catch (e) {
                     if (mounted) {

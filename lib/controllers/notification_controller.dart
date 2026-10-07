@@ -16,14 +16,16 @@ class NotificationController extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection(AppConstants.notificationsCollection)
-          .where('userId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
-          .get();
-      _notifications = snapshot.docs
-          .map((d) => NotificationModel.fromFirestore(d.data(), d.id))
-          .toList();
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection(AppConstants.notificationsCollection)
+              .where('userId', isEqualTo: userId)
+              .orderBy('createdAt', descending: true)
+              .get();
+      _notifications =
+          snapshot.docs
+              .map((d) => NotificationModel.fromFirestore(d.data(), d.id))
+              .toList();
       _unreadCount = _notifications.where((n) => !n.isRead).length;
     } finally {
       _isLoading = false;

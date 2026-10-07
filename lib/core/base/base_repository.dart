@@ -7,11 +7,19 @@ abstract class BaseRepository {
     return await db.collection(collection).doc(id).get();
   }
 
-  Future<void> save(String collection, String id, Map<String, dynamic> data) async {
+  Future<void> save(
+    String collection,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     await db.collection(collection).doc(id).set(data, SetOptions(merge: true));
   }
 
-  Future<void> update(String collection, String id, Map<String, dynamic> data) async {
+  Future<void> update(
+    String collection,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     await db.collection(collection).doc(id).update(data);
   }
 

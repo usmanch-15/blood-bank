@@ -51,8 +51,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text('Settings',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Settings',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
         ),
@@ -187,7 +189,13 @@ class _ProfileTile extends StatelessWidget {
                 leading: const Icon(Icons.phone_outlined),
                 title: const Text('Phone'),
                 trailing: const Icon(Icons.verified_user_outlined),
-                onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const PhoneSettingsScreen())),
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PhoneSettingsScreen(),
+                      ),
+                    ),
                 subtitle: Text(
                   (snapshot.data == null || snapshot.data!.isEmpty)
                       ? 'Not set'
@@ -212,7 +220,12 @@ class _ProfileTile extends StatelessWidget {
   }
 
   Future<void> _openEditProfileSheet(BuildContext context) async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => DonorProfileScreen(userData: Map.of(data))));
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DonorProfileScreen(userData: Map.of(data)),
+      ),
+    );
   }
 }
 
@@ -230,8 +243,7 @@ class _NotificationsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final masterEnabled = data['notificationsEnabled'] != false; // default true
-    final prefs =
-    Map<String, dynamic>.from(data['notificationPrefs'] ?? {});
+    final prefs = Map<String, dynamic>.from(data['notificationPrefs'] ?? {});
     final sosAlerts = prefs['sosAlerts'] != false;
     final rewardUpdates = prefs['rewardUpdates'] != false;
     final adminAnnouncements = prefs['adminAnnouncements'] != false;
@@ -259,37 +271,40 @@ class _NotificationsTile extends StatelessWidget {
             title: const Text('SOS Emergency Alerts'),
             value: masterEnabled && sosAlerts,
             activeThumbColor: AppColors.primaryRed,
-            onChanged: masterEnabled
-                ? (v) async {
-              await settingsService.updateNotificationPref(
-                sosAlerts: v,
-              );
-            }
-                : null,
+            onChanged:
+                masterEnabled
+                    ? (v) async {
+                      await settingsService.updateNotificationPref(
+                        sosAlerts: v,
+                      );
+                    }
+                    : null,
           ),
           SwitchListTile(
             title: const Text('Reward Updates'),
             value: masterEnabled && rewardUpdates,
             activeThumbColor: AppColors.primaryRed,
-            onChanged: masterEnabled
-                ? (v) async {
-              await settingsService.updateNotificationPref(
-                rewardUpdates: v,
-              );
-            }
-                : null,
+            onChanged:
+                masterEnabled
+                    ? (v) async {
+                      await settingsService.updateNotificationPref(
+                        rewardUpdates: v,
+                      );
+                    }
+                    : null,
           ),
           SwitchListTile(
             title: const Text('Admin Announcements'),
             value: masterEnabled && adminAnnouncements,
             activeThumbColor: AppColors.primaryRed,
-            onChanged: masterEnabled
-                ? (v) async {
-              await settingsService.updateNotificationPref(
-                adminAnnouncements: v,
-              );
-            }
-                : null,
+            onChanged:
+                masterEnabled
+                    ? (v) async {
+                      await settingsService.updateNotificationPref(
+                        adminAnnouncements: v,
+                      );
+                    }
+                    : null,
           ),
         ],
       ),
@@ -379,7 +394,7 @@ class _LocationSharingTile extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Text(
               'We only use your location to match you with nearby blood '
-                  'requests during emergencies. You can turn this off anytime.',
+              'requests during emergencies. You can turn this off anytime.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ),
@@ -489,17 +504,22 @@ class _SupportAboutTile extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.help_outline),
             title: const Text('My Reports / Support Status'),
-            onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const MyReportsScreen())),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyReportsScreen()),
+                ),
           ),
           ListTile(
             leading: const Icon(Icons.help_outline),
             title: const Text('Help & Support'),
             subtitle: const Text('FAQs and contact us'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
-            ),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+                ),
           ),
           const Divider(height: 1),
           ListTile(
@@ -507,10 +527,11 @@ class _SupportAboutTile extends StatelessWidget {
             title: const Text('About'),
             subtitle: const Text('Version, Terms, Privacy Policy'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AboutScreen()),
-            ),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AboutScreen()),
+                ),
           ),
         ],
       ),
@@ -550,10 +571,11 @@ class _AccountSecurityTile extends StatelessWidget {
             leading: const Icon(Icons.alternate_email),
             title: const Text('Change Email'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ChangeEmailScreen()),
-            ),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ChangeEmailScreen()),
+                ),
           ),
           const Divider(height: 1),
           ListTile(
@@ -587,15 +609,16 @@ class _AccountSecurityTile extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Expanded(child: Text('Preparing your data...')),
-          ],
-        ),
-      ),
+      builder:
+          (_) => const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Expanded(child: Text('Preparing your data...')),
+              ],
+            ),
+          ),
     );
     try {
       final export = await settingsService.exportUserData();
@@ -612,78 +635,95 @@ class _AccountSecurityTile extends StatelessWidget {
   void _confirmLogout(BuildContext context) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Logout?'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              await settingsService.logout();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Logout?'),
+            content: const Text('Are you sure you want to logout?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(dialogContext);
+                  await settingsService.logout();
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
                       (route) => false,
-                );
-              }
-            },
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                    );
+                  }
+                },
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   void _confirmDelete(BuildContext context) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Account?'),
-        content: const Text(
-          'This will permanently disable your account. This action cannot '
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Delete Account?'),
+            content: const Text(
+              'This will permanently disable your account. This action cannot '
               'be undone. Are you sure?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              try {
-                await settingsService.deleteAccount();
-                if (context.mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(dialogContext);
+                  try {
+                    await settingsService.deleteAccount();
+                    if (context.mounted) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
                         (route) => false,
-                  );
-                }
-              } catch (e) {
-                onSnack(
-                  'Could not delete account: please logout and login '
+                      );
+                    }
+                  } catch (e) {
+                    onSnack(
+                      'Could not delete account: please logout and login '
                       'again, then retry. ($e)',
-                  isError: true,
-                );
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                      isError: true,
+                    );
+                  }
+                },
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   Future<void> _openChangePasswordSheet(BuildContext context) async {
-    final saved = await showModalBottomSheet<bool>(context: context, isScrollControlled: true,
-      builder: (_) => ChangePasswordForm(onSave: (current, next) =>
-        settingsService.changePassword(currentPassword: current, newPassword: next)));
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder:
+          (_) => ChangePasswordForm(
+            onSave:
+                (current, next) => settingsService.changePassword(
+                  currentPassword: current,
+                  newPassword: next,
+                ),
+          ),
+    );
     if (saved == true) onSnack('Password changed successfully.');
   }
 }

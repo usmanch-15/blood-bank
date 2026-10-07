@@ -18,18 +18,30 @@ class DonationHistoryScreen extends StatefulWidget {
 }
 
 class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
-
   final user = FirebaseAuth.instance.currentUser;
-
 
   @override
   void initState() {
     super.initState();
-
   }
 
   @override
-  Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Donation History')),body:user==null?const Center(child:Text('Please sign in.')):PagedRecords(query:FirebaseFirestore.instance.collection('donations').where('donorId',isEqualTo:user!.uid).orderBy('donationDate',descending:true),itemBuilder:(context,doc)=>_buildDonationCard(DonationModel.fromFirestore(doc.data(),doc.id))));
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Donation History')),
+    body:
+        user == null
+            ? const Center(child: Text('Please sign in.'))
+            : PagedRecords(
+              query: FirebaseFirestore.instance
+                  .collection('donations')
+                  .where('donorId', isEqualTo: user!.uid)
+                  .orderBy('donationDate', descending: true),
+              itemBuilder:
+                  (context, doc) => _buildDonationCard(
+                    DonationModel.fromFirestore(doc.data(), doc.id),
+                  ),
+            ),
+  );
 
   Widget _buildDonationCard(DonationModel donation) {
     final dateFormat = DateFormat('MMM dd, yyyy');

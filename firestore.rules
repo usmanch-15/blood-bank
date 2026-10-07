@@ -4,7 +4,9 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function owner(uid) { return signedIn() && request.auth.uid == uid; }
     function active() {
-      return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status != 'suspended'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status != 'rejected';
     }
     function admin() {
       return active() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
@@ -55,7 +57,8 @@ service cloud.firestore {
       match /private/{document} {
         allow read: if (owner(uid) && active()) || admin();
         allow create: if owner(uid)
-          && getAfter(/databases/$(database)/documents/users/$(uid)).data.status == 'approved' && (
+          && getAfter(/databases/$(database)/documents/users/$(uid)).data.status != 'suspended'
+          && getAfter(/databases/$(database)/documents/users/$(uid)).data.status != 'rejected' && (
           (document == 'contact' && request.resource.data.keys().hasOnly(['phoneNumber','cnic'])) ||
           (document == 'device' && request.resource.data.keys().hasOnly(['fcmToken','fcmUpdatedAt'])));
         allow update: if owner(uid) && active() && (
