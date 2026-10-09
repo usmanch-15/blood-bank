@@ -7,11 +7,9 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 val signingFile = rootProject.file("key.properties")
+val hasReleaseSigning = signingFile.exists()
 val releaseKeys = Properties()
-if (signingFile.exists()) signingFile.inputStream().use { releaseKeys.load(it) }
-if (!signingFile.exists() && gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }) {
-    throw GradleException("Release signing requires android/key.properties and a private keystore. See README.md.")
-}
+if (hasReleaseSigning) signingFile.inputStream().use { releaseKeys.load(it) }
 android {
     namespace = "com.usmanch.bloodbank"
     compileSdk = flutter.compileSdkVersion
@@ -30,7 +28,7 @@ android {
         multiDexEnabled = true
     }
     signingConfigs {
-        if (signingFile.exists()) {
+        if (hasReleaseSigning) {
             create("release") {
                 keyAlias = releaseKeys.getProperty("keyAlias")
                 keyPassword = releaseKeys.getProperty("keyPassword")
@@ -41,7 +39,12 @@ android {
     }
     buildTypes {
         release {
-            signingConfig = signingConfigs.findByName("release")
+            signingConfig =
+                if (hasReleaseSigning) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 }

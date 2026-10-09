@@ -78,6 +78,9 @@ The project intentionally does not include chat, blood drives, localization, hos
 flutter config --jdk-dir="<installed JDK 17 directory>"
 flutter doctor -v
 flutter build apk --debug
+flutter build apk --release
 ```
 
-Configure private release signing before distribution. See `docs/app-review-2026-10-06.md` for the detailed production-readiness review and remaining external checks.
+When `android/key.properties` is absent, the release APK uses Android's debug signing key for local testing only. This build is not production-ready and must not be distributed as an official release. To create a distributable APK, configure `android/key.properties` and a private release keystore; release builds automatically use that signing configuration when present. Keep both files private and out of source control.
+
+See `docs/app-review-2026-10-06.md` for the detailed production-readiness review and remaining external checks.
