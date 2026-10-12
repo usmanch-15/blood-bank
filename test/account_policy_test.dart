@@ -37,7 +37,8 @@ void main() {
     expect(AccountPolicy.canSwitchMode('donor', 'admin'), isFalse);
     expect(AccountPolicy.canSwitchMode('admin', 'donor'), isFalse);
     expect(AccountPolicy.route({'role': 'admin'}), '/admin/dashboard');
-    expect(AccountPolicy.route({'role': 'donor'}), '/role-select');
+    expect(AccountPolicy.route({'role': 'donor'}), '/donor');
+    expect(AccountPolicy.route({'role': 'receiver'}), '/receiver');
   });
   test('Pakistani phone formats normalize consistently', () {
     for (final value in [

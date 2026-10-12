@@ -37,10 +37,11 @@ class _AdminAuditScreenState extends State<AdminAuditScreen> {
         subject: 'Blood bank administrative export',
       );
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('$e')));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -32,7 +32,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
       final page = await WorkflowService.call('discoverRequests', {
         'cursor': _cursor,
       });
-      if (mounted)
+      if (mounted) {
         setState(() {
           _items.addAll(
             (page['items'] as List).map((e) => Map<String, dynamic>.from(e)),
@@ -40,6 +40,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
           _cursor = page['cursor'];
           _more = _cursor != null;
         });
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -79,11 +80,12 @@ class _RequestListScreenState extends State<RequestListScreen> {
           .where('requesterId', isEqualTo: uid)
           .orderBy(FieldPath.documentId);
     }
-    if (mode == 'sos')
+    if (mode == 'sos') {
       query = FirebaseFirestore.instance
           .collection('sosRequests')
           .where('receiverId', isEqualTo: uid)
           .orderBy(FieldPath.documentId);
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(

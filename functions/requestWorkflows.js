@@ -126,7 +126,7 @@ async function updateAssignment(request) {
     const commitments=assignments(r), entry=commitments[donorId];
     if (!entry || !['accepted','awaiting_confirmation'].includes(entry.status)) fail('failed-precondition','No active assignment.');
     if (action==='ready') assertOpen(r);
-    commitments[donorId]={...entry,status:action==='ready'?'awaiting_confirmation':action==='release'?'released':'withdrawn',updatedAt:now()};
+    commitments[donorId]={...entry,status:action==='ready'?'awaiting_confirmation':action==='release'?'released':'withdrawn',...(action==='ready'?{donorConfirmedAt:now()}:{}),updatedAt:now()};
     const accepted=Object.keys(commitments).filter(k=>['accepted','awaiting_confirmation'].includes(commitments[k].status));
     const updates={commitments,acceptedDonorIds:accepted};
     if (action!=='ready') {
@@ -157,12 +157,12 @@ async function confirmDonation(request) {
     // A requester/admin may only finalize a contribution after the donor has
     // explicitly marked the assignment ready. This prevents unilateral
     // completion, rewards, eligibility changes, and SOS resolution.
-    if (!entry || entry.status !== 'awaiting_confirmation') fail('failed-precondition','The donor must confirm readiness first.');
+    if (!entry || entry.status !== 'awaiting_confirmation' || !entry.donorConfirmedAt) fail('failed-precondition','The donor must confirm the donation first.');
     if (!d.isDonor || !eligible(d,Date.now()) || !compatible(d.bloodGroup,r.bloodGroup)) fail('failed-precondition','Donor interval or group does not match.');
     const total=(r.donatedUnits || 0)+1;
     if (total>r.quantity) fail('failed-precondition','Request is already filled.');
     const stamp=now(),next=admin.firestore.Timestamp.fromMillis(stamp.toMillis()+INTERVAL_MS);
-    commitments[donorId]={...entry,status:'completed',completedAt:stamp,units:1};
+    commitments[donorId]={...entry,status:'completed',receiverConfirmedAt:stamp,completedAt:stamp,units:1};
     const accepted=Object.keys(commitments).filter(k=>['accepted','awaiting_confirmation'].includes(commitments[k].status));
     tx.create(donationRef,{donorId,requesterId:r.requesterId,donorName:d.name || '',bloodGroup:d.bloodGroup,donationDate:stamp,location:r.hospitalName,requestId,units:1,pointsEarned:POINTS,confirmedBy:caller});
     tx.update(donorRef,{lastDonationDate:stamp,nextEligibleDate:next,isEligible:false,rewardPoints:admin.firestore.FieldValue.increment(POINTS),activeRequestId:admin.firestore.FieldValue.delete()});
@@ -234,11 +234,13 @@ async function discoverRequests(request) {
 }
 async function findDonors(request) {
   const user=await actor(request), data=request.data || {}; coordinates(data);
-  const radius=Math.min(50,Math.max(1,Number(data.radiusKm)||50));
+  // Start with the product's 10 km search radius; callers may expand it up
+  // to 50 km explicitly when no suitable donor is found.
+  const radius=Math.min(50,Math.max(1,Number(data.radiusKm)||10));
   const ids=(await nearbyDonors(data.latitude,data.longitude,data.bloodGroup || null,radius)).filter(k=>k!==user.uid);
   const docs=await Promise.all(ids.map(k=>db.doc(`users/${k}`).get()));
   // Never return email, address, donation dates, patient info or exact coordinates.
-  return {donors:docs.filter(doc=>doc.exists).map(doc=>{const d=doc.data();return {uid:doc.id,name:d.name,bloodGroup:d.bloodGroup,isEligible:true,isAvailable:true,status:'approved',latitude:Math.round(d.latitude*100)/100,longitude:Math.round(d.longitude*100)/100,distanceKm:distanceKm(data.latitude,data.longitude,d.latitude,d.longitude)};}).sort((a,b)=>a.distanceKm-b.distanceKm)};
+  return {donors:docs.filter(doc=>doc.exists).map(doc=>{const d=doc.data();return {uid:doc.id,name:d.name,bloodGroup:d.bloodGroup,isEligible:eligible(d,Date.now()),isAvailable:d.isAvailable===true,status:d.status,latitude:Math.round(d.latitude*100)/100,longitude:Math.round(d.longitude*100)/100,distanceKm:distanceKm(data.latitude,data.longitude,d.latitude,d.longitude)};}).sort((a,b)=>a.distanceKm-b.distanceKm)};
 }
 async function createSosAlert(request) {
   const user=await actor(request);

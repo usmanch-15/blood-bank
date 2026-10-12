@@ -512,7 +512,6 @@ class _SignUpScreenState extends State<SignUpScreen>
                                   const SizedBox(height: 28),
 
                                   // Info strip
-                                  _buildInfoStrip(),
                                   const SizedBox(height: 24),
 
                                   // Submit button
@@ -766,35 +765,6 @@ class _SignUpScreenState extends State<SignUpScreen>
               .toList(),
       onChanged: (value) => setState(() => _selectedBloodGroup = value),
       validator: (v) => (v == null || v.isEmpty) ? 'Select blood group' : null,
-    );
-  }
-
-  Widget _buildInfoStrip() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFB71C1C).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFB71C1C).withValues(alpha: 0.2),
-        ),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.info_outline, color: Color(0xFFEF5350), size: 18),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Your account is ready to use immediately after registration.',
-              style: TextStyle(
-                color: Color(0xFF9E9E9E),
-                fontSize: 12,
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

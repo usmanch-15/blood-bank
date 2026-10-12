@@ -90,7 +90,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
             ),
       ),
     );
-    if (point != null && mounted)
+    if (point != null && mounted) {
       setState(() {
         _currentLat = point.latitude;
         _currentLng = point.longitude;
@@ -98,6 +98,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         _longitudeController.text = point.longitude.toStringAsFixed(6);
         _dirty = true;
       });
+    }
   }
 
   Future<void> _selectDate() async {

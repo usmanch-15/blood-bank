@@ -150,7 +150,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                               try {
                                 await controller.loadMore();
                               } catch (e) {
-                                if (context.mounted)
+                                if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
@@ -158,6 +158,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                                       ),
                                     ),
                                   );
+                                }
                               }
                             },
                     child: Text(

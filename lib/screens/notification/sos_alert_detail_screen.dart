@@ -21,8 +21,9 @@ class _SosAlertDetailScreenState extends State<SosAlertDetailScreen> {
   Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
     future: _sos,
     builder: (context, s) {
-      if (s.hasData && s.data!['requestId'] != null)
+      if (s.hasData && s.data!['requestId'] != null) {
         return RequestTrackingScreen(requestId: s.data!['requestId']);
+      }
       return Scaffold(
         appBar: AppBar(title: const Text('SOS alert')),
         body: Center(

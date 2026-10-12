@@ -29,12 +29,14 @@ class WorkflowService {
       'nextEligibleDate',
     };
     dynamic convert(dynamic value, String key) {
-      if (dates.contains(key) && value is num)
+      if (dates.contains(key) && value is num) {
         return Timestamp.fromMillisecondsSinceEpoch(value.toInt());
-      if (value is Map)
+      }
+      if (value is Map) {
         return value.map(
           (k, v) => MapEntry(k.toString(), convert(v, k.toString())),
         );
+      }
       if (value is List) return value.map((v) => convert(v, '')).toList();
       return value;
     }

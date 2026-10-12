@@ -91,7 +91,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
         'hospitalName': _hospital.text.trim(),
         'contactNumber': AppValidators.normalizePhone(_phone.text),
       });
-      if (mounted)
+      if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -99,6 +99,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                 (_) => RequestTrackingScreen(requestId: result['requestId']),
           ),
         );
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -207,13 +208,15 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
           OutlinedButton.icon(
             onPressed: () async {
               try {
-                if (!await launchUrl(Uri(scheme: 'tel', path: '1122')))
+                if (!await launchUrl(Uri(scheme: 'tel', path: '1122'))) {
                   throw StateError('Dialer unavailable.');
+                }
               } catch (e) {
-                if (context.mounted)
+                if (context.mounted) {
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text('$e')));
+                }
               }
             },
             icon: const Icon(Icons.call),

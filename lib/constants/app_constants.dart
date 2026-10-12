@@ -34,9 +34,6 @@ class AppConstants {
   static const String profileImagesPath = 'profile_images';
   static const String certificatesPath = 'certificates';
 
-  // Default Values
-  static const String defaultProfileImage = 'https://via.placeholder.com/150';
-
   // Maps (flutter_map / OpenStreetMap — no API key needed)
   static const double defaultZoom = 14.0;
   static const double nearbyRadius = 15.0; // SOS expands to 30 km when empty

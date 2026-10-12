@@ -63,21 +63,23 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                 });
               },
               onError: (Object e) {
-                if (mounted)
+                if (mounted) {
                   setState(() {
                     _data = null;
                     _error =
                         'Access changed or connection unavailable. Refresh to continue.';
                   });
+                }
               },
             );
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _data = null;
           _error = e.toString();
         });
+      }
     }
   }
 
@@ -115,12 +117,15 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
       _subscription = null;
       await _load();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -132,10 +137,11 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
       });
       await _phone(d['phoneNumber'] as String?);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 
@@ -143,12 +149,13 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
     if (number == null ||
         number.isEmpty ||
         !await launchUrl(Uri(scheme: 'tel', path: number))) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Contact number or dialer unavailable.'),
           ),
         );
+      }
     }
   }
 
@@ -168,11 +175,12 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
     final commitments = Map<String, dynamic>.from(
       d?['commitments'] as Map? ?? {},
     );
-    if (commitments.isEmpty && d?['acceptedDonorId'] != null)
+    if (commitments.isEmpty && d?['acceptedDonorId'] != null) {
       commitments[d!['acceptedDonorId']] = {
         'name': 'Assigned donor',
         'status': 'accepted',
       };
+    }
     final mine = commitments[_uid] as Map?;
     final assigned = [
       'accepted',
@@ -250,13 +258,15 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                 'https://www.openstreetmap.org/directions?to=${d['latitude']}%2C${d['longitude']}',
                               ),
                               mode: LaunchMode.externalApplication,
-                            ))
+                            )) {
                               throw StateError('Maps unavailable.');
+                            }
                           } catch (e) {
-                            if (context.mounted)
+                            if (context.mounted) {
                               ScaffoldMessenger.of(
                                 context,
                               ).showSnackBar(SnackBar(content: Text('$e')));
+                            }
                           }
                         },
                         icon: const Icon(Icons.directions),
@@ -337,9 +347,9 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                                 : () => _action(
                                                   'confirmDonation',
                                                   {'donorId': e.key},
-                                                  'Confirm one unit was donated?',
+                                                  'Confirm that you received one unit of blood?',
                                                 ),
-                                        child: const Text('Confirm donation'),
+                                        child: const Text('Blood received'),
                                       ),
                                     TextButton(
                                       onPressed:
@@ -416,8 +426,9 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                               .orderBy('createdAt')
                               .snapshots(),
                       builder: (context, s) {
-                        if (s.hasError)
+                        if (s.hasError) {
                           return const Text('Timeline unavailable.');
+                        }
                         return Column(
                           children:
                               (s.data?.docs ?? [])

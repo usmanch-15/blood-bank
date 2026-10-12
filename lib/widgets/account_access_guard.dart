@@ -15,7 +15,11 @@ class AccountAccessGuard extends StatelessWidget {
     if (!auth.sessionReady) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (!auth.isLoggedIn || (role != null && auth.currentUser?.role != role)) {
+    final hasRole = role == null ||
+        (role == 'donor' && auth.isDonor) ||
+        (role == 'receiver' && auth.isReceiver) ||
+        (role == 'admin' && auth.isAdmin);
+    if (!auth.isLoggedIn || !hasRole) {
       return Scaffold(
         appBar: AppBar(title: const Text('Account access')),
         body: Center(

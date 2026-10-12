@@ -32,11 +32,12 @@ class MyReportsScreen extends StatelessWidget {
             ['misuse_reports', 'feedback'].map((collection) {
               Query<Map<String, dynamic>> q = FirebaseFirestore.instance
                   .collection(collection);
-              if (!admin)
+              if (!admin) {
                 q = q.where(
                   'reporterId',
                   isEqualTo: FirebaseAuth.instance.currentUser?.uid,
                 );
+              }
               return PagedRecords(
                 query: q.orderBy(FieldPath.documentId),
                 itemBuilder: (context, doc) {
@@ -58,7 +59,7 @@ class MyReportsScreen extends StatelessWidget {
                                       'id': doc.id,
                                       'updates': {'status': status},
                                     });
-                                    if (context.mounted)
+                                    if (context.mounted) {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -68,13 +69,15 @@ class MyReportsScreen extends StatelessWidget {
                                           ),
                                         ),
                                       );
+                                    }
                                   } catch (e) {
-                                    if (context.mounted)
+                                    if (context.mounted) {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
                                         SnackBar(content: Text('$e')),
                                       );
+                                    }
                                   }
                                 },
                                 itemBuilder:

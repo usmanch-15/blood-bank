@@ -25,8 +25,8 @@ class AuthController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _currentUser != null;
-  bool get isDonor => _currentUser?.role == 'donor';
-  bool get isReceiver => _currentUser?.role == 'receiver';
+  bool get isDonor => _currentUser?.isDonor == true;
+  bool get isReceiver => _currentUser?.isReceiver == true;
   bool get isAdmin => _currentUser?.role == 'admin';
 
   /// ✅ NEW — keeps this controller in sync automatically.

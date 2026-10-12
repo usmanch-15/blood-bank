@@ -54,15 +54,17 @@ class _PagedRecordsState extends State<PagedRecords> {
         _more = page.docs.length == 30;
       });
     } catch (e) {
-      if (mounted && generation == _generation)
+      if (mounted && generation == _generation) {
         setState(
           () =>
               _error =
                   'Unable to load records. Check your connection and retry.',
         );
+      }
     } finally {
-      if (mounted && generation == _generation)
+      if (mounted && generation == _generation) {
         setState(() => _loading = false);
+      }
     }
   }
 

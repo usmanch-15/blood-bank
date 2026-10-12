@@ -86,9 +86,11 @@ class AuthService {
         'email': email.trim(),
         'name': name.trim(),
         'role': role,
-        'isDonor': role == 'donor',
-        'isReceiver': role == 'receiver',
-        'isAvailable': role == 'donor',
+        // `role` is the last selected mode; one normal account supports both
+        // donor and receiver activities.
+        'isDonor': true,
+        'isReceiver': true,
+        'isAvailable': true,
         'locationSharingEnabled': false,
         'bloodGroup': bloodGroup,
         'status': 'approved',

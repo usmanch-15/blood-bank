@@ -68,11 +68,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           await _authService.linkVerifiedPhone(credential);
           if (mounted) Navigator.pop(context, true);
         } catch (e) {
-          if (mounted)
+          if (mounted) {
             setState(() {
               _error = e.toString();
               _isLoading = false;
             });
+          }
         }
       },
     );

@@ -37,12 +37,13 @@ class NotificationHistoryScreen extends StatelessWidget {
                           d['relatedId'],
                         );
                       } catch (e) {
-                        if (context.mounted)
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Unable to open notification: $e'),
                             ),
                           );
+                        }
                       }
                     },
                   );

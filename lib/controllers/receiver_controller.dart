@@ -1,14 +1,12 @@
-import '../services/workflow_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/blood_request_model.dart';
 import '../models/donor_model.dart';
 import '../services/workflow_service.dart';
-import '../constants/app_constants.dart';
 
 class ReceiverController extends ChangeNotifier {
-  List<BloodRequestModel> _myRequests = [];
+  final List<BloodRequestModel> _myRequests = [];
   final List<DonorModel> _nearbyDonors = [];
   bool _isLoading = false;
   bool _sosSent = false;

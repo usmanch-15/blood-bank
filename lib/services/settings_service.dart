@@ -53,10 +53,12 @@ class SettingsService {
     String? bloodGroup,
     String? address,
   }) async {
-    if (name != null && AppValidators.validateName(name) != null)
+    if (name != null && AppValidators.validateName(name) != null) {
       throw ArgumentError(AppValidators.validateName(name));
-    if (phoneNumber != null)
+    }
+    if (phoneNumber != null) {
       throw StateError('Use phone verification to change your number.');
+    }
     final data = <String, dynamic>{};
     if (name != null) data['name'] = name.trim();
     if (bloodGroup != null) data['bloodGroup'] = bloodGroup;

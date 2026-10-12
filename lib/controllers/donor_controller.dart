@@ -11,7 +11,7 @@ import '../constants/app_constants.dart';
 
 class DonorController extends ChangeNotifier {
   DonorModel? _donor;
-  List<DonationModel> _donationHistory = [];
+  final List<DonationModel> _donationHistory = [];
   bool _isLoading = false;
   bool _isAvailable = true;
 

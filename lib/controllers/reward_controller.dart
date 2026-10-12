@@ -92,8 +92,9 @@ class RewardController extends ChangeNotifier {
           .where('donorId', isEqualTo: uid)
           .orderBy('donationDate', descending: true)
           .limit(30);
-      if (_lastDonation != null)
+      if (_lastDonation != null) {
         query = query.startAfterDocument(_lastDonation!);
+      }
       final page = await query.get();
       if (FirebaseAuth.instance.currentUser?.uid != uid) return;
       final certificates = [..._reward!.certificates];
@@ -111,7 +112,9 @@ class RewardController extends ChangeNotifier {
           ),
         );
       }
-      if (page.docs.isNotEmpty) _lastDonation = page.docs.last;
+      if (page.docs.isNotEmpty) {
+        _lastDonation = page.docs.last;
+      }
       hasMore = page.size == 30;
       _reward = RewardModel(
         id: uid,

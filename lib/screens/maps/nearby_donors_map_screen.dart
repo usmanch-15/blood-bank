@@ -46,10 +46,11 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
       LatLng center;
       if (widget.requestId != null) {
         final r = await WorkflowService.request(widget.requestId!);
-        if (r['latitude'] == null)
+        if (r['latitude'] == null) {
           throw StateError(
             'The meeting point is private. Open request tracking after acceptance.',
           );
+        }
         center = LatLng(
           (r['latitude'] as num).toDouble(),
           (r['longitude'] as num).toDouble(),
@@ -64,11 +65,12 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
             receiverLng: center.longitude,
             bloodGroup: _group,
           );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _donors = donors;
           _center = center;
         });
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -91,7 +93,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
         'requestId': widget.requestId,
         'userIds': targets.map((d) => d.donor.uid).toList(),
       });
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -99,11 +101,13 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
             ),
           ),
         );
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('$e')));
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
