@@ -46,13 +46,18 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
   }
 
   Future<void> _pick() async {
-    final p = await Navigator.push<LatLng>(
+    final selection = await Navigator.push<LocationSelection>(
       context,
       MaterialPageRoute(
         builder: (_) => HospitalLocationScreen(initial: _point),
       ),
     );
-    if (p != null && mounted) setState(() => _point = p);
+    if (selection != null && mounted) {
+      setState(() {
+        _point = selection.point;
+        if (_hospital.text.trim().isEmpty) _hospital.text = selection.address;
+      });
+    }
   }
 
   void _start() {

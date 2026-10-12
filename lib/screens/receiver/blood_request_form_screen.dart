@@ -42,8 +42,6 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   final _unitsRequiredController = TextEditingController();
   final _contactNumberController = TextEditingController();
   final _reasonController = TextEditingController();
-  final _latitudeController = TextEditingController();
-  final _longitudeController = TextEditingController();
 
   String _selectedBloodGroup = 'B+';
   String _selectedUrgency = 'Normal';
@@ -78,7 +76,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   }
 
   Future<void> _pickHospital() async {
-    final point = await Navigator.push<LatLng>(
+    final selection = await Navigator.push<LocationSelection>(
       context,
       MaterialPageRoute(
         builder:
@@ -90,12 +88,11 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
             ),
       ),
     );
-    if (point != null && mounted) {
+    if (selection != null && mounted) {
       setState(() {
-        _currentLat = point.latitude;
-        _currentLng = point.longitude;
-        _latitudeController.text = point.latitude.toStringAsFixed(6);
-        _longitudeController.text = point.longitude.toStringAsFixed(6);
+        _currentLat = selection.point.latitude;
+        _currentLng = selection.point.longitude;
+        _hospitalAddressController.text = selection.address;
         _dirty = true;
       });
     }
@@ -160,8 +157,6 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
     }
 
     setState(() => _isLoading = true);
-    _currentLat = double.tryParse(_latitudeController.text.trim());
-    _currentLng = double.tryParse(_longitudeController.text.trim());
 
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -353,39 +348,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                 _sectionTitle('Hospital Information'),
                 const SizedBox(height: AppSpacing.sm + 2),
                 const Text(
-                  'Enter the hospital coordinates for donor matching. Current GPS coordinates are filled when available; update them if the hospital is elsewhere.',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  controller: _latitudeController,
-                  readOnly: true,
-                  label: 'Hospital latitude',
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                    signed: true,
-                  ),
-                  validator: (v) {
-                    final n = double.tryParse(v?.trim() ?? '');
-                    return n != null && n.isFinite && n >= -90 && n <= 90
-                        ? null
-                        : 'Enter a latitude between -90 and 90';
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  controller: _longitudeController,
-                  readOnly: true,
-                  label: 'Hospital longitude',
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                    signed: true,
-                  ),
-                  validator: (v) {
-                    final n = double.tryParse(v?.trim() ?? '');
-                    return n != null && n.isFinite && n >= -180 && n <= 180
-                        ? null
-                        : 'Enter a longitude between -180 and 180';
-                  },
+                    'Select the hospital or meeting point on the map. Its address and coordinates will be saved automatically.',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(
@@ -621,8 +584,6 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
     _unitsRequiredController.dispose();
     _contactNumberController.dispose();
     _reasonController.dispose();
-    _latitudeController.dispose();
-    _longitudeController.dispose();
     super.dispose();
   }
 }
