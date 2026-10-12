@@ -9,7 +9,7 @@
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "test": "node --test test/policy.test.js",
+    "test": "node --test test/policy.test.js test/hospital-policy.test.js",
     "test:emulator": "node --test --test-concurrency=1 test/emulator.test.js",
     "test:http": "node --test test/http-workflow.test.js",
     "test:browser": "node test/browser-audit.js",

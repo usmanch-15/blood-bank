@@ -11,9 +11,6 @@ service cloud.firestore {
       return active() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     function bloodGroup(value) { return value in ['A+','A-','B+','B-','AB+','AB-','O+','O-']; }
-    function receiver() {
-      return active() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isReceiver == true;
-    }
     function profileValid(d) {
       return d.name is string && d.name.size() >= 2 && d.name.size() <= 100
         && bloodGroup(d.bloodGroup) && d.isDonor is bool && d.isReceiver is bool
@@ -67,6 +64,19 @@ service cloud.firestore {
               || request.resource.data.phoneNumber == request.auth.token.phone_number)));
         allow delete: if owner(uid) && active() && document == 'device';
       }
+    }
+    // Hospitals are maintained by administrators and are read-only to app users.
+    // The client rejects entries that do not contain a valid name, address, and pin.
+    match /hospitals/{hospitalId} {
+      allow read: if active();
+      allow create, update: if admin()
+        && request.resource.data.name is string
+        && request.resource.data.address is string
+        && request.resource.data.latitude is number
+        && request.resource.data.longitude is number
+        && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+        && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180;
+      allow delete: if admin();
     }
     function participant(d) {
       return active() && (d.requesterId == request.auth.uid || request.auth.uid in d.get('participantIds', []) || request.auth.uid in d.get('acceptedDonorIds', []) || d.get('acceptedDonorId','') == request.auth.uid);

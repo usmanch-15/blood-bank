@@ -1,0 +1,37 @@
+\chapter{System Analysis and Requirements}\label{ch:requirements}
+\section{Roles}
+The \textbf{donor} manages profile, consent and availability, accepts requests, records readiness, and views history/rewards. The \textbf{receiver} creates and tracks requests/SOS and confirms donations. The \textbf{administrator} uses a role-protected dashboard for users, requests, reports, misuse handling, statistics, exports, and audits.
+\section{Seven Modules and Verified Scope}
+\begin{longtable}{p{3.5cm}p{7.2cm}p{2.8cm}}\toprule Module&Responsibility&Status\\\midrule\endhead
+Authentication Module&Registration/login, optional email/phone verification, validation, reset and role routing.&Implemented; OTP deployment/device dependent.\\
+Donor Module&Profiles, availability, history, eligibility, rewards and certificates.&Implemented; clinical eligibility external.\\
+Receiver Module&Multi-unit requests, tracking, cancellation, confirmation and SOS.&Implemented through callables.\\
+Notification Module&In-app and push alerts for requests, eligibility and drives.&Implemented; push needs deployed FCM/functions.\\
+Reward and Certificate Module&Points and PDF acknowledgement certificates.&Implemented; no public QR verifier.\\
+Admin Module&Monitoring, status actions, reports, misuse, statistics and audit.&Implemented; Firestore admin role required.\\
+Mapping and Distance Module&Consent-aware coordinates, discovery, distance, ETA and selection.&Implemented; ETA uses external OSRM.\\\bottomrule
+\end{longtable}
+\section{Functional Requirements}
+\begin{enumerate}[label=FR\arabic*.]
+\item Register/authenticate users and maintain a Firestore profile.
+\item Permit valid non-rejected/non-suspended accounts without approval gating.
+\item Validate profiles, availability, consent and role-specific navigation.
+\item Create requests with blood group, units, urgency, deadline, hospital, contact and coordinates.
+\item Filter candidates by account state, compatibility, eligibility, availability, consent, assignment and distance.
+\item Support donor accept/withdraw/readiness and receiver/admin confirmation.
+\item Atomically update progress and create one donation/reward outcome per donor/request.
+\item Maintain recipient notifications, request events and administrative audit records.
+\item Permit only administrators to execute management operations.
+\end{enumerate}
+\section{Use Cases}
+\begin{table}[H]\small\centering\caption{Representative use cases}\begin{tabularx}{\textwidth}{p{1.5cm}p{2cm}XXX}\toprule ID&Actor&Precondition&Outcome&Exception\\\midrule
+UC-01&User&Valid form/network&Auth account and profile&Duplicate email/invalid data\\
+UC-02&Receiver&Active account&Request created and matching begins&Rate limit/deadline/location error\\
+UC-03&Donor&Eligible and compatible&Assignment reserved&Capacity or active assignment conflict\\
+UC-04&Receiver/Admin&Donor ready&Donation, points and progress recorded&Unauthorized/duplicate action\\
+UC-05&Admin&Role equals admin&Dashboard/action/audit available&Rules reject non-admin\\\bottomrule\end{tabularx}\end{table}
+\section{Non-functional Requirements}
+Security requires authentication, ownership/role checks, private subcollections, server validation, and no embedded admin password. Usability requires responsive layouts, validation and loading/empty/error states. Reliability requires transactions, idempotency, and graceful network errors. Performance requires pagination and indexed pre-filtering. Privacy requires minimization and opt-in location. Maintainability requires modular services, models, widgets, rules, and tests.
+\section{Constraints, Assumptions and Feasibility}
+Operation depends on Firebase configuration, indexes, quotas, billing and network access. GPS/notifications need permission and coordinates may be inaccurate. Compatibility is a search aid; clinicians must screen and cross-match. Flutter/Dart, Android tooling, Node.js, Firebase CLI/emulators and LaTeX form the software environment. Managed infrastructure makes the prototype technically and economically feasible, while production feasibility requires administrator procedures, privacy/retention policy, clinical partnerships, and local legal review.
+

@@ -1,0 +1,176 @@
+﻿% ============================================
+% Chapter 6 – Testing and Evaluation
+% ============================================
+
+\chapter{Testing and Evaluation}
+
+This chapter documents the testing and evaluation activities performed for the Smart Blood Bank project. The project includes automated Flutter tests and backend validation logic, and the repository also contains a verification report describing which checks were executed locally and which remain device-dependent. The testing approach used in this project is therefore a combination of automated unit and policy testing, backend rule validation, and manual validation for features requiring real-device configuration such as Firebase phone OTP, push delivery, and live map permissions.
+
+The testing evidence must be reported honestly. Some flows are implemented in source and pass policy checks, while others remain unexecuted in the current environment. The tables below therefore distinguish between executed and unexecuted tests and explicitly mark missing evidence as \textbf{Not Executed} instead of claiming success.
+
+% -------------------------------------------------
+% 6.1 Testing Strategy
+% -------------------------------------------------
+
+\section{Testing Strategy}
+
+The Smart Blood Bank application is tested using multiple layers. The repository includes Flutter unit tests for validation and policy logic, and it also contains a verification document identifying local automated checks that passed. These checks cover core authentication policy rules, donor eligibility logic, phone normalization, URL and location utilities, and data model validation.
+
+The project also includes Firebase security rules and callable workflows that are intended to enforce server-side access control. These are important because the system uses secure Firestore rules to prevent unauthorized read and write operations. In addition to automated validation, some product requirements such as OTP delivery, push notifications, Android-specific permission flows, and live emergency workflows still require real-device or browser testing. These are documented as not executed where no live execution evidence exists.
+
+% -------------------------------------------------
+% 6.2 Authentication and Access Control Testing
+% -------------------------------------------------
+
+\section{Authentication and Access Control Testing}
+
+The repository contains automated evidence for the core security policy and session logic. The tests in \texttt{test/account	extunderscore policy	extunderscore test.dart} validate that suspended, deleted, rejected, missing, and unknown accounts are rejected. They also verify that mode switching cannot grant admin access and that the policy consistently decides the route for donor and receiver accounts.
+
+\begin{table}[H]
+\centering
+\caption{Authentication and access-control test cases}
+\begin{tabularx}{\textwidth}{|p{1.6cm}|p{2.7cm}|X|X|X|p{1.6cm}|p{2.5cm}|}
+\hline
+\textbf{ID} & \textbf{Module} & \textbf{Scenario} & \textbf{Input} & \textbf{Expected Result} & \textbf{Actual Result} & \textbf{Status} \\
+\hline
+AT-01 & Authentication & Session policy rejects inactive or deleted users & Missing, deleted, suspended, rejected, unknown statuses & Access denied & Test asserts all statuses are rejected; account policy test passes & Pass \\
+\hline
+AT-02 & Authentication & Mode switching cannot grant admin route & donor$\rightarrow$admin and admin$\rightarrow$donor & Access denied & Assertions verify false for invalid transitions & Pass \\
+\hline
+AT-03 & Authentication & Role route check & donor and admin roles & donor route and admin route are resolved correctly & Route values validated by test code & Pass \\
+\hline
+AT-04 & Authentication & Login validation fails for invalid credentials & Invalid email/password attempt & Error state shown & No live UI flow executed in current environment & Not Executed \\
+\hline
+AT-05 & Authentication & Successful login and session restore & Approved donor/receiver account & Dashboard loads after authentication & No live UI session captured in current environment & Not Executed \\
+\hline
+\end{tabularx}
+\end{table}
+
+% -------------------------------------------------
+% 6.3 Donor and Validation Testing
+% -------------------------------------------------
+
+\section{Donor and Validation Testing}
+
+The donor and validation tests cover phone normalization, location rounding, name validation, and the eligibility logic used by the project. The Flutter tests confirm that Pakistani phone formats normalize correctly, hospital names with Unicode characters are accepted, and donor eligibility is calculated consistently for recent donations.
+
+\begin{table}[H]
+\centering
+\caption{Donor and validation test cases}
+\begin{tabularx}{\textwidth}{|p{1.6cm}|p{2.7cm}|X|X|X|p{1.6cm}|p{2.5cm}|}
+\hline
+\textbf{ID} & \textbf{Module} & \textbf{Scenario} & \textbf{Input} & \textbf{Expected Result} & \textbf{Actual Result} & \textbf{Status} \\
+\hline
+DT-01 & Donor Module & Valid phone normalization & Various Pakistani phone formats & All normalize to \texttt{+923001234567} & Test checks multiple accepted formats and passes & Pass \\
+\hline
+DT-02 & Donor Module & Invalid phone rejection & Short or malformed phone numbers & Validation error reported & Test asserts invalid phone values are rejected & Pass \\
+\hline
+DT-03 & Donor Module & Unicode hospital names accepted & \texttt{شفا ہسپتال} and apostrophe names & Validation passes & Test asserts valid inputs are accepted & Pass \\
+\hline
+DT-04 & Donor Module & Name and length validation & Blank and overlong names & Validation error reported & Test asserts invalid names fail & Pass \\
+\hline
+DT-05 & Donor Module & Eligibility check & Donor donated 30 days ago & Not eligible & Test expects false for recent donation & Pass \\
+\hline
+DT-06 & Donor Module & Eligibility check & Donor donated 90 days ago & Eligible & Test expects true for eligible interval & Pass \\
+\hline
+DT-07 & Donor Module & Profile update validation & Invalid name or direct phone change attempt & User is blocked from invalid update & Logic exists in controller, but no UI test captured & Not Executed \\
+\hline
+\end{tabularx}
+\end{table}
+
+% -------------------------------------------------
+% 6.4 Request, Matching, and SOS Testing
+% -------------------------------------------------
+
+\section{Request, Matching, and SOS Testing}
+
+The project implements donor matching and SOS workflows using geolocation and eligibility checks. The repository includes policy tests that validate the request model and distance logic, such as quantity retention and proximity calculations. These tests provide evidence for request structure and distance boundary behavior; however, live device-level SOS delivery still requires real-world testing because Android notification flows and permission behavior depend on device configuration and provider credentials.
+
+\begin{table}[H]
+\centering
+\caption{Request, matching, and SOS test cases}
+\begin{tabularx}{\textwidth}{|p{1.6cm}|p{2.7cm}|X|X|X|p{1.6cm}|p{2.5cm}|}
+\hline
+\textbf{ID} & \textbf{Module} & \textbf{Scenario} & \textbf{Input} & \textbf{Expected Result} & \textbf{Actual Result} & \textbf{Status} \\
+\hline
+RS-01 & Receiver Module & Blood request preserves quantity and status values & Request model with quantity = 3 & Quantity stored correctly and cancelled status change possible & Test asserts model behavior and passes & Pass \\
+\hline
+RS-02 & Mapping Module & Distance calculation near 15 km threshold & Sample lat/long values & Distance greater than 15 but less than 30 km & Test checks distance boundaries and passes & Pass \\
+\hline
+RS-03 & Receiver Module & Request validation & Invalid or empty requirement data & Form denies submission & Validation logic exists in code; no UI execution captured & Not Executed \\
+\hline
+RS-04 & SOS Module & Emergency donor notification & SOS request with nearby donor data & Matching and notification flow triggered & Source implements logic; no live notification proof captured in workspace & Not Executed \\
+\hline
+RS-05 & Matching Module & Nearby donor discovery & Blood group and location query & Nearby eligible donors returned & Matching logic implemented in backend; no device test evidence captured & Not Executed \\
+\hline
+\end{tabularx}
+\end{table}
+
+% -------------------------------------------------
+% 6.5 Notification, Reward, and Admin Testing
+% -------------------------------------------------
+
+\section{Notification, Reward, and Admin Testing}
+
+The repository contains source code for notification, reward, and admin operations, but the current workspace does not include a full browser or device-based execution log proving every admin workflow and notification delivery scenario. The automated tests in the project focus on data validation and security policy logic, which supports the underlying implementation but cannot replace live app testing for push notification delivery and admin-dashboard interactions.
+
+\begin{table}[H]
+\centering
+\caption{Notification, reward, and admin test cases}
+\begin{tabularx}{\textwidth}{|p{1.6cm}|p{2.7cm}|X|X|X|p{1.6cm}|p{2.5cm}|}
+\hline
+\textbf{ID} & \textbf{Module} & \textbf{Scenario} & \textbf{Input} & \textbf{Expected Result} & \textbf{Actual Result} & \textbf{Status} \\
+\hline
+NR-01 & Notification Module & Notification read/update flow & Notification record for authenticated user & Record marked read & Source logic exists; no UI or device evidence captured & Not Executed \\
+\hline
+NR-02 & Notification Module & FCM token registration & Active user with device token & Token stored and refreshed securely & Source code implements registration; device testing not performed & Not Executed \\
+\hline
+RW-01 & Reward Module & Reward points are server-controlled & Donation confirmation call & Points updated only via server workflow & Source code enforces this; UI-level proof not captured & Not Executed \\
+\hline
+AD-01 & Admin Module & Admin dashboard access & Approved admin account & Dashboard shown & Source code implements this; no live admin login evidence captured & Not Executed \\
+\hline
+AD-02 & Admin Module & User approval or suspension & Admin action against user record & Status updated via callable workflow & Backend policy logic exists; no UI verification captured & Not Executed \\
+\hline
+\end{tabularx}
+\end{table}
+
+% -------------------------------------------------
+% 6.6 Screenshot and Evidence Requirements
+% -------------------------------------------------
+
+\section{Screenshot and Evidence Requirements}
+
+The repository does not contain real application screenshots for login, registration, donor profile, request creation, donor matching, SOS, or admin actions. The Evaluation 3 requirement therefore requires a screenshot capture stage before final presentation. The current project includes evidence from code and automated tests, but the final documentation should maintain the distinction between executed proof and required screenshots.
+
+The following flow requires live screenshot capture:
+
+\begin{itemize}
+    \item Login screen and authentication validation.
+    \item Successful registration and role-based account creation.
+    \item Donor profile and eligibility screen.
+    \item Blood request creation and status tracking.
+    \item Matching/donor selection view.
+    \item SOS emergency creation and outcome.
+    \item Notification history and FCM message behavior.
+    \item Admin dashboard and moderation screens.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][4.5cm][c]{0.82\textwidth}{\centering Screenshot placeholder: required live evidence for evaluation demonstration. No actual screenshot asset is present in the repository.}}
+\caption{Required evaluation screenshot placeholder}
+\end{figure}
+
+% -------------------------------------------------
+% 6.7 Testing Summary
+% -------------------------------------------------
+
+\section{Testing Summary}
+
+The Smart Blood Bank project includes verified automated evidence for core validation and policy logic, while certain user-facing and device-dependent flows remain either partially implemented or unexecuted in the current environment. In particular, the project has direct test evidence for account policy enforcement, phone normalization, donor eligibility logic, location edge behavior, and request data preservation. These tests were executed and passed, which confirms that the implemented logic is consistent with expected behavior under controlled conditions.
+
+However, the repository does not contain evidence for end-to-end login, registration, full SOS flow, push delivery, or admin dashboard screenshots. These items should therefore be reported as \textbf{Not Executed} or \textbf{Requires Device Verification} rather than being annotated as passed. This honest reporting is essential for a defensible Evaluation 3 submission because it aligns the final thesis with the actual project state and available test artifacts.
+
+% -------------------------------------------------
+% End of Chapter 6
+% -------------------------------------------------

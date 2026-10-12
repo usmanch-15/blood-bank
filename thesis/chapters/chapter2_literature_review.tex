@@ -1,0 +1,16 @@
+\chapter{Literature Review}\label{ch:literature}
+\section{Blood Donation and Digital Coordination}
+WHO guidance places suitability assessment, infection screening, storage, and clinical governance within regulated services \cite{whoBloodSafety,whoDonationFAQ}. Coordination software must help communication without posing as a clinical decision system. A systematic review reports that blood-donation apps commonly use reminders, education, appointments, location, and urgent appeals, while evidence quality and sustained engagement vary \cite{li2023mobile}. The American Red Cross app illustrates an integrated donor journey covering appointments, history, eligibility information, and rewards \cite{redCrossApp}.
+\section{Comparison of Approaches}
+\begin{table}[H]\centering\small\caption{Related approaches and gaps}
+\begin{tabularx}{\textwidth}{p{3cm}XXX}\toprule Approach&Strengths&Limitations&Project response\\\midrule
+Calls/social media&Immediate and familiar&Unstructured, excessive disclosure, no audit trail&Structured requests and controlled access\\
+Institutional app&Trusted appointments and donor history&Organization/region specific&Local donor--receiver coordination\\
+Map directory&Fast proximity search&May ignore eligibility, consent and compatibility&Backend policy plus distance filtering\\
+Smart Blood Bank&Integrated workflow and administration&Requires deployed cloud services; non-clinical&Explicit boundaries and graceful errors\\\bottomrule
+\end{tabularx}\end{table}
+\section{Gap and Contribution}
+The gap is not merely displaying donor phone numbers. A practical prototype must combine identity, compatibility, eligibility, consent, distance, multi-unit state, controlled contact disclosure, duplicate-safe confirmation, notifications, and auditability. Smart Blood Bank uses callable workflows, latitude pre-filtering plus Haversine distance, and stable donation identifiers. Rewards and certificates derive from confirmed donations. This is an engineering contribution, not proof of improved clinical outcomes.
+\section{Chapter Summary}
+Prior work supports mobile engagement and location-aware coordination while emphasizing trust, privacy, clinical boundaries, and rigorous evaluation. These findings inform Chapter~\ref{ch:requirements}.
+

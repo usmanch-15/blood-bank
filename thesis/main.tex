@@ -1,0 +1,150 @@
+﻿\documentclass[12pt]{report}
+\usepackage[a4paper,
+    left=0.7in,
+    right=0.7in,
+    top=1.5in,
+    bottom=1in,
+    headheight=15pt,
+    headsep=0.5in,
+    footskip=0.5in
+]{geometry}
+\usepackage{fancyhdr}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{tocloft}
+\usepackage{booktabs}
+
+\usepackage{ragged2e}
+% Hyperlinks are optional; omitted to keep the university template portable
+% across minimal LaTeX installations.
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{array,longtable,pdflscape}
+\newcommand{\screenshotplaceholder}[2]{%
+\begin{figure}[H]\centering
+\fcolorbox{gray}{gray!8}{\parbox[c][4cm][c]{0.86\textwidth}{\centering\textbf{[SCREENSHOT PLACEHOLDER: #1]}\\[0.5em]\small Evidence to be captured from the running application.}}
+\caption{#2}\end{figure}}
+\newcommand{\screenshotfigure}[3]{%
+\begin{figure}[H]\centering
+\includegraphics[width=#2\textwidth,height=0.62\textheight,keepaspectratio]{#1}
+\caption{#3}\label{fig:#1}\end{figure}}
+\usepackage{setspace}
+% Format chapter heading
+\usepackage{titlesec}
+\usepackage{algpseudocode}
+\usepackage{amsmath}
+\newfloat{algorithm}{tbp}{loa}[chapter]
+\floatname{algorithm}{Algorithm}
+
+
+% Chapter Formatting
+\titleformat{\chapter}[display]
+  {\centering\bfseries\fontsize{18}{20}\selectfont}
+  {Chapter \thechapter}
+  {0pt}
+  {}
+
+\titlespacing*{\chapter}
+  {0pt}
+  {0pt}
+  {12pt}
+
+
+
+% Enable deep numbering
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+
+
+% Header & Footer Setup
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+
+% Header
+\fancyhead[L]{\small COMSATS University Islamabad}
+\fancyhead[R]{\small Final Year Project}
+
+% Footer
+\fancyfoot[C]{\thepage}
+
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\begin{document}
+\input{title.tex}
+\newpage
+% ---------- Roman numbering ----------
+\pagenumbering{roman}
+\setcounter{page}{1}
+\pagestyle{plain}
+% Reset counter after PDF
+\setcounter{page}{1}
+\input{dedication}  
+\input{acknowledgement} 
+\input{certificate}
+\input{plagiarism}
+\input{executive_summary}
+\input{abbreviations}
+\newpage
+
+\renewcommand*\contentsname{Table of Contents}
+\tableofcontents
+\newpage
+\addcontentsline{toc}{section}{List of Tables}
+\listoftables
+
+\newpage
+\addcontentsline{toc}{section}{List of Figures}
+\listoffigures
+
+\clearpage
+% ---------- Arabic numbering ----------
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\input{chapters/chapter1_introduction}
+\input{chapters/chapter2_literature_review}
+\input{chapters/chapter3_requirements}
+\input{chapters/chapter4_system_design}
+\input{chapters/chapter5_implementation}
+\input{chapters/chapter6_testing}
+\input{ch_7_conclusion}
+\nocite{*}
+\bibliographystyle{IEEEtran}
+\bibliography{ref}
+
+% ======================================
+% Appendices Section
+% ======================================
+% ======================================
+% Appendices Section
+% ======================================
+
+\clearpage
+\appendix
+
+% Main Appendices Title (NO page break after this)
+\chapter*{Appendices}
+\addcontentsline{toc}{chapter}{Appendices}
+
+% Remove extra vertical space
+\vspace{-0.1em}
+
+% Appendix A (no page break before)
+\section*{Appendix A - Turnitin Similarity Report}
+\addcontentsline{toc}{section}{Appendix A – Turnitin Similarity Report}
+\input{ch_8_plagiarismreport}
+
+% Appendix B
+\clearpage
+\section*{Appendix B - AI Writing Detection Report}
+\addcontentsline{toc}{section}{Appendix B – AI Writing Detection Report}
+\input{ch_8.1_AI_report}
+
+% Source Code
+\clearpage
+\section*{Appendix C – Source Code}
+\addcontentsline{toc}{section}{Appendix C – Source Code}
+\input{ch_9_appendix_source_code}
+
+\end{document}
+

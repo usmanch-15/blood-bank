@@ -1,0 +1,267 @@
+﻿% ============================================
+% Chapter 5 – Implementation
+% ============================================
+
+\chapter{Implementation}
+
+This chapter presents the implemented modules of the Smart Blood Bank system and relates them to the actual source code, Firebase backend structure, and validation logic present in the repository. The project is implemented as a Flutter application integrated with Firebase Authentication, Firestore, Cloud Functions, and Firebase Cloud Messaging. The source code shows the system includes donor and receiver flows, emergency blood request handling, notification workflows, reward and certificate management, admin monitoring, and geolocation-based donor discovery.
+
+The project is not a generic template. The implementation is mapped to the actual repository code and the evidence described in the existing project documentation. The chapter therefore documents the modules that are actually implemented and clearly identifies any functionality that remains device-dependent or unverified in the current workspace.
+
+% -------------------------------------------------
+% 5.1 Development Environment
+% -------------------------------------------------
+
+\section{Development Environment}
+
+The Smart Blood Bank system is implemented using Flutter and Dart for the front-end, with Firebase as the backend service. The runtime architecture includes Firebase Authentication, Cloud Firestore, Cloud Functions, Cloud Messaging, and Firebase Storage for file-related workflows. The app code is located in the repository under the \texttt{lib/} directory, while server-side orchestration and enforcement logic are implemented in the \texttt{functions/} directory.
+
+The repository also includes Firestore security rules, Firebase emulator configuration, and automated Flutter tests under the \texttt{test/} directory. These tests provide evidence for validation logic, account policy enforcement, and eligibility-related behavior. The source structure confirms that the system targets Android and web, and the README explicitly states that real-device testing remains required for OTP, push delivery, maps permissions, and deployment-specific configuration.
+
+% -------------------------------------------------
+% 5.2 Authentication Module
+% -------------------------------------------------
+
+\section{Authentication Module}
+
+The Authentication Module is responsible for registration, login, session restoration, account checks, and route control for donors, receivers, and administrators. The main logic is implemented in \texttt{lib/controllers/auth_controller.dart} and \texttt{lib/services/auth_service.dart}. The frontend uses Firebase email/password authentication and then loads the user profile from Firestore to determine whether the account is active, approved, and assigned the required role.
+
+The repository also includes an access policy utility in \texttt{lib/utils/account_policy.dart}. This policy checks whether the account status is approved and whether the user is allowed to switch between donor and receiver modes. It ensures that admin access is not granted through a mode-switching route and that suspended or rejected accounts are denied access.
+
+\subsection{Authentication Workflow}
+
+The authentication workflow follows the actual implementation pattern in the project code:
+
+\begin{enumerate}
+    \item User enters email and password.
+    \item Firebase Authentication validates the credentials.
+    \item The app reads the Firestore user record using the authenticated UID.
+    \item The status is checked using the project policy utility.
+    \item The user is routed to the correct dashboard only if the role and status are valid.
+\end{enumerate}
+
+\begin{table}[H]
+\centering
+\caption{Authentication module algorithm}
+\begin{tabularx}{\textwidth}{|p{4.2cm}|X|p{4.0cm}|}
+\hline
+\textbf{Step} & \textbf{Action} & \textbf{Outcome} \\
+\hline
+1 & Accept email/password input & Form validation starts \\
+\hline
+2 & Sign in using Firebase Authentication & Credentials verified \\
+\hline
+3 & Retrieve profile data from Firestore & User account state loaded \\
+\hline
+4 & Evaluate account policy and user role & Approved or denied access \\
+\hline
+5 & Navigate to dashboard or block access & Session control applied \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][4.5cm][c]{0.82\textwidth}{\centering Screenshot placeholder: login screen with successful sign-in and validation errors. This must be captured from the actual app; no screenshot was present in the repository.}}
+\caption{Authentication Module: login and validation placeholder}
+\end{figure}
+
+% -------------------------------------------------
+% 5.3 Donor Module
+% -------------------------------------------------
+
+\section{Donor Module}
+
+The Donor Module implements donor profile management, availability updates, eligibility checks, donation recording, and reward generation. The main implementation is in \texttt{lib/controllers/donor_controller.dart}, \texttt{lib/screens/donor/donor_profile_screen.dart}, and the donor dashboard screens under \texttt{lib/screens/donor/}. Donors can edit their name, blood group, availability, and basic location-sharing preferences. The profile update logic also restricts direct phone editing and stores sensitive contact information in a private Firestore subcollection instead of exposing it through the public user document.
+
+The project also tracks donation history and evaluates if a donor is eligible for future donations by comparing the last recorded donation date against a defined interval. The eligibility check is implemented with date utilities and helper functions, which are used to determine whether the donor is allowed to accept and complete a new donation request.
+
+\subsection{Donor Module Functionalities}
+
+\begin{itemize}
+    \item Donor profile creation and editing.
+    \item Availability toggle and optional location sharing.
+    \item Donation eligibility evaluation using last donation date.
+    \item Request acceptance and confirmation workflow.
+    \item Donation history and certificate generation.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Donor workflow algorithm}
+\begin{tabularx}{\textwidth}{|p{4.2cm}|X|p{4.0cm}|}
+\hline
+\textbf{Stage} & \textbf{Implementation detail} & \textbf{System action} \\
+\hline
+Profile update & Validate name and optional location input & Update public Firestore record \\
+\hline
+Eligibility check & Compare last donation date with policy interval & Mark donor eligible or ineligible \\
+\hline
+Request acceptance & Execute callable donor acceptance function & Create donor commitment to request \\
+\hline
+Donation confirmation & Server-side validation and reward issuance & Record donation and points \\
+\hline
+Certificate access & Read donation data and generate certificate & Display downloadable reward proof \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][4.5cm][c]{0.82\textwidth}{\centering Screenshot placeholder: donor dashboard, profile screen, and donation history. This screenshot is required but was not available in the current repository.}}
+\caption{Donor Module: dashboard and eligibility placeholders}
+\end{figure}
+
+% -------------------------------------------------
+% 5.4 Receiver Module
+% -------------------------------------------------
+
+\section{Receiver Module}
+
+The Receiver Module supports the creation of blood requests and the sending of emergency SOS alerts to nearby eligible donors. The actual implementation is present in \texttt{lib/controllers/receiver_controller.dart}, \texttt{lib/screens/receiver/blood_request_form_screen.dart}, and the receiver dashboard and SOS screens under \texttt{lib/screens/receiver/}.
+
+A receiver can create a blood request by entering the requested blood group, urgency, hospital information, and the coordinates for the hospital or meeting point. Upon creation, the backend validates the input, creates a Firestore document in the \texttt{blood_requests} collection, and triggers donor discovery logic. In the same way, the SOS workflow stores an emergency request in the \texttt{sosRequests} collection and initiates donor notification based on a proximity search.
+
+\subsection{Receiver Process}
+
+\begin{table}[H]
+\centering
+\caption{Receiver request and SOS algorithm}
+\begin{tabularx}{\textwidth}{|p{4.2cm}|X|p{4.0cm}|}
+\hline
+\textbf{Flow} & \textbf{Process} & \textbf{Result} \\
+\hline
+Submit request & Validate form input and coordinates & Blood request document generated \\
+\hline
+Match donors & Evaluate blood group, consent, eligibility, and distance & Candidate donor list produced \\
+\hline
+Create SOS alert & Store emergency event with location data & Emergency response workflow triggered \\
+\hline
+Notify nearby donors & Use server-side notification logic & Urgent message sent to eligible donors \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][4.5cm][c]{0.82\textwidth}{\centering Screenshot placeholder: blood request form, request tracking, and SOS emergency screen. Must be captured from a live emulator or device.}}
+\caption{Receiver Module: request and emergency workflow placeholder}
+\end{figure}
+
+% -------------------------------------------------
+% 5.5 Notification Module
+% -------------------------------------------------
+
+\section{Notification Module}
+
+The Notification Module is implemented through Firebase Cloud Messaging and the Flutter notification controller. It allows the app to register and refresh device tokens, store notifications for each user, and update read status when notifications are viewed. The source code in \texttt{lib/services/notification_service.dart} and \texttt{lib/controllers/notification_controller.dart} handles notification persistence and user-specific delivery logic.
+
+The Firebase backend also has scheduled and triggered notification events for donor matching, SOS alerts, and user announcements. The repository confirms that push delivery is implemented in source but requires real-device verification and backend deployment for full operational proof. It is therefore accurate to describe the module as implemented in code and partially verified in the current local environment.
+
+\begin{table}[H]
+\centering
+\caption{Notification dispatch algorithm}
+\begin{tabularx}{\textwidth}{|p{4.2cm}|X|p{4.0cm}|}
+\hline
+\textbf{Trigger} & \textbf{System action} & \textbf{Delivery state} \\
+\hline
+New blood request or SOS event & Find matching recipients & Push notification created \\
+\hline
+Notification record created & Query target user & Store notification in Firestore \\
+\hline
+User opens notification & Mark record as read & UI updates read status \\
+\hline
+\end{tabularx}
+\end{table}
+
+% -------------------------------------------------
+% 5.6 Reward and Certificate Module
+% -------------------------------------------------
+
+\section{Reward and Certificate Module}
+
+The Reward and Certificate Module handles donor points, reward totals, and donation certificates for successful confirmed donations. The implementation includes reward models, certificate-related service logic, and user interface screens for viewing earned points and downloading certificates. The backend validation is intentionally server-side so that points cannot be forged directly by the client.
+
+The project uses callable Cloud Functions for confirmation and reward issuance, which aligns with the requirement to enforce server-side business rules. This is important because the codebase explicitly prevents direct client-side mutation of reward data and donation records.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][4.5cm][c]{0.82\textwidth}{\centering Screenshot placeholder: reward points screen and certificate preview/download page. This proof must be captured from the actual application and cannot be invented.}}
+\caption{Reward and Certificate Module placeholder}
+\end{figure}
+
+% -------------------------------------------------
+% 5.7 Admin Module
+% -------------------------------------------------
+
+\section{Admin Module}
+
+The Admin Module includes donor verification, monitoring, reports, misuse handling, and dashboard analytics for donation and demand statistics. Relevant source files include \texttt{lib/controllers/admin_controller.dart} and the admin web screens located in \texttt{lib/screens/admin/web/}. The module collects aggregate data from Firestore and provides administrative functions such as user approval or suspension, report review, and donation/request monitoring.
+
+The admin workflow is protected by Firestore rules and callable Cloud Functions. The project demonstrates that administrative access is server-validated and not simply controlled by the client UI. This is a critical security design requirement for the project and is reflected in the repository's backend policies.
+
+\begin{table}[H]
+\centering
+\caption{Admin workflow algorithm}
+\begin{tabularx}{\textwidth}{|p{4.0cm}|X|p{4.0cm}|}
+\hline
+\textbf{Action} & \textbf{Workflow} & \textbf{Access control} \\
+\hline
+Approve user & Update documented status field & Admin-only callable workflow \\
+\hline
+Suspend user & Set rejected or suspended state & Admin-only validation \\
+\hline
+Delete user & Execute server-side delete workflow & Firebase Auth + Firestore cleanup \\
+\hline
+Monitor metrics & Query aggregate donations and requests & Admin dashboard access \\
+\hline
+\end{tabularx}
+\end{table}
+
+% -------------------------------------------------
+% 5.8 Mapping and Distance Module
+% -------------------------------------------------
+
+\section{Mapping and Distance Module}
+
+The Mapping and Distance Module implements location-aware donor discovery and distance-based blood search. It uses geolocation and map services in the application, while the backend matching logic filters donors by compatibility, approximate location, and availability. The repository contains nearby donor matching logic and location utilities in the \texttt{functions/nearbyDonors.js} and related service files.
+
+This module is important because it allows the receiver to find nearby eligible donors based on blood type, distance, and consented location sharing. It also supports emergency escalation where the system broadens the search radius if no donors are found initially. The source code indicates a distance-based logic that evaluates the location and performs donor discovery on the backend rather than relying only on the client UI.
+
+\begin{table}[H]
+\centering
+\caption{Mapping and distance algorithm}
+\begin{tabularx}{\textwidth}{|p{4.0cm}|X|p{4.0cm}|}
+\hline
+\textbf{Input} & \textbf{Operation} & \textbf{Output} \\
+\hline
+Receiver location and blood group & Query compatible donor dataset & Candidate donors selected \\
+\hline
+Eligibility and availability & Filter by active status and interval policy & Valid donor set prepared \\
+\hline
+Distance computation & Evaluate geospatial proximity & Nearby donors prioritized \\
+\hline
+Emergency escalation & Increase search radius if needed & Additional donor reach \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][4.5cm][c]{0.82\textwidth}{\centering Screenshot placeholder: map-based donor discovery and nearby donor list. Actual map screenshots are not present in the repository.}}
+\caption{Mapping Module: donor discovery placeholder}
+\end{figure}
+
+% -------------------------------------------------
+% 5.9 Implementation Summary
+% -------------------------------------------------
+
+\section{Implementation Summary}
+
+The project demonstrates a working Flutter + Firebase architecture for the seven major modules identified in the project scope. Specifically, the repository shows implemented components for authentication, donor profile management, receiver request workflows, notification handling, rewards and certificates, admin operations, and mapping/distance-based donor discovery.
+
+The implementation is verified in source and in automated tests for key policy and validation logic. However, the repository also clearly states that some features such as OTP-based phone verification, live device push notifications, full map permission flows, and production Firebase deployment remain dependent on external configuration and device-side testing. Therefore, the project should be represented as a strong prototype implementation with verified source-level functionality and partially completed live validation, rather than a fully production-certified medical application.
+
+% -------------------------------------------------
+% End of Chapter 5
+% -------------------------------------------------

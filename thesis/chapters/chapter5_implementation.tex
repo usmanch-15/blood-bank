@@ -1,0 +1,91 @@
+\chapter{Implementation}\label{ch:implementation}
+\section{Implementation Environment}
+The client is implemented in Flutter/Dart with Firebase Authentication, Firestore, Functions, Messaging, Storage, Crashlytics and App Check packages. Provider supports state management; \texttt{flutter\_map}, geolocator, geocoding and \texttt{latlong2} support maps; HTTP supports routing; PDF, CSV and sharing packages support documents/exports. Node.js functions implement privileged workflows. Firestore and Storage rules provide a second authorization boundary.
+
+\section{Authentication Module}
+\textbf{Purpose and status.} Registration, login, reset, session restoration, optional email verification and phone-link OTP are implemented in \texttt{lib/services/auth\_service.dart}, auth screens, validators and \texttt{lib/utils/account\_policy.dart}. Registration writes status \texttt{approved}; login blocks only rejected/suspended accounts. OTP requires Firebase Phone Auth/device configuration.
+
+Forms validate names, email, password, phone and role fields, expose password visibility and loading/error states, and route by Firestore role. Authentication is not authorization: rules and functions recheck status/role. No administrator credential is embedded.
+\begin{algorithm}[H]\caption{Authenticate and route a user}\begin{algorithmic}[1]
+\Require Email and password \Ensure Authorized role screen or explicit error
+\State Authenticate with Firebase Auth
+\State Read the caller's \texttt{users} document
+\If{status is \texttt{suspended} or \texttt{rejected}} \State sign out and reject \EndIf
+\If{role is donor, receiver, or admin} \State open role navigation \Else \State reject invalid profile \EndIf
+\end{algorithmic}\end{algorithm}
+\screenshotfigure{Figures/screenshots/login.jpeg}{0.52}{Login screen with email/password fields and password-reset access}
+\screenshotfigure{Figures/screenshots/signup.jpeg}{0.52}{Create-account screen with profile, role and blood-group fields}
+
+\section{Donor Module}
+\textbf{Purpose and status.} Donor profiles, opt-in location, availability, compatible request discovery, active assignment, readiness, history and eligibility are implemented through donor screens/models, \texttt{FirestoreService}, \texttt{GeoService}, and request functions. The 90-day interval used by backend policy is an application rule, not clinical clearance.
+
+The backend excludes self, inactive, unavailable, non-consenting, incompatible, ineligible or already-assigned donors. Transactions prevent assignment races; errors preserve state and explain retry requirements.
+\begin{algorithm}[H]\caption{Accept a donor assignment}\begin{algorithmic}[1]
+\Require Active donor and open compatible request \Ensure Reserved assignment or rejection
+\State Re-read donor and request in a transaction
+\State Validate status, availability, eligibility, compatibility and capacity
+\If{donor has another active request} \State reject \Else \State add assignment and set \texttt{activeRequestId} \EndIf
+\end{algorithmic}\end{algorithm}
+\screenshotfigure{Figures/screenshots/donor_dashboard.jpeg}{0.42}{Donor dashboard showing donation summary, eligibility and quick actions}
+\screenshotfigure{Figures/screenshots/donor_profile.jpeg}{0.42}{Donor profile showing personal information and blood-group details}
+
+\section{Receiver Module}
+\textbf{Purpose and status.} Receiver screens call \texttt{functions/requestWorkflows.js} to create multi-unit requests, view events/assignments, cancel, contact authorized participants and confirm donations. SOS creates both an SOS record and linked blood request. Inputs include blood group, 1--50 units, urgency, future deadline (maximum 31 days), hospital/contact text and valid coordinates; callable errors cover rate limits and invalid state.
+\begin{algorithm}[H]\caption{Create and process a blood request}\begin{algorithmic}[1]
+\Require Authenticated receiver and valid request fields \Ensure Request/event and matching result
+\State Verify active receiver and rate limit
+\State Validate group, units, deadline, text and coordinates
+\State Store open request and creation event
+\State Query compatible nearby donors and create notification work
+\State Return request identifier
+\end{algorithmic}\end{algorithm}
+The supplied screenshot set does not contain a receiver request or SOS screen. No image is inserted here because the available evidence cannot verify that workflow visually.
+
+\section{Notification Module}
+\textbf{Purpose and status.} \texttt{NotificationService}, device-token subcollections and backend notification helpers implement in-app records/read state and FCM delivery for urgent requests, workflow changes, eligibility and drives where configured. Permission denial, absent tokens and network failures are handled without treating push delivery as authoritative state.
+\begin{algorithm}[H]\caption{Dispatch a notification}\begin{algorithmic}[1]
+\Require Recipient, event type and minimized payload
+\State Write recipient-scoped notification record
+\State Read valid per-device tokens
+\ForAll{tokens} \State send through FCM; record/remove invalid token as supported \EndFor
+\end{algorithmic}\end{algorithm}
+\screenshotfigure{Figures/screenshots/admin_notifications.jpeg}{0.86}{Administrative notification composition and history interface}
+
+\section{Reward and Certificate Module}
+\textbf{Purpose and status.} Confirmed donations award 50 points and become history/reward inputs. \texttt{CertificateService} generates a PDF acknowledgement, includes a QR value tied to the donation identifier, and uploads it to Storage. It does not provide a public QR-verification portal.
+\begin{algorithm}[H]\caption{Confirm donation and derive reward}\begin{algorithmic}[1]
+\Require Ready assignment and authorized receiver/admin
+\State Use stable ID \texttt{requestId\_donorId}
+\If{donation already exists} \State return idempotent result \EndIf
+\State Write donation, add points, set next eligibility date
+\State Update units/status and release assignment
+\end{algorithmic}\end{algorithm}
+The supplied screenshot set does not contain a rewards or certificate screen. The implementation description above is therefore supported by source inspection rather than a fabricated visual.
+
+\section{Admin Module}
+\textbf{Purpose and status.} The responsive admin screens and admin services provide sidebar/drawer navigation, header, aggregate cards, searchable/filterable user lists, status dialogs, reports, misuse handling, request monitoring, broadcasts/exports and audit-oriented actions. Desktop uses persistent navigation; narrower layouts collapse controls. Firebase Auth establishes identity while Firestore role \texttt{admin}, rules and callable checks authorize operations.
+\begin{algorithm}[H]\caption{Execute an administrative action}\begin{algorithmic}[1]
+\Require Authenticated caller and requested mutation
+\State Read caller profile and verify active \texttt{admin} role
+\State Validate target, transition, reason and invariants
+\State Apply mutation atomically where required
+\State Write audit metadata and return sanitized result
+\end{algorithmic}\end{algorithm}
+\screenshotfigure{Figures/screenshots/admin_dashboard.jpeg}{0.95}{Administrative dashboard with summary cards and recent activity}
+\screenshotfigure{Figures/screenshots/admin_users_approved.jpeg}{0.95}{Administrative user-management view with approved users and role filters}
+\screenshotfigure{Figures/screenshots/admin_audit.jpeg}{0.95}{Administrative audit and export view showing an audit event}
+
+\section{Mapping and Distance Module}
+\textbf{Purpose and status.} \texttt{GeoService}, map widgets and backend nearby-donor code implement permission handling, manual/map coordinates, approximate opt-in location, donor search and distance. The server first uses an indexed latitude band, then Haversine distance and policy filters. Client search can expand through 10, 30 and 50 km. OSRM route requests have a timeout and gracefully omit ETA when unavailable.
+\begin{algorithm}[H]\caption{Find nearby eligible donors}\begin{algorithmic}[1]
+\Require Request coordinates/group and radius \Ensure Minimal ordered candidate list
+\State Query approved, available and sharing-enabled donors in latitude bounds
+\ForAll{candidates} \State test self, compatibility, eligibility and active assignment
+\State compute Haversine distance; retain those within radius \EndFor
+\State Sort by distance, apply limit/pagination and return minimized fields
+\end{algorithmic}\end{algorithm}
+The supplied screenshot set does not contain a map or donor-distance screen. Map behaviour remains documented from the implementation source and requires a separate runtime capture for visual evidence.
+
+\section{Implementation Outcome}
+All seven modules have executable client/backend code, but production behavior remains conditional on Firebase deployment, indexes, credentials, permissions and network services. The implementation deliberately keeps clinical decisions outside the application.
+

@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:latlong2/latlong.dart';
 import '../maps/hospital_location_screen.dart';
 import '../requests/request_tracking_screen.dart';
 import '../../widgets/unsaved_changes_guard.dart';
@@ -54,6 +53,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
       FirebaseFirestore.instance.collection('blood_requests').doc().id;
   double? _currentLat;
   double? _currentLng;
+  String? _hospitalId;
 
   final List<String> _bloodGroups = [
     'A+',
@@ -78,20 +78,14 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   Future<void> _pickHospital() async {
     final selection = await Navigator.push<LocationSelection>(
       context,
-      MaterialPageRoute(
-        builder:
-            (_) => HospitalLocationScreen(
-              initial:
-                  _currentLat == null
-                      ? null
-                      : LatLng(_currentLat!, _currentLng!),
-            ),
-      ),
+      MaterialPageRoute(builder: (_) => HospitalLocationScreen()),
     );
     if (selection != null && mounted) {
       setState(() {
         _currentLat = selection.point.latitude;
         _currentLng = selection.point.longitude;
+        _hospitalId = selection.hospitalId;
+        _hospitalNameController.text = selection.hospitalName;
         _hospitalAddressController.text = selection.address;
         _dirty = true;
       });
@@ -184,6 +178,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         unitsRequired: units,
         quantity: units,
         hospitalName: _hospitalNameController.text.trim(),
+        hospitalId: _hospitalId,
         hospitalAddress: _hospitalAddressController.text.trim(),
         urgency: _selectedUrgency,
         reason: _reasonController.text.trim(),
@@ -348,7 +343,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                 _sectionTitle('Hospital Information'),
                 const SizedBox(height: AppSpacing.sm + 2),
                 const Text(
-                    'Select the hospital or meeting point on the map. Its address and coordinates will be saved automatically.',
+                  'Select a hospital by name to view its location and area on the map.',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(
@@ -356,6 +351,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   label: 'Hospital Name',
                   prefixIcon: Icons.local_hospital_outlined,
                   validator: AppValidators.validateHospitalName,
+                  readOnly: true,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(
@@ -367,6 +363,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                           v == null || v.trim().isEmpty
                               ? 'Hospital address required'
                               : null,
+                  readOnly: true,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(
@@ -418,8 +415,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   icon: const Icon(Icons.pin_drop),
                   label: Text(
                     _currentLat == null
-                        ? 'Select hospital location'
-                        : 'Change confirmed hospital pin',
+                        ? 'Select hospital'
+                        : 'Change selected hospital',
                   ),
                 ),
                 SizedBox(

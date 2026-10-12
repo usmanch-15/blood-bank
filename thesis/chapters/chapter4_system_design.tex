@@ -1,0 +1,36 @@
+\chapter{System Design}\label{ch:design}
+\section{Overall Architecture}
+Flutter screens/providers form the presentation and state layers; services isolate authentication, Firestore, functions, messaging, storage, location and routing. Firebase supplies identity, persistence and trusted workflows.
+\begin{figure}[H]\centering
+\fbox{\begin{minipage}{0.82\textwidth}\centering
+Flutter UI: Donor, Receiver and Admin\\$\downarrow$\\
+Providers, Models and Services\\$\downarrow$\\
+\begin{tabular}{c|c|c}Firebase Authentication&Callable Cloud Functions&Firestore, Storage and FCM\end{tabular}
+\end{minipage}}\caption{Implemented high-level architecture}\end{figure}
+\section{Interaction and Workflows}
+Role routing follows authentication. A receiver calls \texttt{createBloodRequest}; the function validates fields/rate limits, writes the request and event, and initiates candidate notification. Discovery applies compatibility, active state, availability, eligibility, consent and assignment rules, a latitude-band query, then exact Haversine distance. Acceptance reserves one active request. Readiness and receiver/admin confirmation create a stable donation record, update units and points, and release or complete assignments. SOS creates a linked request rather than an isolated process.
+\section{Database Design}
+\begin{table}[H]\small\centering\caption{Principal Firestore collections}\begin{tabularx}{\textwidth}{p{3cm}XX}\toprule Collection&Content&Access/design\\\midrule
+\texttt{users}&role, status, blood group, availability, points, eligibility, location&Owner/admin; private contact/devices in subcollections\\
+\texttt{blood\_requests}&receiver, units, urgency, deadline, coordinates, assignments, status&Function-controlled mutations; events subcollection\\
+\texttt{donations}&participants, date, points, certificate metadata&Participant/admin; stable ID prevents duplicates\\
+\texttt{sosRequests}&SOS data and linked request&Creator/admin and workflow controlled\\
+\texttt{notifications}&recipient, content, type and read state&Recipient scoped\\
+\texttt{rewards}, \texttt{blood\_drives}&engagement and drive data&Rules constrain writes\\
+\texttt{reports}, \texttt{misuse\_reports}, \texttt{feedback}, \texttt{broadcasts}, \texttt{audit\_logs}&governance data&Administrative access where appropriate\\\bottomrule\end{tabularx}\end{table}
+\section{UML-style Views}
+The use-case view assigns profile, availability, acceptance and history to donors; request/SOS creation and confirmation to receivers; and monitoring/moderation to administrators. Shared use cases are authentication, notifications, maps and sign-out.
+\begin{figure}[H]\centering
+\fbox{\begin{minipage}{0.88\textwidth}\centering
+Receiver $\rightarrow$ Flutter Client: request form\\
+Flutter Client $\rightarrow$ Callable Function: validated payload\\
+Callable Function $\rightarrow$ Firestore: authorize and transact\\
+Firestore $\rightarrow$ Callable Function: request and event\\
+Callable Function $\rightarrow$ Flutter Client: result or explicit error
+\end{minipage}}\caption{Request-creation sequence}\end{figure}
+The donor activity is authenticate, load candidates, inspect details/distance, accept, optionally withdraw, mark ready, await confirmation, and view history/reward/certificate. Models for users, requests, donations, notifications and rewards map documents to Dart objects; services such as \texttt{AuthService}, \texttt{GeoService}, \texttt{NotificationService} and \texttt{CertificateService} isolate external APIs.
+\section{Security and Data Flow}
+Authentication identifies the caller; rules/functions authorize ownership, participation, active account status and admin role. Private contacts and tokens are separated from public profile data. The client contains project identifiers but no admin password or private signing key. Location sharing is opt-in and matching minimizes returned fields. App Check support is present but production enforcement remains a deployment task.
+\section{Chapter Summary}
+The design separates UI, services and trusted backend transitions, supporting responsive interfaces, least privilege, transactional state and testable policy.
+

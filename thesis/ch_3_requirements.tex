@@ -1,0 +1,450 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHAPTER 3 – REQUIREMENT ANALYSIS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Requirement Analysis}
+
+%===========================================================
+\section{Introduction to Requirement Analysis}
+%===========================================================
+
+This chapter presents a structured and formal specification of system requirements for the proposed project. The purpose of this chapter is to clearly define what the system shall accomplish before proceeding to the system design phase. The requirements documented in this chapter serve as a contractual foundation for implementation, validation, and system testing.
+
+The requirement analysis includes requirement elicitation techniques, identification of stakeholders, use case modeling, functional requirements, non-functional requirements, and external interface requirements. All requirements are written in measurable and testable format using standard requirement engineering principles.
+
+
+%===========================================================
+\section{Requirement Elicitation Techniques}
+%===========================================================
+
+This section describes the techniques used to gather and refine system requirements. Requirement elicitation ensures alignment between stakeholder expectations and system capabilities.
+
+Requirements for this project were identified using the following techniques:
+
+\begin{itemize}
+    \item Stakeholder interviews to capture user expectations and constraints.
+    \item Literature review of similar systems and research contributions.
+    \item Analysis of existing solutions to identify functional gaps.
+    \item Dataset examination and feasibility study (for ML-based systems).
+    \item Observation of workflow processes (if applicable).
+\end{itemize}
+
+
+%===========================================================
+\section{User Classes and Characteristics}
+%===========================================================
+
+This section identifies different user categories interacting with the system. Each user class is defined along with their responsibilities, access privileges, and technical proficiency level. This classification supports role-based access control and requirement mapping.
+
+\begin{table}[h]
+\centering
+\caption{User Classes and Characteristics}
+
+\begin{tabularx}{\textwidth}{|p{3cm}|X|p{3cm}|}
+\hline
+\textbf{User Class} & \textbf{Description} & \textbf{Technical Level} \\
+\hline
+Administrator & Manages system configuration, user accounts, monitoring, and reports. & Advanced \\
+\hline
+End User & Uses the system to perform core functionalities such as data input, search, prediction, or transactions. & Basic \\
+\hline
+Service Provider & Provides domain-specific services within the system (if applicable). & Intermediate \\
+\hline
+External System & APIs or third-party systems interacting with the application. & Technical \\
+\hline
+\end{tabularx}
+
+\end{table}
+
+
+%===========================================================
+\section{System Overview}
+%===========================================================
+
+The proposed system operates within a structured architectural environment designed to support modular interaction between user interfaces, processing logic, and data storage. The system supports role-based interactions and ensures secure communication between internal modules and external services.
+
+The overall architecture may follow client-server, three-tier, microservices, or machine learning pipeline architecture depending on project type. The system boundary includes all internal modules, user interfaces, data processing components, and integrated third-party services.
+
+
+%===========================================================
+\section{Use Case Model}
+%===========================================================
+
+The use case model represents high-level system interactions between actors and system functionalities. It defines system boundaries and captures functional behavior from a user perspective.
+
+
+%===========================================================
+\subsection{Use Case Diagram}
+%===========================================================
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{Figures/usecase_diagram.png}
+\caption{Use Case Diagram of Proposed System}
+\label{fig:usecase}
+\end{figure}
+
+The above diagram illustrates the interaction between actors and major system functionalities. Include relationships such as \textit{include} and \textit{extend} where applicable.
+
+
+%===========================================================
+\subsection{Use Case Descriptions}
+%===========================================================
+
+This section provides detailed tabular specifications of major use cases. These use cases form the basis for deriving functional requirements.
+
+\subsubsection{Module 1: Core System Functionality}
+
+Below are the detailed use cases for Module 1.
+
+\begin{table}[h]
+\centering
+\caption{UC-1.1: User Registration}
+
+\begin{tabularx}{\textwidth}{
+|>{\raggedright\arraybackslash}p{3.5cm}
+|>{\raggedright\arraybackslash}X|}
+
+\hline
+\textbf{Use Case ID} & UC-1.1 \\ \hline
+\textbf{Use Case Name} & User Registration \\ \hline
+\textbf{Actors} & End User \\ \hline
+\textbf{Description} & This use case describes how a user registers into the system. \\ \hline
+\textbf{Trigger} & User selects the ``Sign Up'' option. \\ \hline
+\textbf{Preconditions} & User is not already registered. \\ \hline
+\textbf{Postconditions} & User account is successfully created. \\ \hline
+\textbf{Normal Flow} &
+\begin{enumerate}
+    \item User enters required information.
+    \item System validates input fields.
+    \item System stores data in database.
+    \item Confirmation message is displayed.
+\end{enumerate}
+\\ \hline
+\textbf{Alternative Flow} &
+If validation fails, the system displays appropriate error messages.
+\\ \hline
+
+\end{tabularx}
+
+\end{table}
+
+
+%===========================================================
+\subsection{Event-Response Table}
+%===========================================================
+
+The event-response table defines how the system reacts to significant internal and external events.
+
+\begin{table}[h]
+\centering
+\caption{Event-Response Table}
+
+\begin{tabularx}{\textwidth}{
+|>{\raggedright\arraybackslash}p{3.5cm}
+|>{\raggedright\arraybackslash}p{3cm}
+|>{\raggedright\arraybackslash}X|}
+
+\hline
+\textbf{Event} & \textbf{Source} & \textbf{System Response} \\ \hline
+
+User Login Attempt & End User & Validate credentials and grant or deny access. \\ \hline
+
+Data Upload & User/Admin & Store dataset in database and validate file format. \\ \hline
+
+Prediction Request & End User & Execute trained model and display prediction results. \\ \hline
+
+Payment Submission & Customer & Process payment via secure gateway and confirm transaction. \\ \hline
+
+\end{tabularx}
+
+\end{table}
+
+%===========================================================
+\section{Functional Requirements}
+%===========================================================
+
+Functional requirements define the core services and behaviors that the system shall provide. 
+These requirements are derived directly from the use case model presented in Section 3.5. 
+Each requirement is uniquely identified, measurable, and written using formal specification language.
+
+All functional requirements follow IEEE-style structure and are categorized by system modules.
+
+
+%===========================================================
+\subsection{Module 1: User Management}
+%===========================================================
+
+\subsubsection{FR-1.1 User Registration}
+
+\begin{table}[h]
+\centering
+\caption{Functional Requirement – User Registration}
+
+\begin{tabularx}{\textwidth}{|p{3cm}|X|}
+\hline
+\textbf{Identifier} & FR-1.1 \\
+\hline
+\textbf{Title} & User Registration \\
+\hline
+\textbf{Requirement} & The system shall allow users to create an account by providing valid credentials. \\
+\hline
+\textbf{Source} & Stakeholder Requirement \\
+\hline
+\textbf{Rationale} & Enables authorized access to system services. \\
+\hline
+\textbf{Dependencies} & Database Connectivity \\
+\hline
+\textbf{Priority} & High \\
+\hline
+\end{tabularx}
+
+\end{table}
+
+
+
+%===========================================================
+\subsection{Module 2: Core Processing / ML / Business Logic}
+%===========================================================
+
+\subsubsection{FR-2.1 Core Processing}
+
+\begin{table}[h]
+\centering
+\caption{Functional Requirement – Core Processing}
+
+\begin{tabularx}{\textwidth}{|p{3cm}|X|}
+\hline
+\textbf{Identifier} & FR-2.1 \\
+\hline
+\textbf{Title} & Execute Core Processing Logic \\
+\hline
+\textbf{Requirement} & The system shall process user inputs and generate appropriate outputs based on defined algorithms or business logic. \\
+\hline
+\textbf{Source} & System Requirement Specification \\
+\hline
+\textbf{Rationale} & Enables delivery of the primary system value proposition. \\
+\hline
+\textbf{Dependencies} & Input Validation Module \\
+\hline
+\textbf{Priority} & High \\
+\hline
+\end{tabularx}
+
+\end{table}
+
+
+
+%===========================================================
+\subsection{Module 3: Reporting and Analytics}
+%===========================================================
+
+\subsubsection{FR-3.1 Report Generation}
+
+\begin{table}[h]
+\centering
+\caption{Functional Requirement – Reporting}
+
+\begin{tabularx}{\textwidth}{|p{3cm}|X|}
+\hline
+\textbf{Identifier} & FR-3.1 \\
+\hline
+\textbf{Title} & Generate Reports \\
+\hline
+\textbf{Requirement} & The system shall generate system reports and analytics based on stored data. \\
+\hline
+\textbf{Source} & Business Requirement \\
+\hline
+\textbf{Rationale} & Supports monitoring, analysis, and decision-making. \\
+\hline
+\textbf{Dependencies} & Database and Processing Module \\
+\hline
+\textbf{Priority} & Medium \\
+\hline
+\end{tabularx}
+
+\end{table}
+
+
+
+%===========================================================
+\section{Non-Functional Requirements}
+%===========================================================
+
+Non-functional requirements define quality attributes that describe how the system performs. 
+These requirements are measurable and support system reliability, usability, performance, 
+security, and maintainability.
+
+%===========================================================
+\subsection{Performance Requirements}
+%===========================================================
+
+\begin{itemize}
+\item PER-1: The system shall load the main dashboard within 3 seconds under normal operating conditions.
+\item PER-2: The system shall support concurrent users as defined in the project scope.
+\item PER-3: For ML-based systems, prediction responses shall be generated within acceptable latency.
+\item PER-4: The system shall handle peak load without significant degradation in response time.
+\end{itemize}
+
+
+%===========================================================
+\subsection{Security Requirements}
+%===========================================================
+
+\begin{itemize}
+\item SEC-1: The system shall implement secure authentication mechanisms.
+\item SEC-2: Passwords shall be encrypted using secure hashing algorithms.
+\item SEC-3: Sensitive data shall be transmitted using HTTPS protocol.
+\item SEC-4: Role-based access control shall be enforced.
+\item SEC-5: Security vulnerabilities shall be periodically assessed.
+\end{itemize}
+
+
+%===========================================================
+\subsection{Reliability Requirements}
+%===========================================================
+
+\begin{itemize}
+\item REL-1: The system shall maintain at least 99\% uptime.
+\item REL-2: System failures shall not result in data loss.
+\item REL-3: Backup and recovery mechanisms shall be implemented.
+\end{itemize}
+
+
+%===========================================================
+\subsection{Usability Requirements}
+%===========================================================
+
+\begin{itemize}
+\item USE-1: The interface shall be intuitive and easy to navigate.
+\item USE-2: Clear and meaningful error messages shall be displayed.
+\item USE-3: The system shall follow standard UI/UX design principles.
+\item USE-4: The application shall be responsive across devices.
+\end{itemize}
+
+
+%===========================================================
+\subsection{Scalability Requirements}
+%===========================================================
+
+\begin{itemize}
+\item SCA-1: The system shall support increasing number of users.
+\item SCA-2: The system architecture shall allow horizontal or vertical scaling.
+\item SCA-3: Database design shall support large datasets.
+\end{itemize}
+
+
+%===========================================================
+\subsection{Maintainability Requirements}
+%===========================================================
+
+\begin{itemize}
+\item MAIN-1: The system shall follow modular architecture principles.
+\item MAIN-2: Source code shall be documented clearly.
+\item MAIN-3: Future updates shall be integrated without major system restructuring.
+\end{itemize}
+
+
+
+%===========================================================
+\section{External Interface Requirements}
+%===========================================================
+
+This section defines how the system interacts with external entities including 
+users, hardware devices, software systems, and communication networks.
+
+
+%===========================================================
+\subsection{User Interface Requirements}
+%===========================================================
+
+\begin{itemize}
+\item UI-1: The system shall provide a graphical user interface.
+\item UI-2: Standard font sizes shall ensure readability (12–14pt).
+\item UI-3: Layout shall be responsive across devices.
+\item UI-4: Navigation shall remain consistent across modules.
+\end{itemize}
+
+
+%===========================================================
+\subsection{Hardware Interface Requirements}
+%===========================================================
+
+\begin{itemize}
+\item HI-1: The system shall operate on standard computing devices.
+\item HI-2: For mobile applications, it shall support Android/iOS platforms.
+\item HI-3: For ML systems, GPU support may be required for training processes.
+\end{itemize}
+
+
+%===========================================================
+\subsection{Software Interface Requirements}
+%===========================================================
+
+\begin{itemize}
+\item SI-1: The system shall interact with a relational or non-relational database.
+\item SI-2: Third-party APIs shall be securely integrated.
+\item SI-3: Payment gateways (if applicable) shall be securely integrated.
+\item SI-4: ML systems shall integrate with frameworks such as TensorFlow or PyTorch.
+\end{itemize}
+
+
+%===========================================================
+\subsection{Communication Interface Requirements}
+%===========================================================
+
+\begin{itemize}
+\item CI-1: The system shall use HTTPS protocol for secure communication.
+\item CI-2: RESTful APIs shall be used for backend communication.
+\item CI-3: Real-time communication (if applicable) shall use WebSockets.
+\item CI-4: For distributed systems, secure cloud communication shall be ensured.
+\end{itemize}
+
+
+
+%===========================================================
+\section{Assumptions and Dependencies}
+%===========================================================
+
+This section lists assumptions made during requirement analysis and system design planning.
+
+\begin{itemize}
+\item The system assumes stable internet connectivity for online deployment.
+\item Third-party services are assumed to remain available and functional.
+\item Users are assumed to possess basic digital literacy.
+\item Required hardware resources are assumed to be available during deployment.
+\end{itemize}
+
+
+
+%===========================================================
+\section{Requirement Traceability Matrix}
+%===========================================================
+
+This matrix maps project objectives to functional requirements to ensure alignment and completeness.
+
+\begin{table}[h]
+\centering
+\caption{Requirement Traceability Matrix}
+
+\begin{tabularx}{\textwidth}{|p{3cm}|p{3cm}|X|}
+\hline
+\textbf{Objective} & \textbf{Use Case} & \textbf{Functional Requirement} \\ \hline
+BO-1 & UC-1.1 & FR-1.1 \\ \hline
+BO-2 & UC-2.1 & FR-2.1 \\ \hline
+BO-3 & UC-3.1 & FR-3.1 \\ \hline
+\end{tabularx}
+
+\end{table}
+
+
+
+%===========================================================
+\section*{Chapter Summary}
+%===========================================================
+
+This chapter presented a structured requirement analysis of the proposed system. 
+It defined requirement elicitation techniques, user classes, use case models, 
+functional requirements, non-functional requirements, and external interface requirements. 
+A traceability matrix was included to ensure alignment between objectives and implementation requirements. 
+These requirements form the formal foundation for the system design presented in the next chapter.

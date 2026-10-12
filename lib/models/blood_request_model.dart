@@ -11,6 +11,7 @@ class BloodRequestModel {
   final int quantity;
   final int? unitsRequired;
   final String hospitalName;
+  final String? hospitalId;
   final String? hospitalAddress;
   final String location;
   final double? latitude;
@@ -37,6 +38,7 @@ class BloodRequestModel {
     this.quantity = 1,
     this.unitsRequired,
     required this.hospitalName,
+    this.hospitalId,
     this.hospitalAddress,
     required this.location,
     this.latitude,
@@ -69,6 +71,7 @@ class BloodRequestModel {
       quantity: json['quantity'] ?? json['unitsRequired'] ?? 1,
       unitsRequired: json['unitsRequired'],
       hospitalName: json['hospitalName'] ?? '',
+      hospitalId: json['hospitalId'],
       hospitalAddress: json['hospitalAddress'],
       location: json['location'] ?? '',
       latitude: json['latitude']?.toDouble(),
@@ -98,6 +101,7 @@ class BloodRequestModel {
       'quantity': quantity,
       'unitsRequired': unitsRequired,
       'hospitalName': hospitalName,
+      'hospitalId': hospitalId,
       'hospitalAddress': hospitalAddress,
       'location': location,
       'latitude': latitude,
@@ -127,6 +131,7 @@ class BloodRequestModel {
     int? quantity,
     int? unitsRequired,
     String? hospitalName,
+    String? hospitalId,
     String? hospitalAddress,
     String? location,
     double? latitude,
@@ -153,6 +158,7 @@ class BloodRequestModel {
       quantity: quantity ?? this.quantity,
       unitsRequired: unitsRequired ?? this.unitsRequired,
       hospitalName: hospitalName ?? this.hospitalName,
+      hospitalId: hospitalId ?? this.hospitalId,
       hospitalAddress: hospitalAddress ?? this.hospitalAddress,
       location: location ?? this.location,
       latitude: latitude ?? this.latitude,

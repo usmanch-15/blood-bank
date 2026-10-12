@@ -1,0 +1,18 @@
+\chapter{Introduction}\label{ch:introduction}
+\section{Background}
+Timely access to compatible blood depends on coordination among recipients, voluntary donors, hospitals, and administrators. WHO identifies voluntary donation, donor selection, testing, and quality systems as foundations of safe blood services \cite{whoBloodSafety,whoDonationFAQ}. A digital system cannot replace clinical screening, but it can reduce communication delay and improve traceability.
+
+Smart Blood Bank is a Flutter and Firebase coordination application. It combines accounts, requests, SOS alerts, compatibility and distance-based discovery, donation records, rewards, certificates, notifications, and administration. It does not test blood, diagnose patients, guarantee availability, operate an ambulance, or maintain hospital inventory.
+\section{Problem Statement and Motivation}
+Calls and social-media appeals provide weak identity control, broad disclosure, limited location awareness, and no durable audit trail. Receivers may contact incompatible, unavailable, distant, or temporarily ineligible donors. Mobile applications can support donor engagement, but usability, trust, privacy, and deployment quality matter \cite{li2023mobile}. This motivates structured requests, consent-aware location, server-authoritative transitions, and accountable administration.
+\section{Aim and Objectives}
+The aim is to implement a secure and usable platform for donor--receiver coordination. Objectives are authenticated role access; structured requests and SOS; compatible, eligible, available and nearby discovery; assignment and donation tracking; history, points and certificates; deployable notifications; role-protected administration; and privacy-preserving, auditable data access.
+\section{Proposed Solution}
+Flutter provides role-specific clients. Firebase Authentication establishes identity; Firestore stores data; callable Cloud Functions validate sensitive workflows; Cloud Messaging supports notifications; and Storage holds generated certificates. Geolocation and OpenStreetMap maps support discovery, while OSRM may supply driving-time estimates.
+\section{Scope and Limitations}
+Implemented scope includes email/password access, optional verification flows, profiles, requests, SOS linkage, matching, confirmation, history, eligibility dates, points, PDF certificates, notifications, mapping, and a dashboard. Phone OTP, push delivery, functions, storage, routing, and permissions require configured services and device testing. New profiles are \texttt{approved}; login blocks only \texttt{suspended} and \texttt{rejected}. Clinical screening, laboratory cross-matching, inventory, payment, chat, and guaranteed emergency response are excluded.
+\section{Significance}
+The project demonstrates mobile coordination with explicit clinical boundaries, least-privilege rules, event history, controlled contact access, and opt-in location sharing.
+\section{Thesis Organization}
+Chapter~\ref{ch:literature} reviews related work; Chapter~\ref{ch:requirements} defines requirements; Chapter~\ref{ch:design} presents design; Chapter~\ref{ch:implementation} documents implementation; and Chapter~\ref{ch:testing} reports test evidence.
+

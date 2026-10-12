@@ -2,6 +2,7 @@ const {HttpsError} = require('firebase-functions/v2/https');
 const admin = require('./firebaseAdmin');
 const {active, eligible, compatible, INTERVAL_MS, POINTS, distanceKm} = require('./donationPolicy');
 const {nearbyDonors} = require('./nearbyDonors');
+const {validHospitalRecord, matchesHospitalSelection} = require('./hospitalPolicy');
 const db = admin.firestore();
 const now = () => admin.firestore.Timestamp.now();
 const fail = (code, message) => { throw new HttpsError(code, message); };
@@ -60,6 +61,7 @@ function requestData(data, user) {
   if (age != null && (!Number.isInteger(age) || age<0 || age>130)) fail('invalid-argument','Invalid patient age.');
   return {requesterId:user.uid, requesterName:user.name || '', bloodGroup:data.bloodGroup,
     quantity, unitsRequired:quantity, donatedUnits:0, remainingUnits:quantity,
+    hospitalId:text(data.hospitalId,128),
     hospitalName:text(data.hospitalName,100,true), hospitalAddress:text(data.hospitalAddress,300),
     location:text(data.hospitalAddress,300), latitude:data.latitude, longitude:data.longitude,
     patientName:text(data.patientName,100), patientAge:age ?? null, patientGender:text(data.patientGender,20),
@@ -72,6 +74,15 @@ async function createBloodRequest(request) {
   if (!user.isReceiver) fail('permission-denied','Receiver account required.');
   const input = request.data || {};
   if (!input.contactNumber) input.contactNumber = (await db.doc(`users/${user.uid}/private/contact`).get()).data()?.phoneNumber;
+  if (input.hospitalId) {
+    const hospital = (await db.doc(`hospitals/${id(input.hospitalId)}`).get()).data();
+    if (!validHospitalRecord(hospital)) {
+      fail('failed-precondition','The selected hospital is not configured with a valid location.');
+    }
+    if (!matchesHospitalSelection(input, hospital)) {
+      fail('invalid-argument','Hospital details do not match the selected hospital.');
+    }
+  }
   const data = requestData(input, user);
   // Client-generated ID makes retries of a successful submission idempotent.
   const requestId = id(request.data?.requestId), ref = db.doc(`blood_requests/${requestId}`);

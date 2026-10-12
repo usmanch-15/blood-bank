@@ -1,0 +1,17 @@
+\newpage
+\thispagestyle{plain}
+\addcontentsline{toc}{section}{Executive Summary}
+\begin{center}
+\textbf{\LARGE Executive Summary}
+\end{center}
+\vspace{1cm}
+\begin{spacing}{1.5}
+Smart Blood Bank is a Flutter and Firebase application intended to improve coordination between voluntary blood donors, blood receivers, and system administrators. Conventional coordination through telephone calls and social-media messages is often unstructured, exposes personal information broadly, and provides limited support for compatibility, distance, availability, progress tracking, or accountability.
+
+The system provides seven connected modules: Authentication, Donor, Receiver, Notification, Reward and Certificate, Admin, and Mapping and Distance. Users register through Firebase Authentication and receive role-specific navigation. Receivers can create structured, multi-unit blood requests and emergency SOS alerts. Donors can manage availability and location consent, discover compatible requests, accept assignments, indicate readiness, and review donation history and eligibility information. Confirmed donations contribute points and can be represented by generated PDF participation certificates. Administrators use a role-protected dashboard for monitoring, user-status actions, reports, misuse handling, statistics, exports, and audit-oriented operations.
+
+Sensitive workflow transitions are implemented in callable Cloud Functions rather than relying on unrestricted client writes. Firestore and Storage rules enforce ownership, participation, active-account, and administrator checks. Nearby discovery combines blood-group compatibility, account and eligibility policy, location consent, an indexed geographic pre-filter, and Haversine distance. Push notifications, phone OTP, certificate storage, and route-time estimates remain dependent on deployed services, platform permissions, and network availability.
+
+The project is a coordination platform and not a clinical blood-bank information system. It does not perform laboratory screening, cross-matching, diagnosis, inventory management, or guaranteed emergency response. The implementation demonstrates how a responsive mobile interface and serverless backend can improve structure, privacy, traceability, and donor engagement while preserving appropriate clinical boundaries.
+\end{spacing}
+\newpage
