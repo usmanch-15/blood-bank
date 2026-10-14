@@ -5,6 +5,7 @@ import '../../services/push_navigation_service.dart';
 import '../../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../../utils/account_policy.dart';
 import 'signup_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -94,17 +95,15 @@ class _LoginScreenState extends State<LoginScreen>
         _showStatusDialog(
           icon: Icons.mark_email_unread_rounded,
           iconColor: const Color(0xFF42A5F5),
-          title: 'Verify Your Email',
-          message:
-              'Please verify your email address before logging in. Check your inbox for the verification link we sent when you signed up.',
+          title: AppLocalizations.of(context).verifyEmail,
+          message: AppLocalizations.of(context).verifyEmailMessage,
         );
       } else if (message == 'rejected') {
         _showStatusDialog(
           icon: Icons.cancel_rounded,
           iconColor: const Color(0xFFEF5350),
-          title: 'Account Rejected',
-          message:
-              'Your account request was rejected by admin. Please contact support for assistance.',
+          title: AppLocalizations.of(context).accountRejected,
+          message: AppLocalizations.of(context).accountRejectedMessage,
         );
       } else {
         _showErrorSnack(message);
@@ -202,8 +201,8 @@ class _LoginScreenState extends State<LoginScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'Understood',
+                      child: Text(
+                        AppLocalizations.of(context).understood,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,

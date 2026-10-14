@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
+import '../l10n/app_localizations.dart';
 
 /// ✅ NEW — a consistent "no data yet" placeholder, replacing the various
 /// one-off `Center(child: Text('No requests yet...'))` blocks scattered
@@ -86,14 +87,10 @@ class EmptyState extends StatelessWidget {
 /// A matching error-state widget — for FutureBuilder/StreamBuilder error
 /// branches, with an optional retry button.
 class AppErrorState extends StatelessWidget {
-  final String message;
+  final String? message;
   final VoidCallback? onRetry;
 
-  const AppErrorState({
-    super.key,
-    this.message = 'Something went wrong. Please try again.',
-    this.onRetry,
-  });
+  const AppErrorState({super.key, this.message, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +107,7 @@ class AppErrorState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              message,
+              message ?? AppLocalizations.of(context).somethingWentWrong,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 14,
@@ -122,7 +119,7 @@ class AppErrorState extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Try Again'),
+                label: Text(AppLocalizations.of(context).tryAgain),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primaryRed,
                   side: const BorderSide(color: AppColors.primaryRed),

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 /// Cursor paging retains earlier pages; refresh deliberately starts a new snapshot.
 class PagedRecords extends StatefulWidget {
@@ -56,9 +57,7 @@ class _PagedRecordsState extends State<PagedRecords> {
     } catch (e) {
       if (mounted && generation == _generation) {
         setState(
-          () =>
-              _error =
-                  'Unable to load records. Check your connection and retry.',
+          () => _error = AppLocalizations.of(context).unableToLoadRecords,
         );
       }
     } finally {
@@ -83,7 +82,7 @@ class _PagedRecordsState extends State<PagedRecords> {
           child: TextButton.icon(
             onPressed: _loading ? null : () => _load(refresh: true),
             icon: const Icon(Icons.refresh),
-            label: const Text('Refresh'),
+            label: Text(AppLocalizations.of(context).refresh),
           ),
         ),
         ..._items.map((d) => widget.itemBuilder(context, d)),
@@ -104,7 +103,11 @@ class _PagedRecordsState extends State<PagedRecords> {
         if (!_loading && (_more || _error != null))
           TextButton(
             onPressed: _load,
-            child: Text(_error != null ? 'Retry' : 'Load more'),
+            child: Text(
+              _error != null
+                  ? AppLocalizations.of(context).retry
+                  : AppLocalizations.of(context).loadMore,
+            ),
           ),
       ],
     ),

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../constants/app_colors.dart';
 import '../../controllers/theme_controller.dart';
+import '../../controllers/locale_controller.dart';
 import '../../services/settings_service.dart';
 import '../auth/login_screen.dart';
 import 'help_support_screen.dart';
@@ -49,7 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           'Settings',
@@ -58,7 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -113,6 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               _sectionHeader('Appearance', Icons.palette_outlined),
               const _AppearanceTile(),
+              const _LanguageTile(),
 
               const SizedBox(height: 8),
               _sectionHeader('Support & About', Icons.help_outline_rounded),
@@ -399,6 +401,57 @@ class _LocationSharingTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LanguageTile extends StatelessWidget {
+  const _LanguageTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<LocaleController>();
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      child: ListTile(
+        leading: const Icon(Icons.language_outlined),
+        title: const Text('Language / زبان'),
+        subtitle: Text(controller.isUrdu ? 'اردو' : 'English'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap:
+            () => showModalBottomSheet<void>(
+              context: context,
+              builder:
+                  (sheetContext) => SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const ListTile(
+                          title: Text('Choose language / زبان منتخب کریں'),
+                        ),
+                        RadioListTile<String>(
+                          value: 'en',
+                          groupValue: controller.locale.languageCode,
+                          title: const Text('English'),
+                          onChanged: (value) {
+                            if (value != null) controller.setLanguage(value);
+                            Navigator.pop(sheetContext);
+                          },
+                        ),
+                        RadioListTile<String>(
+                          value: 'ur',
+                          groupValue: controller.locale.languageCode,
+                          title: const Text('اردو'),
+                          onChanged: (value) {
+                            if (value != null) controller.setLanguage(value);
+                            Navigator.pop(sheetContext);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+            ),
       ),
     );
   }

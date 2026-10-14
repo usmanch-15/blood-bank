@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../services/workflow_service.dart';
 import '../../widgets/paged_records.dart';
 import 'request_tracking_screen.dart';
+import '../maps/blood_requests_map_screen.dart';
 
 class RequestListScreen extends StatefulWidget {
   final String mode;
@@ -16,6 +17,8 @@ class _RequestListScreenState extends State<RequestListScreen> {
   final _items = <Map<String, dynamic>>[];
   String? _cursor, _error;
   bool _loading = false, _more = true;
+  double _radiusKm = 50;
+  String? _urgency;
   @override
   void initState() {
     super.initState();
@@ -31,6 +34,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
     try {
       final page = await WorkflowService.call('discoverRequests', {
         'cursor': _cursor,
+        'radiusKm': _radiusKm,
       });
       if (mounted) {
         setState(() {
@@ -97,6 +101,20 @@ class _RequestListScreenState extends State<RequestListScreen> {
               ? 'Donation Opportunities'
               : 'My Requests & History',
         ),
+        actions: [
+          if (mode == 'discover')
+            IconButton(
+              tooltip: 'Map view',
+              icon: const Icon(Icons.map_outlined),
+              onPressed:
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const BloodRequestsMapScreen(),
+                    ),
+                  ),
+            ),
+        ],
       ),
       body:
           uid == null
@@ -105,7 +123,53 @@ class _RequestListScreenState extends State<RequestListScreen> {
               ? ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  ..._items.map((d) => _tile(d, d['id'])),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text('Within'),
+                      for (final radius in [5.0, 10.0, 25.0, 50.0])
+                        ChoiceChip(
+                          label: Text('${radius.round()} km'),
+                          selected: _radiusKm == radius,
+                          onSelected: (_) {
+                            setState(() {
+                              _radiusKm = radius;
+                              _cursor = null;
+                              _items.clear();
+                              _more = true;
+                            });
+                            _load();
+                          },
+                        ),
+                      DropdownButton<String>(
+                        value: _urgency,
+                        hint: const Text('Urgency'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'critical',
+                            child: Text('Critical'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'urgent',
+                            child: Text('Urgent'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'normal',
+                            child: Text('Normal'),
+                          ),
+                        ],
+                        onChanged: (value) => setState(() => _urgency = value),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ..._items
+                      .where(
+                        (d) => _urgency == null || d['urgency'] == _urgency,
+                      )
+                      .map((d) => _tile(d, d['id'])),
                   if (_items.isEmpty && !_loading)
                     const Text(
                       'No matches on the pages checked. Continue searching or refresh later.',

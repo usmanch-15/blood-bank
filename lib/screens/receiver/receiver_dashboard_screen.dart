@@ -137,12 +137,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(AppSpacing.xl),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.secondaryBlue,
-                          AppColors.primaryRed.withValues(alpha: 0.8),
-                        ],
-                      ),
+                      gradient: AppColors.heroGradient,
                       borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
                       boxShadow: [
                         BoxShadow(

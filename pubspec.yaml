@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # UI
   cupertino_icons: ^1.0.8
@@ -27,7 +29,7 @@ dependencies:
   # dependency ki wajah se chal raha tha, ab explicitly declare kiya)
   http: ^1.2.2
 
-  # Google Maps & Location
+  # OpenStreetMap mapping and device location
   flutter_map: ^7.0.2       # was google_maps_flutter â€” OpenStreetMap, no API key/billing needed
   latlong2: ^0.9.1          # LatLng type used by flutter_map
   geolocator: ^13.0.1

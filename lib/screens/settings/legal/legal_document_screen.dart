@@ -24,14 +24,14 @@ class LegalDocumentScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
         title: Text(title),
 
-        backgroundColor: AppColors.primaryRed,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
-        foregroundColor: Colors.white,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
 
       body: SingleChildScrollView(

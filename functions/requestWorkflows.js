@@ -118,6 +118,8 @@ async function acceptDonation(request) {
     if ((r.donatedUnits || 0)+accepted.length >= r.quantity) fail('failed-precondition','All remaining units have donor commitments.');
     commitments[caller]={status:'accepted',name:d.name || 'Donor',acceptedAt:now(),units:1};
     tx.update(ref,{commitments,acceptedDonorIds:[...accepted,caller],participantIds:[...new Set([...participants(r),caller])],status:r.donatedUnits ? 'partially_fulfilled':'accepted'});
+    const conversationId = `${requestId}_${caller}`;
+    tx.set(db.doc(`conversations/${conversationId}`), {requestId, participantIds:[r.requesterId, caller], updatedAt:now()}, {merge:true});
     tx.update(donorSnap.ref,{activeRequestId:requestId});
     notification(tx,`accepted_${requestId}_${caller}`,r.requesterId,requestId,'Donor accepted',`${d.name || 'A donor'} committed one unit. Open request tracking.`);
     event(tx,ref,caller,'accepted');
@@ -214,8 +216,14 @@ function serialize(value) {
   if (value && typeof value==='object') return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,serialize(v)]));
   return value;
 }
-function summary(r, requestId) {
-  return serialize({id:requestId,bloodGroup:r.bloodGroup,hospitalName:r.hospitalName,quantity:r.quantity,donatedUnits:r.donatedUnits || 0,remainingUnits:r.remainingUnits ?? r.quantity,urgency:r.urgency,status:expired(r)&&openStatuses.includes(r.status)?'expired':r.status,requiredBy:r.requiredBy,createdAt:r.createdAt});
+function summary(r, requestId, viewer) {
+  const result = {id:requestId,bloodGroup:r.bloodGroup,hospitalName:r.hospitalName,quantity:r.quantity,donatedUnits:r.donatedUnits || 0,remainingUnits:r.remainingUnits ?? r.quantity,urgency:r.urgency,status:expired(r)&&openStatuses.includes(r.status)?'expired':r.status,requiredBy:r.requiredBy,createdAt:r.createdAt};
+  if (viewer && Number.isFinite(viewer.latitude) && Number.isFinite(viewer.longitude) && Number.isFinite(r.latitude) && Number.isFinite(r.longitude)) {
+    result.distanceKm = distanceKm(viewer.latitude, viewer.longitude, r.latitude, r.longitude);
+    result.latitude = Math.round(r.latitude * 100) / 100;
+    result.longitude = Math.round(r.longitude * 100) / 100;
+  }
+  return serialize(result);
 }
 async function getRequest(request) {
   const user=await actor(request), requestId=id(request.data?.requestId), snap=await db.doc(`blood_requests/${requestId}`).get(),r=snap.data();
@@ -237,10 +245,11 @@ async function getRequest(request) {
 async function discoverRequests(request) {
   const user=await actor(request);
   if (!user.isDonor) fail('permission-denied','Donor account required.');
+  const radius=Math.min(50,Math.max(5,Number(request.data?.radiusKm)||50));
   let query=db.collection('blood_requests').orderBy(admin.firestore.FieldPath.documentId()).limit(40);
   if (request.data?.cursor) query=query.startAfter(id(request.data.cursor));
   const page=await query.get();
-  const items=page.docs.filter(doc=>{const r=doc.data();return r.requesterId!==user.uid && openStatuses.includes(r.status) && !expired(r) && compatible(user.bloodGroup,r.bloodGroup) && eligible(user,Date.now()) && user.isAvailable;}).map(doc=>summary(doc.data(),doc.id));
+  const items=page.docs.filter(doc=>{const r=doc.data();const distance=Number.isFinite(user.latitude)&&Number.isFinite(user.longitude)&&Number.isFinite(r.latitude)&&Number.isFinite(r.longitude)?distanceKm(user.latitude,user.longitude,r.latitude,r.longitude):Infinity;return r.requesterId!==user.uid && openStatuses.includes(r.status) && !expired(r) && distance<=radius && compatible(user.bloodGroup,r.bloodGroup) && eligible(user,Date.now()) && user.isAvailable;}).map(doc=>summary(doc.data(),doc.id,user));
   return {items,cursor:page.size===40?page.docs.at(-1).id:null};
 }
 async function findDonors(request) {

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
 
 import '../../models/donation_model.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Donation History Screen - View all past donations
 class DonationHistoryScreen extends StatefulWidget {
@@ -27,10 +28,10 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Donation History')),
+    appBar: AppBar(title: Text(AppLocalizations.of(context).donationHistory)),
     body:
         user == null
-            ? const Center(child: Text('Please sign in.'))
+            ? Center(child: Text(AppLocalizations.of(context).pleaseSignIn))
             : PagedRecords(
               query: FirebaseFirestore.instance
                   .collection('donations')

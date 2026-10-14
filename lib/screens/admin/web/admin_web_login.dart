@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../services/auth_service.dart';
+import '../../../l10n/app_localizations.dart';
 
 class AdminWebLogin extends StatefulWidget {
   const AdminWebLogin({super.key});
@@ -147,7 +148,7 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          labelText: 'Admin Email',
+                          labelText: AppLocalizations.of(context).adminEmail,
                           prefixIcon: const Icon(Icons.email),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -156,10 +157,12 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Email daalo';
+                            return AppLocalizations.of(context).emailRequired;
                           }
                           if (!value.contains('@')) {
-                            return 'Valid email daalo';
+                            return AppLocalizations.of(
+                              context,
+                            ).validEmailRequired;
                           }
                           return null;
                         },
@@ -169,7 +172,7 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                         controller: _passwordController,
                         obscureText: _obscurePassword,
                         decoration: InputDecoration(
-                          labelText: 'Password',
+                          labelText: AppLocalizations.of(context).password,
                           prefixIcon: const Icon(Icons.lock),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -189,10 +192,14 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Password daalo';
+                            return AppLocalizations.of(
+                              context,
+                            ).passwordRequired;
                           }
                           if (value.length < 6) {
-                            return 'Password kam se kam 6 characters ka ho';
+                            return AppLocalizations.of(
+                              context,
+                            ).passwordMinLength;
                           }
                           return null;
                         },
@@ -214,8 +221,8 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                                   ? const CircularProgressIndicator(
                                     color: Colors.white,
                                   )
-                                  : const Text(
-                                    'Login',
+                                  : Text(
+                                    AppLocalizations.of(context).login,
                                     style: TextStyle(fontSize: 16),
                                   ),
                         ),
@@ -240,7 +247,9 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                             );
                           }
                         },
-                        child: const Text('Forgot Password?'),
+                        child: Text(
+                          AppLocalizations.of(context).forgotPassword,
+                        ),
                       ),
                     ],
                   ),

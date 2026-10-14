@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 class UnsavedChangesGuard extends StatelessWidget {
   final bool dirty;
@@ -22,15 +23,15 @@ class UnsavedChangesGuard extends StatelessWidget {
         context: context,
         builder:
             (ctx) => AlertDialog(
-              title: const Text('Discard unsaved changes?'),
+              title: Text(AppLocalizations.of(context).discardChanges),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Keep editing'),
+                  child: Text(AppLocalizations.of(context).keepEditing),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Discard'),
+                  child: Text(AppLocalizations.of(context).discard),
                 ),
               ],
             ),

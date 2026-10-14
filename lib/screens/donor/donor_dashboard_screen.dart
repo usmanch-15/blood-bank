@@ -136,8 +136,8 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: AppColors.primaryRed,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios),
           onPressed:
@@ -176,7 +176,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(AppSpacing.xl),
                   decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
+                    gradient: AppColors.heroGradient,
                     borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
                     boxShadow: [
                       BoxShadow(

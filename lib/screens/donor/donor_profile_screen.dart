@@ -242,8 +242,8 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           title: Text('My Profile'),
-          backgroundColor: AppColors.primaryRed,
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
           centerTitle: true,
           elevation: 0,
           actions: [

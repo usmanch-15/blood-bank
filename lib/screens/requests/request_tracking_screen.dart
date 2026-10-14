@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/workflow_service.dart';
 import '../../widgets/report_misuse_button.dart';
 import '../receiver/donor_matching_screen.dart';
+import '../communication/chat_screen.dart';
 
 class RequestTrackingScreen extends StatefulWidget {
   final String requestId;
@@ -338,6 +339,23 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                     TextButton(
                                       onPressed: () => _contact(e.key),
                                       child: const Text('Contact'),
+                                    ),
+                                    TextButton(
+                                      onPressed:
+                                          () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (_) => ChatScreen(
+                                                    conversationId:
+                                                        '${widget.requestId}_${e.key}',
+                                                    title:
+                                                        c['name']?.toString() ??
+                                                        'Private chat',
+                                                  ),
+                                            ),
+                                          ),
+                                      child: const Text('Chat'),
                                     ),
                                     if (open)
                                       TextButton(

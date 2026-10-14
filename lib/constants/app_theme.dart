@@ -112,23 +112,50 @@ class AppTheme {
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.red,
+      seedColor: AppColors.primaryRedDeep,
       brightness: Brightness.light,
     ),
-    scaffoldBackgroundColor: Colors.white,
-    textTheme: _textTheme,
+    scaffoldBackgroundColor: AppColors.surfaceAlt,
+    textTheme: _textTheme.apply(
+      bodyColor: AppColors.textPrimary,
+      displayColor: AppColors.textPrimary,
+    ),
 
-    appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
+    appBarTheme: const AppBarTheme(
+      centerTitle: false,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      backgroundColor: AppColors.surfaceAlt,
+      foregroundColor: AppColors.textPrimary,
+      titleTextStyle: TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
 
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.primaryRedDeep,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusMd)),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        minimumSize: const Size.fromHeight(52),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
       ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primaryRedDeep,
+        foregroundColor: Colors.white,
+        minimumSize: const Size.fromHeight(52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppColors.primaryRedDeep,
+      foregroundColor: Colors.white,
     ),
 
     inputDecorationTheme: _inputTheme(Brightness.light),
@@ -142,22 +169,40 @@ class AppTheme {
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.red,
+      seedColor: AppColors.primaryRed,
       brightness: Brightness.dark,
     ),
-    scaffoldBackgroundColor: Colors.black,
-    textTheme: _textTheme,
+    scaffoldBackgroundColor: AppColors.backgroundDark,
+    textTheme: _textTheme.apply(
+      bodyColor: Colors.white,
+      displayColor: Colors.white,
+    ),
 
-    appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
+    appBarTheme: const AppBarTheme(
+      centerTitle: false,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      backgroundColor: AppColors.backgroundDark,
+      foregroundColor: Colors.white,
+    ),
 
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.red,
+        backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusMd)),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        minimumSize: const Size.fromHeight(52),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primaryRed,
+        foregroundColor: Colors.white,
+        minimumSize: const Size.fromHeight(52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
 

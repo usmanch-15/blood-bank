@@ -89,6 +89,23 @@ service cloud.firestore {
         allow write: if false;
       }
     }
+    match /conversations/{conversationId} {
+      allow read: if active() && request.auth.uid in resource.data.participantIds;
+      allow create, update, delete: if false;
+      match /messages/{messageId} {
+        allow read: if active()
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+        allow create: if active()
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
+          && request.resource.data.keys().hasOnly(['senderId','body','createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.body is string
+          && request.resource.data.body.size() > 0
+          && request.resource.data.body.size() <= 2000
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
     match /donations/{id} {
       allow read: if admin() || (active() && (resource.data.donorId == request.auth.uid || resource.data.get('requesterId','') == request.auth.uid));
       allow create, delete: if false;

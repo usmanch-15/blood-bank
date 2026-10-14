@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../services/push_navigation_service.dart';
+import '../l10n/app_localizations.dart';
 
 /// Backend rules remain authoritative; this also removes restricted UI.
 class AccountAccessGuard extends StatelessWidget {
@@ -15,20 +16,21 @@ class AccountAccessGuard extends StatelessWidget {
     if (!auth.sessionReady) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final hasRole = role == null ||
+    final hasRole =
+        role == null ||
         (role == 'donor' && auth.isDonor) ||
         (role == 'receiver' && auth.isReceiver) ||
         (role == 'admin' && auth.isAdmin);
     if (!auth.isLoggedIn || !hasRole) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Account access')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context).accountAccess)),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 auth.errorMessage ??
-                    'Sign in with an active account to access this page.',
+                    AppLocalizations.of(context).activeAccountRequired,
               ),
               TextButton(
                 onPressed: () async {
@@ -40,7 +42,7 @@ class AccountAccessGuard extends StatelessWidget {
                     );
                   }
                 },
-                child: const Text('Back to login'),
+                child: Text(AppLocalizations.of(context).backToLogin),
               ),
             ],
           ),
