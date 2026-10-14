@@ -285,6 +285,12 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                 uid.isEmpty
                     ? const Center(child: Text('Not logged in'))
                     : PagedRecords(
+                      // This widget is already inside the dashboard's
+                      // CustomScrollView. Keep its list non-scrollable so it
+                      // can measure its content instead of creating a nested
+                      // viewport with unbounded height (which can blank the
+                      // Flutter web page after navigation).
+                      shrinkWrap: true,
                       query: _firestore
                           .collection('blood_requests')
                           .where('requesterId', isEqualTo: uid)
