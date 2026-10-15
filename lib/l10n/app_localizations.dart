@@ -78,6 +78,24 @@ class AppLocalizations {
           ? 'اس دائرے میں کوئی موزوں فعال درخواست نہیں۔'
           : 'No compatible active requests in this radius.';
   String get selectedLocation => _ur ? 'منتخب مقام' : 'Selected location';
+  String get registrationSuccessful =>
+      _ur ? 'رجسٹریشن کامیاب' : 'Registration Successful!';
+  String get accountReady =>
+      _ur
+          ? 'آپ کا اکاؤنٹ تیار ہے۔ اب سائن ان کر سکتے ہیں۔'
+          : 'Your account is ready. You can sign in now.';
+  String get within => _ur ? 'حد کے اندر' : 'Within';
+  String get urgency => _ur ? 'اہمیت' : 'Urgency';
+  String get critical => _ur ? 'انتہائی اہم' : 'Critical';
+  String get urgent => _ur ? 'فوری' : 'Urgent';
+  String get normal => _ur ? 'عام' : 'Normal';
+  String get mapView => _ur ? 'نقشہ دیکھیں' : 'Map view';
+  String get pleaseSignInShort =>
+      _ur ? 'براہ کرم سائن ان کریں۔' : 'Please sign in.';
+  String get noMatches =>
+      _ur
+          ? 'اس وقت کوئی موزوں درخواست نہیں ملی۔'
+          : 'No matching requests found right now.';
 }
 
 class _AppLocalizationsDelegate

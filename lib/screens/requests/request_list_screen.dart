@@ -5,6 +5,7 @@ import '../../services/workflow_service.dart';
 import '../../widgets/paged_records.dart';
 import 'request_tracking_screen.dart';
 import '../maps/blood_requests_map_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 class RequestListScreen extends StatefulWidget {
   final String mode;
@@ -104,7 +105,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
         actions: [
           if (mode == 'discover')
             IconButton(
-              tooltip: 'Map view',
+              tooltip: AppLocalizations.of(context).mapView,
               icon: const Icon(Icons.map_outlined),
               onPressed:
                   () => Navigator.push(
@@ -118,7 +119,9 @@ class _RequestListScreenState extends State<RequestListScreen> {
       ),
       body:
           uid == null
-              ? const Center(child: Text('Please sign in.'))
+              ? Center(
+                child: Text(AppLocalizations.of(context).pleaseSignInShort),
+              )
               : mode == 'discover'
               ? ListView(
                 padding: const EdgeInsets.all(16),
@@ -128,7 +131,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
                     runSpacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      const Text('Within'),
+                      Text(AppLocalizations.of(context).within),
                       for (final radius in [5.0, 10.0, 25.0, 50.0])
                         ChoiceChip(
                           label: Text('${radius.round()} km'),
@@ -145,19 +148,19 @@ class _RequestListScreenState extends State<RequestListScreen> {
                         ),
                       DropdownButton<String>(
                         value: _urgency,
-                        hint: const Text('Urgency'),
-                        items: const [
+                        hint: Text(AppLocalizations.of(context).urgency),
+                        items: [
                           DropdownMenuItem(
                             value: 'critical',
-                            child: Text('Critical'),
+                            child: Text(AppLocalizations.of(context).critical),
                           ),
                           DropdownMenuItem(
                             value: 'urgent',
-                            child: Text('Urgent'),
+                            child: Text(AppLocalizations.of(context).urgent),
                           ),
                           DropdownMenuItem(
                             value: 'normal',
-                            child: Text('Normal'),
+                            child: Text(AppLocalizations.of(context).normal),
                           ),
                         ],
                         onChanged: (value) => setState(() => _urgency = value),
@@ -171,9 +174,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
                       )
                       .map((d) => _tile(d, d['id'])),
                   if (_items.isEmpty && !_loading)
-                    const Text(
-                      'No matches on the pages checked. Continue searching or refresh later.',
-                    ),
+                    Text(AppLocalizations.of(context).noMatches),
                   if (_error != null) Text(_error!),
                   if (_loading)
                     const Center(child: CircularProgressIndicator()),

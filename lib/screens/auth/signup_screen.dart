@@ -4,6 +4,7 @@ import '../../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../../constants/app_constants.dart';
 import '../../services/auth_service.dart';
 import '../../utils/validators.dart';
+import '../../l10n/app_localizations.dart';
 
 /// ✅ NEW — auto-inserts the CNIC dashes as the user types
 /// (12345-1234567-1), same UX pattern as bank/telco apps use for CNIC.
@@ -180,8 +181,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                     ),
                   ),
                   const SizedBox(height: 22),
-                  const Text(
-                    'Registration Successful!',
+                  Text(
+                    AppLocalizations.of(context).registrationSuccessful,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20,
@@ -191,8 +192,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                     ),
                   ),
                   const SizedBox(height: 14),
-                  const Text(
-                    'Your account is ready. You can sign in now.\n\nEmail verification is optional; check your inbox for the verification link.',
+                  Text(
+                    AppLocalizations.of(context).accountReady,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
