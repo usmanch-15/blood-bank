@@ -5,6 +5,7 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
 import 'legal/legal_content.dart';
 import 'legal/legal_document_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 /// ✅ NEW — About screen: app version, developer credit, share app, and
 /// open-source licenses (uses Flutter's built-in license page — no extra
@@ -32,11 +33,11 @@ class AboutScreen extends StatelessWidget {
           (dialogContext) => StatefulBuilder(
             builder:
                 (dialogContext, setDialogState) => AlertDialog(
-                  title: const Text('Rate Smart Blood Bank'),
+                  title: Text(AppLocalizations.of(context).rateApp),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('How would you rate your experience?'),
+                      Text(AppLocalizations.of(context).rateExperience),
                       const SizedBox(height: 16),
                       Wrap(
                         alignment: WrapAlignment.center,
@@ -62,7 +63,7 @@ class AboutScreen extends StatelessWidget {
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(dialogContext),
-                      child: const Text('Cancel'),
+                      child: Text(AppLocalizations.of(context).cancelAction),
                     ),
                     ElevatedButton(
                       onPressed:
@@ -110,7 +111,7 @@ class AboutScreen extends StatelessWidget {
                         backgroundColor: AppColors.primaryRed,
                         foregroundColor: Colors.white,
                       ),
-                      child: const Text('Submit'),
+                      child: Text(AppLocalizations.of(context).submit),
                     ),
                   ],
                 ),
@@ -123,7 +124,7 @@ class AboutScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('About'),
+        title: Text(AppLocalizations.of(context).about),
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
@@ -167,7 +168,7 @@ class AboutScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Version ${AppConstants.appVersion}',
+                  AppLocalizations.of(context).version(AppConstants.appVersion),
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,

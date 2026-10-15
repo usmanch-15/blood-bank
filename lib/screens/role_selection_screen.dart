@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/auth_service.dart';
+import '../l10n/app_localizations.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -254,8 +255,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                             // and receiver naturally, instead of "How will
                             // you help?" which read oddly for someone who
                             // just needs blood, not to give it.
-                            const Text(
-                              'How can we help\nyou today?',
+                            Text(
+                              AppLocalizations.of(context).howCanHelp,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 38,
@@ -268,7 +269,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                             const SizedBox(height: 10),
 
                             Text(
-                              'Choose an option to continue.',
+                              AppLocalizations.of(context).chooseContinue,
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.45),
                                 fontSize: 15,

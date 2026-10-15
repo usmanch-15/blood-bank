@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/paged_records.dart';
 import '../../services/workflow_service.dart';
 
@@ -25,7 +26,7 @@ class MyReportsScreen extends StatelessWidget {
               : FloatingActionButton.extended(
                 onPressed: () => _support(context),
                 icon: const Icon(Icons.help_outline),
-                label: const Text('Ask for support'),
+                label: Text(AppLocalizations.of(context).askForSupport),
               ),
       body: TabBarView(
         children:
@@ -114,7 +115,7 @@ class MyReportsScreen extends StatelessWidget {
           (c) => StatefulBuilder(
             builder:
                 (c, setState) => AlertDialog(
-                  title: const Text('Support request'),
+                  title: Text(AppLocalizations.of(context).supportRequest),
                   content: Form(
                     key: form,
                     child: SingleChildScrollView(
@@ -125,7 +126,7 @@ class MyReportsScreen extends StatelessWidget {
                             controller: title,
                             maxLength: 100,
                             decoration: const InputDecoration(
-                              labelText: 'Subject',
+                              labelText: AppLocalizations.of(context).subject,
                             ),
                             validator:
                                 (v) =>
@@ -138,7 +139,7 @@ class MyReportsScreen extends StatelessWidget {
                             maxLength: 2000,
                             maxLines: 4,
                             decoration: const InputDecoration(
-                              labelText: 'Describe the issue',
+                              labelText: AppLocalizations.of(context).describeIssue,
                             ),
                             validator:
                                 (v) =>
@@ -153,7 +154,7 @@ class MyReportsScreen extends StatelessWidget {
                   actions: [
                     TextButton(
                       onPressed: sending ? null : () => Navigator.pop(c),
-                      child: const Text('Cancel'),
+                      child: Text(AppLocalizations.of(context).cancelAction),
                     ),
                     FilledButton(
                       onPressed:

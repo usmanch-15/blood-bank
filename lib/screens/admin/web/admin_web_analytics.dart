@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../constants/app_colors.dart';
 
@@ -172,7 +173,7 @@ class _AdminWebAnalyticsState extends State<AdminWebAnalytics> {
             ElevatedButton.icon(
               onPressed: _loadAnalytics,
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(AppLocalizations.of(context).retry),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade700,
                 foregroundColor: Colors.white,

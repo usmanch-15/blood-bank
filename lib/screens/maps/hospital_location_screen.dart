@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../l10n/app_localizations.dart';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -225,7 +226,7 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
     final center = _point ?? const LatLng(30.3753, 69.3451);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Choose location'),
+        title: Text(AppLocalizations.of(context).chooseLocation),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -239,7 +240,7 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
               controller: _search,
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
-                labelText: 'Search hospital or address',
+                labelText: AppLocalizations.of(context).searchHospitalAddress,
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon:
                     _searching
@@ -339,7 +340,7 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
                     ),
                     IconButton(
                       onPressed: _locating ? null : _current,
-                      tooltip: 'Use current location',
+                      tooltip: AppLocalizations.of(context).useCurrentLocation,
                       icon:
                           _locating
                               ? const SizedBox(
@@ -369,7 +370,7 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                        child: Text(AppLocalizations.of(context).cancel),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -393,7 +394,7 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
                                     hospitalId: _hospitalId,
                                   ),
                                 ),
-                        child: const Text('Confirm Location'),
+                        child: Text(AppLocalizations.of(context).confirmLocation),
                       ),
                     ),
                   ],

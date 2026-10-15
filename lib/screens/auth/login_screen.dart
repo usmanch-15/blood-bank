@@ -262,8 +262,8 @@ class _LoginScreenState extends State<LoginScreen>
                           const SizedBox(height: 28),
                           FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: const Text(
-                              'Welcome Back',
+                            child: Text(
+                              AppLocalizations.of(context).welcomeBack,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 30,
@@ -274,8 +274,8 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            'Every login could save a life',
+                          Text(
+                            AppLocalizations.of(context).everyLoginCouldSave,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14,
@@ -691,8 +691,8 @@ class _LoginScreenState extends State<LoginScreen>
                       size: 40,
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Reset Password',
+                    Text(
+                      AppLocalizations.of(context).resetPassword,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -700,8 +700,8 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
-                      'Enter your email and we\'ll send a reset link.',
+                    Text(
+                      AppLocalizations.of(context).resetPasswordHint,
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Color(0xFF757575), fontSize: 13),
                     ),
@@ -711,7 +711,7 @@ class _LoginScreenState extends State<LoginScreen>
                       keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'your@email.com',
+                        hintText: AppLocalizations.of(context).emailHint,
                         hintStyle: const TextStyle(color: Color(0xFF3D3D3D)),
                         filled: true,
                         fillColor: const Color(0xFF111111),
@@ -746,8 +746,8 @@ class _LoginScreenState extends State<LoginScreen>
                         Expanded(
                           child: TextButton(
                             onPressed: () => Navigator.pop(ctx),
-                            child: const Text(
-                              'Cancel',
+                            child: Text(
+                              AppLocalizations.of(context).cancelAction,
                               style: TextStyle(color: Color(0xFF757575)),
                             ),
                           ),
@@ -772,10 +772,10 @@ class _LoginScreenState extends State<LoginScreen>
                                 );
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Reset link sent! Check your inbox.',
-                                      ),
+                                    SnackBar(
+                                       content: Text(
+                                         AppLocalizations.of(context).resetLinkSent,
+                                       ),
                                       backgroundColor: Color(0xFF2E7D32),
                                       behavior: SnackBarBehavior.floating,
                                     ),
@@ -785,8 +785,8 @@ class _LoginScreenState extends State<LoginScreen>
                                 if (mounted) _showErrorSnack(e.toString());
                               }
                             },
-                            child: const Text(
-                              'Send Link',
+                            child: Text(
+                              AppLocalizations.of(context).sendLink,
                               style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ),

@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/settings_service.dart';
 import '../../services/workflow_service.dart';
+import '../../l10n/app_localizations.dart';
 import '../../utils/validators.dart';
 import '../maps/hospital_location_screen.dart';
 import '../requests/request_tracking_screen.dart';
@@ -114,7 +115,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('SOS Emergency')),
+    appBar: AppBar(title: Text(AppLocalizations.of(context).sosEmergency)),
     body: Form(
       key: _form,
       child: ListView(
@@ -125,7 +126,9 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
           ),
           DropdownButtonFormField<String>(
             initialValue: _group,
-            decoration: const InputDecoration(labelText: 'Blood group needed'),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).bloodGroupNeeded,
+            ),
             items:
                 ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
                     .map((g) => DropdownMenuItem(value: g, child: Text(g)))
@@ -155,8 +158,8 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
           TextFormField(
             controller: _hospital,
             maxLength: 100,
-            decoration: const InputDecoration(
-              labelText: 'Hospital / meeting point',
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).hospitalMeetingPoint,
             ),
             validator:
                 (v) =>
@@ -168,7 +171,9 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
           TextFormField(
             controller: _phone,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'Contact number'),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).contactNumber,
+            ),
             validator: AppValidators.validatePhone,
             enabled: !_sending && _count == 0,
           ),
@@ -193,7 +198,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                 _timer?.cancel();
                 setState(() => _count = 0);
               },
-              child: const Text('Cancel countdown'),
+              child: Text(AppLocalizations.of(context).cancel),
             ),
           ] else
             FilledButton(

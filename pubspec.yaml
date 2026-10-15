@@ -24,6 +24,7 @@ dependencies:
   firebase_messaging: ^15.1.3
   firebase_storage: ^12.3.4
   cloud_functions: ^5.1.3        # confirmDonation / getDonorContact Cloud Functions
+  agora_rtc_engine: ^6.6.4       # authenticated in-app voice calling
 
   # Networking (maps_service.dart use karta hai â€” pehle sirf transitive
   # dependency ki wajah se chal raha tha, ab explicitly declare kiya)

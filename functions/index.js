@@ -12,6 +12,7 @@ const { sendSmsFallback, twilioAuthToken } = require("./smsFallback");
 const { checkEligibilityReminders } = require("./eligibilityReminder");
 
 const workflows = require('./secureWorkflows');
+const voice = require('./voiceWorkflows');
 const {nearbyDonors} = require('./nearbyDonors');
 for (const name of ['createBloodRequest','acceptDonation','updateAssignment','closeRequest','getRequest','discoverRequests','findDonors','getSos','resolveSos']) exports[name] = onCall(workflows[name]);
 const administration = require('./adminWorkflows');
@@ -19,6 +20,9 @@ for (const name of ['adminAction','submitReport','exportPage','adminRequestActio
 exports.confirmDonation = onCall(workflows.confirmDonation);
 exports.deleteAccount = onCall(request => workflows.deleteAccount(request));
 exports.createSosAlert = onCall(workflows.createSosAlert);
+exports.createVoiceCallSession = onCall({secrets: [voice.agoraCertificate]}, voice.createVoiceCallSession);
+exports.getVoiceCallToken = onCall({secrets: [voice.agoraCertificate]}, voice.getVoiceCallToken);
+exports.updateVoiceCallSession = onCall({secrets: [voice.agoraCertificate]}, voice.updateVoiceCallSession);
 
 exports.sendPushNotification = onDocumentCreated(
   "notifications/{notificationId}",
@@ -45,11 +49,19 @@ exports.notifyNearbyDonorsOnSOS = onDocumentCreated(
 
     const owner = (await db.doc(`users/${sos.receiverId}`).get()).data();
     if (owner?.status !== 'approved') return;
-    let donorIds = await nearbyDonors(sos.latitude, sos.longitude, sos.bloodGroup, 15);
-    let radiusKm = 15;
-    if (!donorIds.length) {
-      radiusKm = 30;
-      donorIds = await nearbyDonors(sos.latitude, sos.longitude, sos.bloodGroup, radiusKm);
+    let donorIds = [];
+    let radiusKm = 50;
+    for (const radius of [5, 10, 25, 50]) {
+      donorIds = await nearbyDonors(
+        sos.latitude,
+        sos.longitude,
+        sos.bloodGroup,
+        radius,
+      );
+      if (donorIds.length) {
+        radiusKm = radius;
+        break;
+      }
     }
     await sosRef.update({notifiedDonors: donorIds, radiusKm, status:'processed'});
     if (!donorIds.length) return;
@@ -155,7 +167,9 @@ exports.onBloodRequestCreated = onDocumentCreated('blood_requests/{requestId}', 
   const data = event.data?.data();
   if (!data || data.sosId || data.status !== 'pending' || !Number.isFinite(data.latitude) || !Number.isFinite(data.longitude)) return;
   let recipients = [];
-  for (const radius of [10, 30, 50]) {
+  // Keep automatic matching aligned with the client-supported radius choices.
+  // The first radius with eligible recipients wins, limiting notification fan-out.
+  for (const radius of [5, 10, 25, 50]) {
     recipients = (await nearbyDonors(data.latitude, data.longitude, data.bloodGroup, radius))
       .filter(uid => uid !== data.requesterId);
     if (recipients.length) break;

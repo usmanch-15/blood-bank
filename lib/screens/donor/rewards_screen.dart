@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../controllers/reward_controller.dart';
@@ -94,7 +95,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                       final uid = FirebaseAuth.instance.currentUser?.uid;
                       if (uid != null) controller.loadReward(uid);
                     },
-                    child: const Text('Retry'),
+                    child: Text(AppLocalizations.of(context).retry),
                   ),
                 ],
               ),

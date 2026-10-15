@@ -1,4 +1,5 @@
 import '../requests/request_tracking_screen.dart';
+import '../../l10n/app_localizations.dart';
 import '../requests/request_list_screen.dart';
 import '../../services/workflow_service.dart';
 import '../../utils/feedback.dart';
@@ -103,7 +104,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
-                tooltip: 'Notifications',
+                tooltip: AppLocalizations.of(context).notificationsTooltip,
                 onPressed:
                     () => Navigator.push(
                       context,
@@ -117,7 +118,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                   Icons.settings_outlined,
                   color: AppColors.primaryRed,
                 ),
-                tooltip: 'Settings',
+                tooltip: AppLocalizations.of(context).settingsTooltip,
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -209,7 +210,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
 
                 // ── Create Request (unchanged destination: BloodRequestFormScreen) ──
                 _actionTile(
-                  title: 'Create Blood Request',
+                  title: AppLocalizations.of(context).createBloodRequest,
                   icon: Icons.add_circle_outline,
                   color: AppColors.secondaryBlue,
                   onTap: () async {
@@ -227,7 +228,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
 
                 // ── Find Nearby Donors on Map (unchanged destination: NearbyDonorsMapScreen) ──
                 _actionTile(
-                  title: 'Find Nearby Donors',
+                  title: AppLocalizations.of(context).findNearbyDonors,
                   icon: Icons.map_outlined,
                   color: Colors.teal,
                   onTap: () {
@@ -243,7 +244,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                 const SizedBox(height: AppSpacing.xxl + 6),
 
                 _actionTile(
-                  title: 'All requests & history',
+                  title: AppLocalizations.of(context).allRequestsHistory,
                   icon: Icons.history,
                   color: Colors.teal,
                   onTap:
@@ -255,7 +256,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       ),
                 ),
                 _actionTile(
-                  title: 'Active SOS & history',
+                  title: AppLocalizations.of(context).activeSosHistory,
                   icon: Icons.emergency,
                   color: Colors.red,
                   onTap:
@@ -278,7 +279,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
 
                 // ── Real Firebase Requests (StreamBuilder) — unchanged query ──
                 uid.isEmpty
-                    ? const Center(child: Text('Not logged in'))
+                    ? Center(child: Text(AppLocalizations.of(context).notLoggedIn))
                     : PagedRecords(
                       // This widget is already inside the dashboard's
                       // CustomScrollView. Keep its list non-scrollable so it
@@ -318,7 +319,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                         if (docs.isEmpty) {
                           return const EmptyState(
                             icon: Icons.assignment_outlined,
-                            title: 'No requests yet',
+                            title: AppLocalizations.of(context).noRequestsYet,
                             message: 'Tap "Create Blood Request" to add one.',
                           );
                         }
@@ -462,21 +463,21 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
             ].contains(request.status))
               TextButton.icon(
                 icon: Icon(Icons.cancel_outlined),
-                label: Text('Cancel request'),
+                label: Text(AppLocalizations.of(context).cancelRequest),
                 onPressed: () async {
                   final confirmed = await showDialog<bool>(
                     context: context,
                     builder:
                         (ctx) => AlertDialog(
-                          title: Text('Cancel this request?'),
+                          title: Text(AppLocalizations.of(context).cancelThisRequest),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: Text('Keep request'),
+                              child: Text(AppLocalizations.of(context).keepRequest),
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
-                              child: Text('Cancel request'),
+                              child: Text(AppLocalizations.of(context).cancelRequest),
                             ),
                           ],
                         ),
@@ -512,7 +513,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     );
                   },
                   icon: Icon(Icons.search, size: 16),
-                  label: Text('Track request / donors'),
+                  label: Text(AppLocalizations.of(context).trackRequestDonors),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primaryRed,
                     side: const BorderSide(color: AppColors.primaryRed),

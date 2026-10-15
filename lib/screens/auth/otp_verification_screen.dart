@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import '../../constants/app_colors.dart';
 import '../../services/auth_service.dart';
 
@@ -116,7 +117,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text('Verify Phone Number'),
+        title: Text(AppLocalizations.of(context).verifyPhone),
         backgroundColor: AppColors.primaryRed,
         foregroundColor: Colors.white,
       ),
@@ -142,10 +143,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               maxLength: 6,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 22, letterSpacing: 8),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
                 border: OutlineInputBorder(),
-                hintText: '000000',
+                hintText: AppLocalizations.of(context).verificationCode,
               ),
             ),
             if (_error != null) ...[

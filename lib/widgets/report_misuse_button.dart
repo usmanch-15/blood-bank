@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../constants/app_colors.dart';
 import '../services/report_service.dart';
 
@@ -33,13 +34,13 @@ class ReportMisuseButton extends StatelessWidget {
           (dialogContext) => StatefulBuilder(
             builder:
                 (dialogContext, setDialogState) => AlertDialog(
-                  title: const Text('Report Misuse'),
+                  title: Text(AppLocalizations.of(context).reportMisuse),
                   content: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('What\'s the issue?'),
+                        Text(AppLocalizations.of(context).issuePrompt),
                         const SizedBox(height: 8),
                         ...reasons.map(
                           (reason) => RadioListTile<String>(
@@ -65,8 +66,9 @@ class ReportMisuseButton extends StatelessWidget {
                         TextField(
                           controller: detailsController,
                           maxLines: 3,
-                          decoration: const InputDecoration(
-                            hintText: 'Additional details (optional)',
+                          decoration: InputDecoration(
+                            hintText:
+                                AppLocalizations.of(context).detailsOptional,
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -76,7 +78,7 @@ class ReportMisuseButton extends StatelessWidget {
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(dialogContext),
-                      child: const Text('Cancel'),
+                      child: Text(AppLocalizations.of(context).cancel),
                     ),
                     ElevatedButton(
                       onPressed: () async {
@@ -90,10 +92,9 @@ class ReportMisuseButton extends StatelessWidget {
                           );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 content: Text(
-                                  'Report submitted. Thank you for helping keep the '
-                                  'community safe.',
+                                  AppLocalizations.of(context).reportSubmitted,
                                 ),
                                 backgroundColor: AppColors.success,
                               ),
@@ -103,7 +104,9 @@ class ReportMisuseButton extends StatelessWidget {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Could not submit report: $e'),
+                                content: Text(
+                                  '${AppLocalizations.of(context).operationFailed} $e',
+                                ),
                               ),
                             );
                           }
@@ -113,7 +116,7 @@ class ReportMisuseButton extends StatelessWidget {
                         backgroundColor: AppColors.primaryRed,
                         foregroundColor: Colors.white,
                       ),
-                      child: const Text('Submit Report'),
+                      child: Text(AppLocalizations.of(context).submitReport),
                     ),
                   ],
                 ),
@@ -126,8 +129,8 @@ class ReportMisuseButton extends StatelessWidget {
     return TextButton.icon(
       onPressed: () => _showReportDialog(context),
       icon: const Icon(Icons.flag_outlined, size: 18, color: Colors.grey),
-      label: const Text(
-        'Report',
+      label: Text(
+        AppLocalizations.of(context).report,
         style: TextStyle(color: Colors.grey, fontSize: 13),
       ),
     );

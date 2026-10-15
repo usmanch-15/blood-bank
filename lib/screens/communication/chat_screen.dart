@@ -38,7 +38,11 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Message could not be sent: $e')),
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.of(context).operationFailed} $e',
+            ),
+          ),
         );
     } finally {
       if (mounted) setState(() => _sending = false);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import '../../services/workflow_service.dart';
 import '../requests/request_tracking_screen.dart';
 
@@ -25,7 +26,7 @@ class _SosAlertDetailScreenState extends State<SosAlertDetailScreen> {
         return RequestTrackingScreen(requestId: s.data!['requestId']);
       }
       return Scaffold(
-        appBar: AppBar(title: const Text('SOS alert')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context).sosAlert)),
         body: Center(
           child:
               s.connectionState == ConnectionState.waiting
@@ -46,7 +47,7 @@ class _SosAlertDetailScreenState extends State<SosAlertDetailScreen> {
                                     'sosId': widget.requestId,
                                   }),
                             ),
-                        child: const Text('Retry'),
+                        child: Text(AppLocalizations.of(context).retryAction),
                       ),
                     ],
                   ),

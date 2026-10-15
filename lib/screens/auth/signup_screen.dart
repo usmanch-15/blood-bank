@@ -413,18 +413,24 @@ class _SignUpScreenState extends State<SignUpScreen>
                                   const SizedBox(height: 18),
 
                                   // Blood Group
-                                  _buildLabel('Account type'),
+                                  _buildLabel(
+                                    AppLocalizations.of(context).accountType,
+                                  ),
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
                                     initialValue: _selectedRole,
-                                    items: const [
+                                    items: [
                                       DropdownMenuItem(
                                         value: 'donor',
-                                        child: Text('Donor'),
+                                        child: Text(
+                                          AppLocalizations.of(context).donor,
+                                        ),
                                       ),
                                       DropdownMenuItem(
                                         value: 'receiver',
-                                        child: Text('Receiver'),
+                                        child: Text(
+                                          AppLocalizations.of(context).receiver,
+                                        ),
                                       ),
                                     ],
                                     onChanged:

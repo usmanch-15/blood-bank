@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
@@ -96,7 +97,7 @@ class HelpSupportScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Help & Support'),
+        title: Text(AppLocalizations.of(context).helpSupport),
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
@@ -144,7 +145,7 @@ class HelpSupportScreen extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () => _contactUs(context),
             icon: const Icon(Icons.email_outlined),
-            label: const Text('Contact Us'),
+            label: Text(AppLocalizations.of(context).contactUs),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryRed,
               foregroundColor: Colors.white,

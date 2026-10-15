@@ -106,6 +106,10 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+    match /callSessions/{sessionId} {
+      allow read: if active() && request.auth.uid in resource.data.participantIds;
+      allow create, update, delete: if false;
+    }
     match /donations/{id} {
       allow read: if admin() || (active() && (resource.data.donorId == request.auth.uid || resource.data.get('requesterId','') == request.auth.uid));
       allow create, delete: if false;

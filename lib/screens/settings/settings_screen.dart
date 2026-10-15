@@ -13,6 +13,7 @@ import '../auth/login_screen.dart';
 import 'help_support_screen.dart';
 import 'about_screen.dart';
 import 'change_email_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 /// ✅ PHASE 1 — Settings Screen
 ///
@@ -52,8 +53,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Settings',
+        title: Text(
+          AppLocalizations.of(context).settings,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         flexibleSpace: Container(

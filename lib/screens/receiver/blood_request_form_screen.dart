@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../l10n/app_localizations.dart';
 import '../maps/hospital_location_screen.dart';
 import '../requests/request_tracking_screen.dart';
 import '../../widgets/unsaved_changes_guard.dart';
@@ -120,8 +121,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_currentLat == null || _currentLng == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Select and confirm the hospital meeting point.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).selectHospitalPoint),
         ),
       );
       return;
@@ -129,8 +130,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
 
     if (_requiredByDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select required by date'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).requiredDateMissing),
           backgroundColor: Colors.red,
         ),
       );
@@ -142,8 +143,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
 
     if (age == null || units == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enter valid age and units'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).invalidAgeUnits),
           backgroundColor: Colors.red,
         ),
       );
@@ -202,8 +203,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Request submitted successfully!'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).requestSubmitted),
             backgroundColor: Colors.green,
           ),
         );
@@ -387,7 +388,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                   child: InputDecorator(
                     decoration: InputDecoration(
-                      labelText: 'Required By Date',
+                      labelText: AppLocalizations.of(context).requiredByDate,
                       prefixIcon: Icon(
                         Icons.calendar_today_outlined,
                         size: AppSpacing.iconSm + 4,

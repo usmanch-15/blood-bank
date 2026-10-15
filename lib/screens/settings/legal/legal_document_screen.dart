@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 
 import '../../../constants/app_colors.dart';
 
@@ -23,7 +24,10 @@ class LegalDocumentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final isUrdu = Localizations.localeOf(context).languageCode == 'ur';
+    return Directionality(
+      textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
+      child: Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
@@ -68,6 +72,7 @@ class LegalDocumentScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

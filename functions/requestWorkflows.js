@@ -107,14 +107,14 @@ async function acceptDonation(request) {
     if (!active(owner)) fail('permission-denied','Requester is inactive.');
     assertOpen(r);
     const commitments = assignments(r), mine = commitments[caller];
-    if (['accepted','awaiting_confirmation'].includes(mine?.status)) return {accepted:true};
+    if (['accepted','agreed','awaiting_confirmation'].includes(mine?.status)) return {accepted:true};
     if (mine?.status==='completed') fail('failed-precondition','You already contributed to this request.');
     if (d.activeRequestId && d.activeRequestId!==requestId) {
       const previous = (await tx.get(db.doc(`blood_requests/${d.activeRequestId}`))).data();
       if (previous && openStatuses.includes(previous.status) && !expired(previous)) fail('failed-precondition','Withdraw from your active donation first.');
     }
     if (!eligible(d,Date.now()) || !compatible(d.bloodGroup,r.bloodGroup)) fail('failed-precondition','Donation interval or blood group does not match.');
-    const accepted = Object.keys(commitments).filter(k=>['accepted','awaiting_confirmation'].includes(commitments[k].status));
+    const accepted = Object.keys(commitments).filter(k=>['accepted','agreed','awaiting_confirmation'].includes(commitments[k].status));
     if ((r.donatedUnits || 0)+accepted.length >= r.quantity) fail('failed-precondition','All remaining units have donor commitments.');
     commitments[caller]={status:'accepted',name:d.name || 'Donor',acceptedAt:now(),units:1};
     tx.update(ref,{commitments,acceptedDonorIds:[...accepted,caller],participantIds:[...new Set([...participants(r),caller])],status:r.donatedUnits ? 'partially_fulfilled':'accepted'});
@@ -129,7 +129,7 @@ async function acceptDonation(request) {
 async function updateAssignment(request) {
   const caller=uid(request), requestId=id(request.data?.requestId), donorId=id(request.data?.donorId || caller);
   const action=request.data?.action, ref=db.doc(`blood_requests/${requestId}`);
-  if (!['withdraw','release','ready'].includes(action)) fail('invalid-argument','Invalid assignment action.');
+  if (!['withdraw','release','ready','agree','decline'].includes(action)) fail('invalid-argument','Invalid assignment action.');
   return db.runTransaction(async tx=>{
     const [snap,u,donor]=await Promise.all([tx.get(ref),tx.get(db.doc(`users/${caller}`)),tx.get(db.doc(`users/${donorId}`))]);
     const r=snap.data(), user=u.data();
@@ -137,19 +137,27 @@ async function updateAssignment(request) {
     const owner=caller===r.requesterId || user.role==='admin';
     if ((action==='release' && !owner) || (action!=='release' && caller!==donorId)) fail('permission-denied','Action not permitted.');
     const commitments=assignments(r), entry=commitments[donorId];
-    if (!entry || !['accepted','awaiting_confirmation'].includes(entry.status)) fail('failed-precondition','No active assignment.');
+    if (!entry || !['accepted','agreed','awaiting_confirmation'].includes(entry.status)) fail('failed-precondition','No active assignment.');
+    if (['agree','decline'].includes(action) && entry.status !== 'accepted') {
+      if (entry.status === (action === 'agree' ? 'agreed' : 'declined')) return {updated:true,alreadyResponded:true};
+      fail('failed-precondition','The agreement has already been answered.');
+    }
     if (action==='ready') assertOpen(r);
-    commitments[donorId]={...entry,status:action==='ready'?'awaiting_confirmation':action==='release'?'released':'withdrawn',...(action==='ready'?{donorConfirmedAt:now()}:{}),updatedAt:now()};
-    const accepted=Object.keys(commitments).filter(k=>['accepted','awaiting_confirmation'].includes(commitments[k].status));
+    const nextStatus = action==='ready' ? 'awaiting_confirmation' : action==='agree' ? 'agreed' : action==='decline' ? 'declined' : action==='release' ? 'released' : 'withdrawn';
+    commitments[donorId]={...entry,status:nextStatus,...(action==='ready'?{donorConfirmedAt:now()}:{}),...(action==='agree'?{agreedAt:now()}:{}),...(action==='decline'?{declinedAt:now()}:{}),updatedAt:now()};
+    const accepted=Object.keys(commitments).filter(k=>['accepted','agreed','awaiting_confirmation'].includes(commitments[k].status));
     const updates={commitments,acceptedDonorIds:accepted};
-    if (action!=='ready') {
+    if (['withdraw','release','decline'].includes(action)) {
       updates.participantIds=participants(r).filter(k=>k!==donorId);
       updates.acceptedDonorId=admin.firestore.FieldValue.delete();
       if (openStatuses.includes(r.status)) updates.status=expired(r)?'expired':r.donatedUnits?'partially_fulfilled':accepted.length?'accepted':'pending';
       if (donor.exists && donor.data().activeRequestId===requestId) tx.update(donor.ref,{activeRequestId:admin.firestore.FieldValue.delete()});
     }
     tx.update(ref,updates);
-    notification(tx,`${action}_${requestId}_${donorId}`,owner?donorId:r.requesterId,requestId,action==='ready'?'Donation awaiting confirmation':'Assignment updated',action==='ready'?'Please confirm the donation after it has taken place.':'A donor assignment was released. Remaining units can be reassigned.');
+    const recipient = action === 'release' || action === 'withdraw' || action === 'decline' ? (owner ? donorId : r.requesterId) : r.requesterId;
+    const title = action === 'agree' ? 'Donor agreed to donate' : action === 'decline' ? 'Donor did not agree' : action === 'ready' ? 'Donation awaiting confirmation' : 'Assignment updated';
+    const body = action === 'agree' ? 'The donor agreed to coordinate this donation. Confirm only after blood is actually received.' : action === 'decline' ? 'The donor did not confirm the agreement. You can find another donor.' : action === 'ready' ? 'Please confirm the donation after it has taken place.' : 'A donor assignment was released. Remaining units can be reassigned.';
+    notification(tx,`${action}_${requestId}_${donorId}`,recipient,requestId,title,body);
     event(tx,ref,caller,action,donorId);
     return {updated:true};
   });
@@ -255,8 +263,10 @@ async function discoverRequests(request) {
 async function findDonors(request) {
   const user=await actor(request), data=request.data || {}; coordinates(data);
   // Start with the product's 10 km search radius; callers may expand it up
-  // to 50 km explicitly when no suitable donor is found.
-  const radius=Math.min(50,Math.max(1,Number(data.radiusKm)||10));
+  // to the nationwide 2,000 km limit when local matches are insufficient.
+  // Presets remain 5/10/25/50 km in the client, but callers may expand
+  // discovery beyond the local area for nationwide matching.
+  const radius=Math.min(2000,Math.max(5,Number(data.radiusKm)||10));
   const ids=(await nearbyDonors(data.latitude,data.longitude,data.bloodGroup || null,radius)).filter(k=>k!==user.uid);
   const docs=await Promise.all(ids.map(k=>db.doc(`users/${k}`).get()));
   // Never return email, address, donation dates, patient info or exact coordinates.

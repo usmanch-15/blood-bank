@@ -4,11 +4,13 @@ import '../../controllers/auth_controller.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/workflow_service.dart';
 import '../../widgets/report_misuse_button.dart';
 import '../receiver/donor_matching_screen.dart';
 import '../communication/chat_screen.dart';
+import '../communication/voice_call_screen.dart';
 
 class RequestTrackingScreen extends StatefulWidget {
   final String requestId;
@@ -94,15 +96,15 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
       builder:
           (c) => AlertDialog(
             title: Text(prompt),
-            content: const Text('Please confirm this action.'),
+            content: Text(AppLocalizations.of(context).confirmActionPrompt),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(c, false),
-                child: const Text('Back'),
+                child: Text(AppLocalizations.of(context).back),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(c, true),
-                child: const Text('Confirm'),
+                child: Text(AppLocalizations.of(context).confirm),
               ),
             ],
           ),
@@ -185,11 +187,13 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
     final mine = commitments[_uid] as Map?;
     final assigned = [
       'accepted',
+      'agreed',
       'awaiting_confirmation',
     ].contains(mine?['status']);
+    final agreementPending = mine?['status'] == 'accepted';
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Request Tracking'),
+        title: Text(AppLocalizations.of(context).requestTracking),
         actions: [
           IconButton(
             onPressed: _load,
@@ -245,11 +249,18 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                     if ((d['reason'] ?? '').toString().isNotEmpty)
                       Text('Notes: ${d['reason']}'),
                     if (!owner)
-                      OutlinedButton.icon(
-                        onPressed: () => _phone(d['contactNumber'] as String?),
-                        icon: const Icon(Icons.call),
-                        label: const Text('Call requester'),
-                      ),
+                      Wrap(spacing: 8, children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _phone(d['contactNumber'] as String?),
+                          icon: const Icon(Icons.call),
+                          label: Text(AppLocalizations.of(context).callRequester),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VoiceCallScreen(requestId: widget.requestId, calleeId: d['requesterId'] as String))),
+                          icon: const Icon(Icons.phone_in_talk),
+                          label: Text(AppLocalizations.of(context).callInApp),
+                        ),
+                      ]),
                     if (d['latitude'] != null && d['longitude'] != null)
                       OutlinedButton.icon(
                         onPressed: () async {
@@ -271,7 +282,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                           }
                         },
                         icon: const Icon(Icons.directions),
-                        label: const Text('Directions to meeting point'),
+                        label: Text(AppLocalizations.of(context).directionsMeetingPoint),
                       ),
                   ],
                   if (open &&
@@ -287,10 +298,39 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                 {},
                                 'Commit to donating one unit?',
                               ),
-                      child: const Text('Accept / Respond'),
+                        child: Text(AppLocalizations.of(context).acceptRespond),
+                    ),
+                  if (agreementPending && !owner)
+                    FilledButton(
+                      onPressed:
+                          _busy
+                              ? null
+                              : () => _action(
+                                'updateAssignment',
+                                {'action': 'agree'},
+                                AppLocalizations.of(context).agreementPrompt,
+                              ),
+                      child: Text(AppLocalizations.of(context).donorAgreed),
+                    ),
+                  if (agreementPending && !owner)
+                    OutlinedButton(
+                      onPressed:
+                          _busy
+                              ? null
+                              : () => _action(
+                                'updateAssignment',
+                                {'action': 'decline'},
+                                AppLocalizations.of(context).agreementPrompt,
+                              ),
+                      child: Text(AppLocalizations.of(context).donorDidNotAgree),
+                    ),
+                  if (mine?['status'] == 'agreed' && !owner)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(AppLocalizations.of(context).donationAgreementPending),
                     ),
                   if (assigned) ...[
-                    if (open)
+                    if (open && mine?['status'] == 'agreed')
                       FilledButton(
                         onPressed:
                             _busy
@@ -300,7 +340,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                   {'action': 'ready'},
                                   'Ask requester to confirm your donation?',
                                 ),
-                        child: const Text('I donated — request confirmation'),
+                        child: Text(AppLocalizations.of(context).donatedRequestConfirmation),
                       ),
                     OutlinedButton(
                       onPressed:
@@ -309,7 +349,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                               : () => _action('updateAssignment', {
                                 'action': 'withdraw',
                               }, 'Withdraw from this assignment?'),
-                      child: const Text('Withdraw'),
+                        child: Text(AppLocalizations.of(context).withdraw),
                     ),
                   ],
                   if (owner) ...[
@@ -319,7 +359,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     if (commitments.isEmpty)
-                      const Text('No donors have responded yet.'),
+                      Text(AppLocalizations.of(context).noDonorsResponded),
                     ...commitments.entries.map((e) {
                       final c = e.value as Map;
                       return Card(
@@ -330,15 +370,21 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                             children: [
                               Text('${c['name'] ?? 'Donor'} • ${c['status']}'),
                               if ([
-                                'accepted',
-                                'awaiting_confirmation',
+                              'accepted',
+                              'agreed',
+                              'awaiting_confirmation',
                               ].contains(c['status']))
                                 Wrap(
                                   spacing: 8,
                                   children: [
                                     TextButton(
                                       onPressed: () => _contact(e.key),
-                                      child: const Text('Contact'),
+                                      child: Text(AppLocalizations.of(context).contact),
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => VoiceCallScreen(requestId: widget.requestId, calleeId: e.key))),
+                                      icon: const Icon(Icons.phone_in_talk),
+                                      label: Text(AppLocalizations.of(context).callInApp),
                                     ),
                                     TextButton(
                                       onPressed:
@@ -355,7 +401,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                                   ),
                                             ),
                                           ),
-                                      child: const Text('Chat'),
+                                      child: Text(AppLocalizations.of(context).chat),
                                     ),
                                     if (open)
                                       TextButton(
@@ -367,7 +413,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                                   {'donorId': e.key},
                                                   'Confirm that you received one unit of blood?',
                                                 ),
-                                        child: const Text('Blood received'),
+                                        child: Text(AppLocalizations.of(context).bloodReceived),
                                       ),
                                     TextButton(
                                       onPressed:
@@ -381,7 +427,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                                 },
                                                 'Release donor and reopen this unit?',
                                               ),
-                                      child: const Text('Release / Reassign'),
+                                        child: Text(AppLocalizations.of(context).releaseReassign),
                                     ),
                                   ],
                                 ),
@@ -403,7 +449,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                     ),
                               ),
                             ),
-                        child: const Text('Find additional donors'),
+                        child: Text(AppLocalizations.of(context).findAdditionalDonors),
                       ),
                       TextButton(
                         onPressed:
@@ -414,7 +460,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                   {},
                                   'Cancel the remaining request?',
                                 ),
-                        child: const Text('Cancel request'),
+                        child: Text(AppLocalizations.of(context).cancelRequest),
                       ),
                     ],
                     if (d['sosId'] != null && open)
@@ -425,7 +471,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                 : () => _action('resolveSos', {
                                   'sosId': d['sosId'],
                                 }, 'Resolve this SOS?'),
-                        child: const Text('Resolve SOS'),
+                        child: Text(AppLocalizations.of(context).resolveSos),
                       ),
                   ],
                   if (_busy) const LinearProgressIndicator(),
@@ -445,7 +491,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                               .snapshots(),
                       builder: (context, s) {
                         if (s.hasError) {
-                          return const Text('Timeline unavailable.');
+                          return Text(AppLocalizations.of(context).timelineUnavailable);
                         }
                         return Column(
                           children:

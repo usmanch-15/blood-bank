@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../widgets/paged_records.dart';
 import '../../services/push_navigation_service.dart';
+import '../../l10n/app_localizations.dart';
 
 class NotificationHistoryScreen extends StatelessWidget {
   const NotificationHistoryScreen({super.key});
@@ -10,10 +11,10 @@ class NotificationHistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).notifications)),
       body:
           uid == null
-              ? const Center(child: Text('Please sign in.'))
+              ? Center(child: Text(AppLocalizations.of(context).pleaseSignIn))
               : PagedRecords(
                 query: FirebaseFirestore.instance
                     .collection('notifications')
@@ -40,7 +41,9 @@ class NotificationHistoryScreen extends StatelessWidget {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Unable to open notification: $e'),
+                              content: Text(
+                                '${AppLocalizations.of(context).unableToOpenNotification} $e',
+                              ),
                             ),
                           );
                         }

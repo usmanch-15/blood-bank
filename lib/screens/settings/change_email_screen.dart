@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../constants/app_colors.dart';
 import '../../services/settings_service.dart';
+import '../../l10n/app_localizations.dart';
 
 /// ✅ NEW — Change Email screen.
 /// Sends a confirmation link to the new address; the email only actually
@@ -52,19 +53,19 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
       switch (e.code) {
         case 'wrong-password':
         case 'invalid-credential':
-          message = 'Incorrect password.';
+          message = AppLocalizations.of(context).passwordIncorrect;
           break;
         case 'email-already-in-use':
-          message = 'That email is already used by another account.';
+          message = AppLocalizations.of(context).emailAlreadyUsed;
           break;
         case 'invalid-email':
-          message = 'Please enter a valid email address.';
+          message = AppLocalizations.of(context).enterValidEmail;
           break;
         case 'requires-recent-login':
-          message = 'Please log out and log back in, then try again.';
+          message = AppLocalizations.of(context).reauthenticateRequired;
           break;
         default:
-          message = e.message ?? 'Could not change email.';
+          message = e.message ?? AppLocalizations.of(context).operationFailed;
       }
       ScaffoldMessenger.of(
         context,
@@ -85,7 +86,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Change Email'),
+        title: Text(AppLocalizations.of(context).changeEmail),
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
@@ -100,7 +101,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Current email: $currentEmail',
+                        AppLocalizations.of(context).currentEmail(currentEmail),
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -111,20 +112,20 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                         controller: _newEmailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                          labelText: 'New Email Address',
+                          labelText: AppLocalizations.of(context).newEmailAddress,
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
-                            return 'Enter your new email address';
+                            return AppLocalizations.of(context).enterNewEmail;
                           }
                           if (!v.contains('@') || !v.contains('.')) {
-                            return 'Enter a valid email address';
+                            return AppLocalizations.of(context).enterValidEmail;
                           }
                           if (v.trim().toLowerCase() ==
                               currentEmail.toLowerCase()) {
-                            return 'This is already your current email';
+                            return AppLocalizations.of(context).emailAlreadyCurrent;
                           }
                           return null;
                         },
@@ -134,7 +135,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                         controller: _passwordController,
                         obscureText: _obscurePassword,
                         decoration: InputDecoration(
-                          labelText: 'Current Password',
+                          labelText: AppLocalizations.of(context).currentPassword,
                           border: const OutlineInputBorder(),
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
@@ -152,14 +153,12 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                         validator:
                             (v) =>
                                 (v == null || v.isEmpty)
-                                    ? 'Enter your current password to confirm'
+                                    ? AppLocalizations.of(context).enterCurrentPassword
                                     : null,
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'For your security, we\'ll send a confirmation link '
-                        'to your new email. Your login email won\'t change '
-                        'until you click that link.',
+                      Text(
+                        AppLocalizations.of(context).emailChangeSecurityNote,
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -188,7 +187,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                  : const Text('Send Confirmation Link'),
+                                  : Text(AppLocalizations.of(context).sendConfirmationLink),
                         ),
                       ),
                     ],
@@ -211,15 +210,15 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
               color: AppColors.success,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Confirmation link sent!',
+            Text(
+              AppLocalizations.of(context).confirmationLinkSent,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'We\'ve sent a link to ${_newEmailController.text.trim()}. '
-              'Click it to finish changing your email. Until then, keep '
-              'logging in with your current email.',
+              AppLocalizations.of(context).emailChangeConfirmation(
+                _newEmailController.text.trim(),
+              ),
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textSecondary),
             ),
@@ -230,7 +229,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                 backgroundColor: AppColors.primaryRed,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Done'),
+              child: Text(AppLocalizations.of(context).done),
             ),
           ],
         ),

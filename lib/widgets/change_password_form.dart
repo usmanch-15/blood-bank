@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/validators.dart';
 import '../utils/feedback.dart';
 
@@ -55,7 +56,7 @@ class _ChangePasswordFormState extends State<ChangePasswordForm> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Change Password',
+              AppLocalizations.of(context).changePassword,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
@@ -69,13 +70,16 @@ class _ChangePasswordFormState extends State<ChangePasswordForm> {
                   decoration: InputDecoration(
                     labelText:
                         [
-                          'Current Password',
-                          'New Password',
-                          'Confirm New Password',
+                          AppLocalizations.of(context).currentPassword,
+                          AppLocalizations.of(context).newPassword,
+                          AppLocalizations.of(context).confirmNewPassword,
                         ][i],
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      tooltip: _hidden[i] ? 'Show password' : 'Hide password',
+                      tooltip:
+                          _hidden[i]
+                              ? AppLocalizations.of(context).showPassword
+                              : AppLocalizations.of(context).hidePassword,
                       onPressed: () => setState(() => _hidden[i] = !_hidden[i]),
                       icon: Icon(
                         _hidden[i]
@@ -89,12 +93,12 @@ class _ChangePasswordFormState extends State<ChangePasswordForm> {
                           i == 0
                               ? AppValidators.validateRequired(
                                 value,
-                                'Current password',
+                                AppLocalizations.of(context).currentPassword,
                               )
                               : i == 1
                               ? AppValidators.validatePassword(value)
                               : value != _fields[1].text
-                              ? 'Passwords do not match'
+                              ? AppLocalizations.of(context).passwordsDoNotMatch
                               : null,
                 ),
               ),
@@ -112,7 +116,7 @@ class _ChangePasswordFormState extends State<ChangePasswordForm> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                      : const Text('Update Password'),
+                      : Text(AppLocalizations.of(context).updatePassword),
             ),
           ],
         ),

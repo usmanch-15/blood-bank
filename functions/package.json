@@ -16,8 +16,10 @@
     "check": "node --check index.js && node --check secureWorkflows.js && node --check nearbyDonors.js"
   },
   "dependencies": {
+    "agora-token": "^2.0.7",
     "firebase-admin": "^14.5.0",
     "firebase-functions": "^7.4.0",
+    "agora-token": "^2.0.7",
     "twilio": "^5.3.0"
   },
   "private": true,

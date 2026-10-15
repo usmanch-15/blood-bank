@@ -224,6 +224,18 @@ test('capacity, one active assignment, withdrawal, release and reassignment',asy
   assert.deepEqual((await admin.firestore().doc('blood_requests/request').get()).data().acceptedDonorIds,['donor']);
 });
 
+test('donor agreement is separate from actual donation confirmation',async()=>{
+  await workflows.acceptDonation({auth:auth('donor'),data:{requestId:'request'}});
+  await workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'agree'}});
+  let r=(await admin.firestore().doc('blood_requests/request').get()).data();
+  assert.equal(r.commitments.donor.status,'agreed');
+  await assert.rejects(workflows.confirmDonation({auth:auth('receiver'),data:{requestId:'request',donorId:'donor'}}),{code:'failed-precondition'});
+  await workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'ready'}});
+  await workflows.confirmDonation({auth:auth('receiver'),data:{requestId:'request',donorId:'donor'}});
+  r=(await admin.firestore().doc('blood_requests/request').get()).data();
+  assert.equal(r.commitments.donor.status,'completed');
+});
+
 test('expired requests cannot accept or complete and scheduled cleanup releases donors',async()=>{
   await workflows.acceptDonation({auth:auth('donor'),data:{requestId:'request'}});
   await admin.firestore().doc('blood_requests/request').update({requiredBy:admin.firestore.Timestamp.fromMillis(Date.now()-1000)});

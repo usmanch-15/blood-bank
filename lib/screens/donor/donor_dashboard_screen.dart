@@ -6,6 +6,7 @@ import '../../controllers/auth_controller.dart';
 
 import '../notification/notification_history_screen.dart';
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -109,13 +110,16 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
 
     if (_loadError != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Donor Dashboard')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context).donorDashboard)),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(_loadError!),
-              TextButton(onPressed: _loadUserData, child: const Text('Retry')),
+              TextButton(
+                onPressed: _loadUserData,
+                child: Text(AppLocalizations.of(context).retryAction),
+              ),
             ],
           ),
         ),
@@ -150,7 +154,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'Notifications',
+            tooltip: AppLocalizations.of(context).notificationsTooltip,
             onPressed:
                 () => Navigator.push(
                   context,

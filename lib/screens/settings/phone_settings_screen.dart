@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/settings_service.dart';
 import '../../utils/validators.dart';
+import '../../l10n/app_localizations.dart';
 import '../auth/otp_verification_screen.dart';
 
 class PhoneSettingsScreen extends StatefulWidget {
@@ -35,7 +36,7 @@ class _PhoneSettingsScreenState extends State<PhoneSettingsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Verify / Change Phone')),
+    appBar: AppBar(title: Text(AppLocalizations.of(context).verifyChangePhone)),
     body: Form(
       key: _form,
       child: ListView(
@@ -43,14 +44,18 @@ class _PhoneSettingsScreenState extends State<PhoneSettingsScreen> {
         children: [
           Text(
             FirebaseAuth.instance.currentUser?.phoneNumber == null
-                ? 'Your phone is not verified.'
-                : 'Verified phone: ${FirebaseAuth.instance.currentUser!.phoneNumber}',
+                ? AppLocalizations.of(context).phoneNotVerified
+                : AppLocalizations.of(context).verifiedPhone(
+                    FirebaseAuth.instance.currentUser!.phoneNumber!,
+                  ),
           ),
           TextFormField(
             controller: _phone,
             keyboardType: TextInputType.phone,
             validator: AppValidators.validatePhone,
-            decoration: const InputDecoration(labelText: 'Mobile number'),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).mobileNumber,
+            ),
           ),
           const SizedBox(height: 20),
           FilledButton(
@@ -76,7 +81,7 @@ class _PhoneSettingsScreenState extends State<PhoneSettingsScreen> {
                         await _load();
                       }
                     },
-            child: const Text('Send verification code'),
+            child: Text(AppLocalizations.of(context).sendVerificationCode),
           ),
         ],
       ),

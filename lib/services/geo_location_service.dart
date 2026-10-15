@@ -43,7 +43,7 @@ class GeoLocationService {
     required double receiverLat,
     required double receiverLng,
     String? bloodGroup,
-    double maxRadiusKm = 50,
+    double maxRadiusKm = 2000,
   }) async {
     final result = await WorkflowService.call('findDonors', {
       'latitude': receiverLat,
@@ -76,7 +76,7 @@ class GeoLocationService {
     required double receiverLat,
     required double receiverLng,
     String? bloodGroup,
-    List<double> radiiKm = const [10, 30, 50],
+    List<double> radiiKm = const [5, 10, 25, 50, 2000],
   }) async {
     final all = await findCompatibleDonorsWithDistance(
       receiverLat: receiverLat,
