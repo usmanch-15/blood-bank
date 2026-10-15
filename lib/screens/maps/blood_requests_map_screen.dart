@@ -38,19 +38,21 @@ class _BloodRequestsMapScreenState extends State<BloodRequestsMapScreen> {
               .map((e) => Map<String, dynamic>.from(e))
               .where((e) => e['latitude'] is num && e['longitude'] is num)
               .toList();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _requests
             ..clear()
             ..addAll(items);
           _loading = false;
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = e.toString();
           _loading = false;
         });
+      }
     }
   }
 
@@ -108,12 +110,13 @@ class _BloodRequestsMapScreenState extends State<BloodRequestsMapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading)
+    if (_loading) {
       return Scaffold(
         appBar: AppBar(title: Text(AppLocalizations.of(context).bloodRequests)),
         body: const Center(child: CircularProgressIndicator()),
       );
-    if (_error != null)
+    }
+    if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: Text(AppLocalizations.of(context).bloodRequests)),
         body: Center(
@@ -129,6 +132,7 @@ class _BloodRequestsMapScreenState extends State<BloodRequestsMapScreen> {
           ),
         ),
       );
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).bloodRequests),

@@ -369,6 +369,11 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     hint: '03XX-XXXXXXX',
                                     icon: Icons.phone_outlined,
                                     keyboardType: TextInputType.phone,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'[0-9+()\s-]'),
+                                      ),
+                                    ],
                                     textInputAction: TextInputAction.next,
                                     autofillHints: const [
                                       AutofillHints.telephoneNumber,
@@ -387,7 +392,14 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     keyboardType: TextInputType.number,
                                     textInputAction: TextInputAction.next,
                                     inputFormatters: [_CnicInputFormatter()],
-                                    validator: AppValidators.validateCnic,
+                                    validator:
+                                        (value) =>
+                                            value == null ||
+                                                    value.trim().isEmpty
+                                                ? null
+                                                : AppValidators.validateCnic(
+                                                  value,
+                                                ),
                                   ),
                                   const SizedBox(height: 4),
                                   Padding(

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../constants/app_colors.dart';
 import '../../services/settings_service.dart';
 import '../../l10n/app_localizations.dart';
+import '../../utils/validators.dart';
 
 /// ✅ NEW — Change Email screen.
 /// Sends a confirmation link to the new address; the email only actually
@@ -111,21 +112,24 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                       TextFormField(
                         controller: _newEmailController,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: AppLocalizations.of(context).newEmailAddress,
+                        decoration: InputDecoration(
+                          labelText:
+                              AppLocalizations.of(context).newEmailAddress,
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                         validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return AppLocalizations.of(context).enterNewEmail;
+                          final formatError = AppValidators.validateEmail(v);
+                          if (formatError != null) {
+                            return v == null || v.trim().isEmpty
+                                ? AppLocalizations.of(context).enterNewEmail
+                                : AppLocalizations.of(context).enterValidEmail;
                           }
-                          if (!v.contains('@') || !v.contains('.')) {
-                            return AppLocalizations.of(context).enterValidEmail;
-                          }
-                          if (v.trim().toLowerCase() ==
+                          if (v?.trim().toLowerCase() ==
                               currentEmail.toLowerCase()) {
-                            return AppLocalizations.of(context).emailAlreadyCurrent;
+                            return AppLocalizations.of(
+                              context,
+                            ).emailAlreadyCurrent;
                           }
                           return null;
                         },
@@ -135,7 +139,8 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                         controller: _passwordController,
                         obscureText: _obscurePassword,
                         decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context).currentPassword,
+                          labelText:
+                              AppLocalizations.of(context).currentPassword,
                           border: const OutlineInputBorder(),
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
@@ -153,7 +158,9 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                         validator:
                             (v) =>
                                 (v == null || v.isEmpty)
-                                    ? AppLocalizations.of(context).enterCurrentPassword
+                                    ? AppLocalizations.of(
+                                      context,
+                                    ).enterCurrentPassword
                                     : null,
                       ),
                       const SizedBox(height: 8),
@@ -187,7 +194,11 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                  : Text(AppLocalizations.of(context).sendConfirmationLink),
+                                  : Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    ).sendConfirmationLink,
+                                  ),
                         ),
                       ),
                     ],
@@ -216,9 +227,9 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              AppLocalizations.of(context).emailChangeConfirmation(
-                _newEmailController.text.trim(),
-              ),
+              AppLocalizations.of(
+                context,
+              ).emailChangeConfirmation(_newEmailController.text.trim()),
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textSecondary),
             ),

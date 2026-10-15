@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/settings_service.dart';
@@ -7,8 +8,8 @@ import '../../services/workflow_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../utils/validators.dart';
 import '../maps/hospital_location_screen.dart';
-import '../requests/request_tracking_screen.dart';
 import '../requests/request_list_screen.dart';
+import 'sos_status_screen.dart';
 
 class SosEmergencyScreen extends StatefulWidget {
   const SosEmergencyScreen({super.key});
@@ -102,7 +103,10 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
           context,
           MaterialPageRoute(
             builder:
-                (_) => RequestTrackingScreen(requestId: result['requestId']),
+                (_) => SosStatusScreen(
+                  sosId: result['id'] as String,
+                  requestId: result['requestId'] as String,
+                ),
           ),
         );
       }
@@ -171,6 +175,9 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
           TextFormField(
             controller: _phone,
             keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+()\s-]')),
+            ],
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context).contactNumber,
             ),

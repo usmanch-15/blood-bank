@@ -31,6 +31,8 @@ test('real Auth JWTs and callable HTTP endpoints complete the request lifecycle'
   await ref.set({requesterId:receiver.uid,bloodGroup:'O+',hospitalName:'HTTP Audit Hospital',
     quantity:1,status:'pending',latitude:31,longitude:74,createdAt:admin.firestore.Timestamp.now()});
   assert.equal((await callable('acceptDonation',{requestId:ref.id},donor.token)).status,200);
+  assert.equal((await callable('updateAssignment',{requestId:ref.id,action:'agree'},donor.token)).status,200);
+  assert.equal((await callable('updateAssignment',{requestId:ref.id,action:'ready'},donor.token)).status,200);
   const args={requestId:ref.id,donorId:donor.uid};
   assert.equal((await callable('confirmDonation',args)).status,401);
   assert.equal((await callable('confirmDonation',args,receiver.token)).status,200);

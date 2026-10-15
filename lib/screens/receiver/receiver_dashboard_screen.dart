@@ -279,7 +279,9 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
 
                 // ── Real Firebase Requests (StreamBuilder) — unchanged query ──
                 uid.isEmpty
-                    ? Center(child: Text(AppLocalizations.of(context).notLoggedIn))
+                    ? Center(
+                      child: Text(AppLocalizations.of(context).notLoggedIn),
+                    )
                     : PagedRecords(
                       // This widget is already inside the dashboard's
                       // CustomScrollView. Keep its list non-scrollable so it
@@ -469,15 +471,21 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                     context: context,
                     builder:
                         (ctx) => AlertDialog(
-                          title: Text(AppLocalizations.of(context).cancelThisRequest),
+                          title: Text(
+                            AppLocalizations.of(context).cancelThisRequest,
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: Text(AppLocalizations.of(context).keepRequest),
+                              child: Text(
+                                AppLocalizations.of(context).keepRequest,
+                              ),
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
-                              child: Text(AppLocalizations.of(context).cancelRequest),
+                              child: Text(
+                                AppLocalizations.of(context).cancelRequest,
+                              ),
                             ),
                           ],
                         ),

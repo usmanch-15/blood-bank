@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../l10n/app_localizations.dart';
 import '../../constants/app_colors.dart';
 import '../../services/auth_service.dart';
@@ -140,6 +141,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             TextField(
               controller: _codeController,
               keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               maxLength: 6,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 22, letterSpacing: 8),

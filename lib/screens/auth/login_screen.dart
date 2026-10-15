@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/push_navigation_service.dart';
 import '../../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../../utils/account_policy.dart';
+import '../../utils/validators.dart';
 import 'signup_screen.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -306,15 +307,7 @@ class _LoginScreenState extends State<LoginScreen>
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                               autofillHints: const [AutofillHints.email],
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'Email required';
-                                }
-                                if (!v.contains('@')) {
-                                  return 'Enter valid email';
-                                }
-                                return null;
-                              },
+                              validator: AppValidators.validateEmail,
                             ),
                             const SizedBox(height: 20),
                             _buildLabel('Password'),
@@ -773,9 +766,11 @@ class _LoginScreenState extends State<LoginScreen>
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                       content: Text(
-                                         AppLocalizations.of(context).resetLinkSent,
-                                       ),
+                                      content: Text(
+                                        AppLocalizations.of(
+                                          context,
+                                        ).resetLinkSent,
+                                      ),
                                       backgroundColor: Color(0xFF2E7D32),
                                       behavior: SnackBarBehavior.floating,
                                     ),

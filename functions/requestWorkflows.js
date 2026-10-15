@@ -22,7 +22,19 @@ const expired = r => millis(r.requiredBy) > 0 && millis(r.requiredBy) <= Date.no
 function assignments(r) {
   return r.commitments || (r.acceptedDonorId ? {[r.acceptedDonorId]: {status:'accepted', name:'Assigned donor'}} : {});
 }
-function participants(r) { return [...new Set([...(r.participantIds || []), r.requesterId, ...Object.keys(assignments(r)).filter(k => !['withdrawn','released'].includes(assignments(r)[k].status))])]; }
+function participants(r) {
+  const activeCommitments = Object.keys(assignments(r)).filter((donorId) =>
+    ['accepted', 'agreed', 'awaiting_confirmation', 'completed'].includes(
+      assignments(r)[donorId]?.status,
+    ),
+  );
+  const participantIds = (r.participantIds || []).filter((participantId) =>
+    participantId === r.requesterId ||
+    !assignments(r)[participantId] ||
+    activeCommitments.includes(participantId),
+  );
+  return [...new Set([...participantIds, r.requesterId, ...activeCommitments])];
+}
 function assertOpen(r) { if (!r || !openStatuses.includes(r.status) || expired(r)) fail('failed-precondition','This request is closed or expired.'); }
 function notification(tx, key, userId, requestId, title, body) {
   tx.set(db.doc(`notifications/${key}`), {userId, relatedId:requestId, type:'request_update', title, body, isRead:false, createdAt:now()});
@@ -58,7 +70,7 @@ function requestData(data, user) {
   const contact = text(data.contactNumber,20,true);
   if (!/^\+?[0-9]{10,15}$/.test(contact)) fail('invalid-argument','Enter a valid contact number.');
   const age = data.patientAge;
-  if (age != null && (!Number.isInteger(age) || age<0 || age>130)) fail('invalid-argument','Invalid patient age.');
+  if (age != null && (!Number.isInteger(age) || age<1 || age>120)) fail('invalid-argument','Invalid patient age.');
   return {requesterId:user.uid, requesterName:user.name || '', bloodGroup:data.bloodGroup,
     quantity, unitsRequired:quantity, donatedUnits:0, remainingUnits:quantity,
     hospitalId:text(data.hospitalId,128),
@@ -142,7 +154,13 @@ async function updateAssignment(request) {
       if (entry.status === (action === 'agree' ? 'agreed' : 'declined')) return {updated:true,alreadyResponded:true};
       fail('failed-precondition','The agreement has already been answered.');
     }
-    if (action==='ready') assertOpen(r);
+    if (['agree', 'decline'].includes(action)) assertOpen(r);
+    if (action==='ready') {
+      assertOpen(r);
+      if (entry.status !== 'agreed') {
+        fail('failed-precondition','The donor must agree before requesting donation confirmation.');
+      }
+    }
     const nextStatus = action==='ready' ? 'awaiting_confirmation' : action==='agree' ? 'agreed' : action==='decline' ? 'declined' : action==='release' ? 'released' : 'withdrawn';
     commitments[donorId]={...entry,status:nextStatus,...(action==='ready'?{donorConfirmedAt:now()}:{}),...(action==='agree'?{agreedAt:now()}:{}),...(action==='decline'?{declinedAt:now()}:{}),updatedAt:now()};
     const accepted=Object.keys(commitments).filter(k=>['accepted','agreed','awaiting_confirmation'].includes(commitments[k].status));
@@ -184,7 +202,7 @@ async function confirmDonation(request) {
     if (total>r.quantity) fail('failed-precondition','Request is already filled.');
     const stamp=now(),next=admin.firestore.Timestamp.fromMillis(stamp.toMillis()+INTERVAL_MS);
     commitments[donorId]={...entry,status:'completed',receiverConfirmedAt:stamp,completedAt:stamp,units:1};
-    const accepted=Object.keys(commitments).filter(k=>['accepted','awaiting_confirmation'].includes(commitments[k].status));
+    const accepted=Object.keys(commitments).filter(k=>['accepted','agreed','awaiting_confirmation'].includes(commitments[k].status));
     tx.create(donationRef,{donorId,requesterId:r.requesterId,donorName:d.name || '',bloodGroup:d.bloodGroup,donationDate:stamp,location:r.hospitalName,requestId,units:1,pointsEarned:POINTS,confirmedBy:caller});
     tx.update(donorRef,{lastDonationDate:stamp,nextEligibleDate:next,isEligible:false,rewardPoints:admin.firestore.FieldValue.increment(POINTS),activeRequestId:admin.firestore.FieldValue.delete()});
     tx.update(ref,{commitments,acceptedDonorIds:accepted,participantIds:participants(r),donatedUnits:total,remainingUnits:r.quantity-total,status:total===r.quantity?'fulfilled':'partially_fulfilled',...(total===r.quantity?{fulfilledAt:stamp}:{})});
@@ -204,7 +222,7 @@ async function closeInternal(request, system) {
     if (!r || (!system && (!active(u) || (r.requesterId!==caller && u.role!=='admin')))) fail('permission-denied','Only the requester or administrator can close this request.');
     if (system && !expired(r)) return {closed:false};
     if (!openStatuses.includes(r.status)) return {closed:true};
-    const accepted=Object.keys(assignments(r)).filter(k=>['accepted','awaiting_confirmation'].includes(assignments(r)[k].status));
+    const accepted=Object.keys(assignments(r)).filter(k=>['accepted','agreed','awaiting_confirmation'].includes(assignments(r)[k].status));
     const donors=await Promise.all(accepted.map(k=>tx.get(db.doc(`users/${k}`))));
     const status=expired(r)?'expired':'cancelled', commitments=assignments(r);
     for (const donor of donors) {

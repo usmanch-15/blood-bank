@@ -6,6 +6,7 @@ import '../../widgets/unsaved_changes_guard.dart';
 import '../../controllers/auth_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../models/blood_request_model.dart';
@@ -298,6 +299,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   label: 'Age',
                   prefixIcon: Icons.cake_outlined,
                   keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   validator: AppValidators.validateAge,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -334,6 +336,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   label: 'Units Required',
                   prefixIcon: Icons.bloodtype_outlined,
                   keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   validator: AppValidators.validateUnitsRequired,
                 ),
 
@@ -359,11 +362,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   controller: _hospitalAddressController,
                   label: 'Hospital Address',
                   prefixIcon: Icons.location_on_outlined,
-                  validator:
-                      (v) =>
-                          v == null || v.trim().isEmpty
-                              ? 'Hospital address required'
-                              : null,
+                  validator: (v) => AppValidators.validateAddress(v),
                   readOnly: true,
                 ),
                 const SizedBox(height: AppSpacing.md),

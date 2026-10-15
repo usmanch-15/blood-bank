@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../services/auth_service.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../utils/validators.dart';
 
 class AdminWebLogin extends StatefulWidget {
   const AdminWebLogin({super.key});
@@ -156,15 +157,11 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                         ),
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppLocalizations.of(context).emailRequired;
-                          }
-                          if (!value.contains('@')) {
-                            return AppLocalizations.of(
-                              context,
-                            ).validEmailRequired;
-                          }
-                          return null;
+                          final error = AppValidators.validateEmail(value);
+                          if (error == null) return null;
+                          return value == null || value.trim().isEmpty
+                              ? AppLocalizations.of(context).emailRequired
+                              : AppLocalizations.of(context).validEmailRequired;
                         },
                       ),
                       const SizedBox(height: 16),

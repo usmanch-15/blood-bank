@@ -15,7 +15,7 @@ import 'about_screen.dart';
 import 'change_email_screen.dart';
 import '../../l10n/app_localizations.dart';
 
-/// ✅ PHASE 1 — Settings Screen
+/// âœ… PHASE 1 â€” Settings Screen
 ///
 /// Covers:
 ///  - Profile (name, phone, blood group, address)
@@ -138,7 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ✅ POLISH — icon + bolder label instead of a bare line of red text,
+  // âœ… POLISH â€” icon + bolder label instead of a bare line of red text,
   // so each section reads as a distinct group at a glance.
   Widget _sectionHeader(String title, IconData icon) {
     return Padding(
@@ -162,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-// ═══════════════════════════ PROFILE ═══════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• PROFILE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _ProfileTile extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -265,7 +265,7 @@ class _NotificationsTile extends StatelessWidget {
               onSnack(
                 v
                     ? 'Notifications turned on'
-                    : 'Notifications turned off — you will not receive SOS alerts.',
+                    : 'Notifications turned off â€” you will not receive SOS alerts.',
               );
             },
           ),
@@ -315,7 +315,7 @@ class _NotificationsTile extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════ AVAILABILITY ═══════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• AVAILABILITY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _AvailabilityTile extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -356,7 +356,7 @@ class _AvailabilityTile extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════ LOCATION SHARING ═══════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• LOCATION SHARING â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _LocationSharingTile extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -389,7 +389,7 @@ class _LocationSharingTile extends StatelessWidget {
               onSnack(
                 v
                     ? 'Location sharing enabled.'
-                    : 'Location sharing disabled — you will not appear in nearby searches until re-enabled.',
+                    : 'Location sharing disabled â€” you will not appear in nearby searches until re-enabled.',
               );
             },
           ),
@@ -417,8 +417,8 @@ class _LanguageTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12),
       child: ListTile(
         leading: const Icon(Icons.language_outlined),
-        title: const Text('Language / زبان'),
-        subtitle: Text(controller.isUrdu ? 'اردو' : 'English'),
+        title: const Text('Language / Ø²Ø¨Ø§Ù†'),
+        subtitle: Text(controller.isUrdu ? 'Ø§Ø±Ø¯Ùˆ' : 'English'),
         trailing: const Icon(Icons.chevron_right),
         onTap:
             () => showModalBottomSheet<void>(
@@ -429,25 +429,29 @@ class _LanguageTile extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const ListTile(
-                          title: Text('Choose language / زبان منتخب کریں'),
+                          title: Text(
+                            'Choose language / Ø²Ø¨Ø§Ù† Ù…Ù†ØªØ®Ø¨ Ú©Ø±ÛŒÚº',
+                          ),
                         ),
-                        RadioListTile<String>(
-                          value: 'en',
+                        RadioGroup<String>(
                           groupValue: controller.locale.languageCode,
-                          title: const Text('English'),
                           onChanged: (value) {
                             if (value != null) controller.setLanguage(value);
                             Navigator.pop(sheetContext);
                           },
-                        ),
-                        RadioListTile<String>(
-                          value: 'ur',
-                          groupValue: controller.locale.languageCode,
-                          title: const Text('اردو'),
-                          onChanged: (value) {
-                            if (value != null) controller.setLanguage(value);
-                            Navigator.pop(sheetContext);
-                          },
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const RadioListTile<String>(
+                                value: 'en',
+                                title: Text('English'),
+                              ),
+                              const RadioListTile<String>(
+                                value: 'ur',
+                                title: Text('Ø§Ø±Ø¯Ùˆ'),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -458,7 +462,7 @@ class _LanguageTile extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════ APPEARANCE ═══════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• APPEARANCE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _AppearanceTile extends StatelessWidget {
   const _AppearanceTile();
@@ -544,7 +548,7 @@ class _AppearanceTile extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════ SUPPORT & ABOUT ═══════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• SUPPORT & ABOUT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _SupportAboutTile extends StatelessWidget {
   const _SupportAboutTile();
@@ -593,7 +597,7 @@ class _SupportAboutTile extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════ ACCOUNT & SECURITY ═══════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ACCOUNT & SECURITY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _AccountSecurityTile extends StatelessWidget {
   final SettingsService settingsService;

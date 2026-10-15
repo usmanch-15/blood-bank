@@ -24,9 +24,11 @@ async function adminAction(request) {
 }
 async function submitReport(request) {
   const user=await actor(request),d=request.data || {};
-  if(typeof d.title!=='string' || !d.title.trim() || d.title.length>100 || typeof d.description!=='string' || d.description.length>2000) throw new HttpsError('invalid-argument','Check report title and details.');
+  const title = typeof d.title === 'string' ? d.title.trim() : '';
+  const description = typeof d.description === 'string' ? d.description.trim() : '';
+  if(!title || title.length>100 || !description || description.length>2000) throw new HttpsError('invalid-argument','Check report title and details.');
   await rateLimit(`reports_${user.uid}`,10);
-  const ref=await db.collection(d.feedback?'feedback':'misuse_reports').add({reporterId:user.uid,title:d.title.trim(),description:d.description,reportType:'other',reportedUserId:typeof d.reportedUserId==='string'?d.reportedUserId:null,targetRequestId:typeof d.targetRequestId==='string'?d.targetRequestId:null,status:'pending',reportedAt:admin.firestore.Timestamp.now()});
+  const ref=await db.collection(d.feedback?'feedback':'misuse_reports').add({reporterId:user.uid,title,description,reportType:'other',reportedUserId:typeof d.reportedUserId==='string'?d.reportedUserId:null,targetRequestId:typeof d.targetRequestId==='string'?d.targetRequestId:null,status:'pending',reportedAt:admin.firestore.Timestamp.now()});
   return {id:ref.id};
 }
 async function exportPage(request) {

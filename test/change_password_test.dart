@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloodbank/widgets/change_password_form.dart';
+import 'package:bloodbank/l10n/app_localizations.dart';
 
 void main() {
   testWidgets(
@@ -9,6 +10,8 @@ void main() {
       var saves = 0;
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: const [AppLocalizations.delegate],
+          supportedLocales: const [Locale('en'), Locale('ur')],
           home: Scaffold(
             body: ChangePasswordForm(
               onSave: (current, next) async {
@@ -21,6 +24,7 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
       final fields = find.byType(TextFormField);
       await tester.enterText(fields.at(0), 'old password');
       await tester.enterText(fields.at(1), 'SecurePass1!');

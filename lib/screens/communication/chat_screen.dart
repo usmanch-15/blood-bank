@@ -36,14 +36,13 @@ class _ChatScreenState extends State<ChatScreen> {
       });
       _body.clear();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '${AppLocalizations.of(context).operationFailed} $e',
-            ),
+            content: Text('${AppLocalizations.of(context).operationFailed} $e'),
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -91,8 +90,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   );
                 }
-                if (!snapshot.hasData)
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
                 final messages = snapshot.data!.docs;
                 if (messages.isEmpty) {
                   return Center(

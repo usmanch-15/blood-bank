@@ -50,10 +50,12 @@ test('acceptance and fulfillment notify the requester and donor exactly once',as
   await workflows.acceptDonation(accept);
   await workflows.acceptDonation(accept);
   assert.equal((await admin.firestore().doc('notifications/accepted_request_donor').get()).data().userId,'receiver');
+  await workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'agree'}});
+  await workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'ready'}});
   const confirm={auth:auth('receiver'),data:{requestId:'request',donorId:'donor'}};
   await workflows.confirmDonation(confirm);
   await workflows.confirmDonation(confirm);
-  assert.equal((await admin.firestore().collection('notifications').get()).size,3);
+  assert.equal((await admin.firestore().collection('notifications').get()).size,5);
   assert.equal((await admin.firestore().doc('notifications/progress_request_donor').get()).data().userId,'receiver');
 });
 test('ordinary accounts cannot resolve unrelated SOS or perform admin edits',async()=>{
@@ -145,6 +147,8 @@ test('confirmation rejects unauthenticated and unrelated donors',async()=>{
 });
 test('forged points ignored; concurrent confirmations award once; interval enforced',async()=>{
   await workflows.acceptDonation({auth:auth('donor'),data:{requestId:'request'}});
+  await workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'agree'}});
+  await workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'ready'}});
   const call={auth:auth('receiver'),data:{requestId:'request',donorId:'donor',points:999999}};
   const results=await Promise.all([workflows.confirmDonation(call),workflows.confirmDonation(call)]);
   assert.equal(results[0].donationId,results[1].donationId);
@@ -194,6 +198,10 @@ test('private profiles, patient data, donations and SOS coordinates are not read
 test('two units require two contributions; concurrent retries cannot over-credit or fulfill early',async()=>{
   await admin.firestore().doc('blood_requests/request').update({quantity:2,remainingUnits:2});
   await Promise.all(['donor','other'].map(donor=>workflows.acceptDonation({auth:auth(donor),data:{requestId:'request'}})));
+  for (const donor of ['donor','other']) {
+    await workflows.updateAssignment({auth:auth(donor),data:{requestId:'request',action:'agree'}});
+    await workflows.updateAssignment({auth:auth(donor),data:{requestId:'request',action:'ready'}});
+  }
   const confirm=donorId=>workflows.confirmDonation({auth:auth('receiver'),data:{requestId:'request',donorId}});
   await assert.rejects(workflows.confirmDonation({auth:auth('donor'),data:{requestId:'request',donorId:'donor'}}),{code:'permission-denied'});
   await Promise.all([confirm('donor'),confirm('donor')]);
@@ -212,6 +220,11 @@ test('capacity, one active assignment, withdrawal, release and reassignment',asy
   await assert.rejects(accept('other'),{code:'failed-precondition'});
   await admin.firestore().doc('blood_requests/second').set(requestData);
   await assert.rejects(workflows.acceptDonation({auth:auth('donor'),data:{requestId:'second'}}),{code:'failed-precondition'});
+  await assert.rejects(
+    workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'ready'}}),
+    {code:'failed-precondition'},
+  );
+  await workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'agree'}});
   await workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'ready'}});
   assert.equal((await admin.firestore().doc('blood_requests/request').get()).data().commitments.donor.status,'awaiting_confirmation');
   await workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'withdraw'}});
@@ -240,6 +253,7 @@ test('expired requests cannot accept or complete and scheduled cleanup releases 
   await workflows.acceptDonation({auth:auth('donor'),data:{requestId:'request'}});
   await admin.firestore().doc('blood_requests/request').update({requiredBy:admin.firestore.Timestamp.fromMillis(Date.now()-1000)});
   await assert.rejects(workflows.acceptDonation({auth:auth('other'),data:{requestId:'request'}}),{code:'failed-precondition'});
+  await assert.rejects(workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',action:'agree'}}),{code:'failed-precondition'});
   await assert.rejects(workflows.confirmDonation({auth:auth('receiver'),data:{requestId:'request',donorId:'donor'}}),{code:'failed-precondition'});
   await workflows.expireRequests();
   assert.equal((await admin.firestore().doc('blood_requests/request').get()).data().status,'expired');
@@ -248,8 +262,9 @@ test('expired requests cannot accept or complete and scheduled cleanup releases 
 
 test('SOS response shares location only after acceptance and owner can resolve/cancel',async()=>{
   const sos=await workflows.createSosAlert({auth:auth('receiver'),data:{latitude:31.123456,longitude:74.123456,bloodGroup:'O+',urgency:'critical',contactNumber:'+923001234567'}});
-  const alert=await workflows.getSos({auth:auth('donor'),data:{sosId:sos.id}});
+  const alert=await workflows.getSos({auth:auth('receiver'),data:{sosId:sos.id}});
   assert.equal(alert.latitude,undefined);assert.equal(alert.requestId,sos.requestId);
+  await assert.rejects(workflows.getSos({auth:auth('donor'),data:{sosId:sos.id}}),{code:'permission-denied'});
   await workflows.acceptDonation({auth:auth('donor'),data:{requestId:sos.requestId}});
   assert.equal((await workflows.getRequest({auth:auth('donor'),data:{requestId:sos.requestId}})).latitude,31.123456);
   await assert.rejects(workflows.resolveSos({auth:auth('other'),data:{sosId:sos.id}}),{code:'permission-denied'});
@@ -273,12 +288,13 @@ test('contact is scoped to an assigned donor and discovery never includes privat
 });
 
 test('discovery and personal export paginate beyond 100 records without exposing private data',async()=>{
+  await admin.firestore().doc('users/donor').update({locationSharingEnabled:true,latitude:31,longitude:74});
   const batch=admin.firestore().batch();
-  for(let i=0;i<125;i++)batch.set(admin.firestore().doc(`blood_requests/page-${String(i).padStart(3,'0')}`),{...requestData,patientName:'Private'});
+  for(let i=0;i<125;i++)batch.set(admin.firestore().doc(`blood_requests/page-${String(i).padStart(3,'0')}`),{...requestData,patientName:'Private',latitude:31,longitude:74,requiredBy:admin.firestore.Timestamp.fromMillis(Date.now()+3600000)});
   await batch.commit();
   let cursor,items=[];
   do{const page=await workflows.discoverRequests({auth:auth('donor'),data:{cursor}});items.push(...page.items);cursor=page.cursor;}while(cursor);
-  assert.equal(items.length,126);assert.ok(items.every(r=>!('patientName' in r)));
+  assert.equal(items.length,125);assert.ok(items.every(r=>!('patientName' in r)));
   items=[];cursor=null;
   do{const page=await require('../adminWorkflows').exportPage({auth:auth('receiver'),data:{collection:'blood_requests',cursor}});items.push(...page.items);cursor=page.cursor;}while(cursor);
   assert.equal(items.length,126);

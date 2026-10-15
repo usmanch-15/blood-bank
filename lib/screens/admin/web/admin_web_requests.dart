@@ -1,5 +1,4 @@
 import '../../../services/workflow_service.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../requests/request_tracking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

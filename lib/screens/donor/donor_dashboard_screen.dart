@@ -110,7 +110,9 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
 
     if (_loadError != null) {
       return Scaffold(
-        appBar: AppBar(title: Text(AppLocalizations.of(context).donorDashboard)),
+        appBar: AppBar(
+          title: Text(AppLocalizations.of(context).donorDashboard),
+        ),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

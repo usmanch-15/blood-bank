@@ -88,8 +88,9 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
       p.latitude,
       p.longitude,
     );
-    if (mounted && _point == p)
+    if (mounted && _point == p) {
       setState(() => _address = a ?? 'Selected map location');
+    }
   }
 
   Future<void> _current() async {
@@ -98,19 +99,23 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
       _error = null;
     });
     try {
-      if (!await Geolocator.isLocationServiceEnabled())
+      if (!await Geolocator.isLocationServiceEnabled()) {
         throw StateError(
           'Location services are disabled. Enable them or search for a place.',
         );
+      }
       var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied)
+      if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied)
+      }
+      if (permission == LocationPermission.denied) {
         throw StateError('Location permission was denied.');
-      if (permission == LocationPermission.deniedForever)
+      }
+      if (permission == LocationPermission.deniedForever) {
         throw StateError(
           'Location permission is permanently denied. Open app settings or search for a place.',
         );
+      }
       final p = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -121,8 +126,9 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
       _setPoint(point);
       _map.move(point, 15);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = e.toString().replaceFirst('Bad state: ', ''));
+      }
     }
     if (mounted) setState(() => _locating = false);
   }
@@ -170,8 +176,9 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
             },
           )
           .timeout(const Duration(seconds: 10));
-      if (response.statusCode != 200)
+      if (response.statusCode != 200) {
         throw StateError('Search service unavailable.');
+      }
       final data = jsonDecode(response.body) as List;
       final found = [
         ...catalogMatches,
@@ -186,7 +193,7 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
           );
         }),
       ];
-      if (mounted)
+      if (mounted) {
         setState(() {
           _results = found;
           _error =
@@ -194,13 +201,15 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
                   ? 'No places found. Try a hospital name or broader address.'
                   : null;
         });
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () =>
               _error =
                   'Could not search right now. Check your connection and retry.',
         );
+      }
     }
     if (mounted) setState(() => _searching = false);
   }
@@ -208,8 +217,9 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
   Widget _marker() => GestureDetector(
     onPanUpdate: (d) {
       final box = _mapKey.currentContext?.findRenderObject() as RenderBox?;
-      if (box != null)
+      if (box != null) {
         _setPoint(_map.camera.offsetToCrs(box.globalToLocal(d.globalPosition)));
+      }
     },
     child: const Icon(Icons.location_pin, color: Colors.red, size: 52),
   );
@@ -394,7 +404,9 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
                                     hospitalId: _hospitalId,
                                   ),
                                 ),
-                        child: Text(AppLocalizations.of(context).confirmLocation),
+                        child: Text(
+                          AppLocalizations.of(context).confirmLocation,
+                        ),
                       ),
                     ),
                   ],

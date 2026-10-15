@@ -9,8 +9,8 @@ class AccountPolicy {
       data['role'] == 'admin'
           ? '/admin/dashboard'
           : data['role'] == 'receiver'
-              ? '/receiver'
-              : '/donor';
+          ? '/receiver'
+          : '/donor';
 
   static bool canSwitchMode(String? role, String mode) =>
       const ['donor', 'receiver'].contains(role) &&

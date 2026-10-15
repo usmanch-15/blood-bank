@@ -1,11 +1,11 @@
 import '../../../services/workflow_service.dart';
-import '../../../l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/user_model.dart';
 import '../../../services/firestore_service.dart';
 import '../../../constants/app_colors.dart';
+import '../../../utils/validators.dart';
 
 class AdminWebUsers extends StatefulWidget {
   const AdminWebUsers({super.key});
@@ -855,13 +855,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                   TextFormField(
                     controller: name,
                     decoration: const InputDecoration(labelText: 'Name'),
-                    validator:
-                        (v) =>
-                            v == null ||
-                                    v.trim().length < 2 ||
-                                    v.trim().length > 100
-                                ? 'Enter a name of 2–100 characters'
-                                : null,
+                    validator: AppValidators.validateName,
                   ),
                   DropdownButtonFormField<String>(
                     initialValue: bloodGroup,

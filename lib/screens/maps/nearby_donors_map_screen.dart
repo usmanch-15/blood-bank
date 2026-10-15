@@ -82,7 +82,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
   Future<void> _notify(List<DonorWithDistance> targets) async {
     if (widget.requestId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(AppLocalizations.of(context).createRequestBeforeNotify),
         ),
       );
@@ -194,8 +194,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                     child: Column(
                       children: [
                         TextField(
-                          decoration: const InputDecoration(
-                            labelText: AppLocalizations.of(context).searchDonorName,
+                          decoration: InputDecoration(
+                            labelText:
+                                AppLocalizations.of(context).searchDonorName,
                             prefixIcon: Icon(Icons.search),
                           ),
                           onChanged: (v) => setState(() => _search = v),
@@ -203,7 +204,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                         if (widget.bloodGroup == null)
                           DropdownButton<String>(
                             value: _group,
-                            hint: Text(AppLocalizations.of(context).anyBloodGroup),
+                            hint: Text(
+                              AppLocalizations.of(context).anyBloodGroup,
+                            ),
                             isExpanded: true,
                             items:
                                 GeoLocationService.compatibleDonorGroups.keys
@@ -211,7 +214,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                                       (g) => DropdownMenuItem(
                                         value: g,
                                         child: Text(
-                                          AppLocalizations.of(context).compatibleWith(g),
+                                          AppLocalizations.of(
+                                            context,
+                                          ).compatibleWith(g),
                                         ),
                                       ),
                                     )
@@ -222,10 +227,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                             },
                           ),
                         Text(
-                          AppLocalizations.of(context).donorCountWithin(
-                            visible.length,
-                            _radius.round(),
-                          ),
+                          AppLocalizations.of(
+                            context,
+                          ).donorCountWithin(visible.length, _radius.round()),
                         ),
                         Slider(
                           value: _radius,
@@ -245,10 +249,12 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                               children:
                                   visible.isEmpty
                                       ? [
-                                        const Padding(
+                                        Padding(
                                           padding: EdgeInsets.all(24),
                                           child: Text(
-                                            AppLocalizations.of(context).noCompatibleDonors,
+                                            AppLocalizations.of(
+                                              context,
+                                            ).noCompatibleDonors,
                                           ),
                                         ),
                                       ]
@@ -323,7 +329,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                                           ),
                                     ),
                                   ),
-                              child: Text(AppLocalizations.of(context).trackRequest),
+                              child: Text(
+                                AppLocalizations.of(context).trackRequest,
+                              ),
                             ),
                           FilledButton(
                             onPressed:
@@ -333,7 +341,9 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
                             child: Text(
                               _sending
                                   ? AppLocalizations.of(context).queuing
-                                  : AppLocalizations.of(context).notifyMatchingDonors,
+                                  : AppLocalizations.of(
+                                    context,
+                                  ).notifyMatchingDonors,
                             ),
                           ),
                         ],

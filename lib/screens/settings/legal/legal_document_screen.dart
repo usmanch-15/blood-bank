@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../l10n/app_localizations.dart';
 
 import '../../../constants/app_colors.dart';
 
@@ -28,51 +27,51 @@ class LegalDocumentScreen extends StatelessWidget {
     return Directionality(
       textDirection: isUrdu ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
-      appBar: AppBar(
-        title: Text(title),
-
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-      ),
+        appBar: AppBar(
+          title: Text(title),
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
-        child: Container(
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+        ),
+
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
 
-          decoration: BoxDecoration(
-            color: Colors.white,
+          child: Container(
+            padding: const EdgeInsets.all(20),
 
-            borderRadius: BorderRadius.circular(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
 
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(14),
 
-                blurRadius: 8,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
 
-                offset: const Offset(0, 2),
+                  blurRadius: 8,
+
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+
+            child: SelectableText(
+              content,
+
+              style: const TextStyle(
+                fontSize: 14,
+
+                height: 1.6,
+
+                color: AppColors.textPrimary,
               ),
-            ],
-          ),
-
-          child: SelectableText(
-            content,
-
-            style: const TextStyle(
-              fontSize: 14,
-
-              height: 1.6,
-
-              color: AppColors.textPrimary,
             ),
           ),
         ),
-      ),
       ),
     );
   }

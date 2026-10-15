@@ -125,7 +125,7 @@ class MyReportsScreen extends StatelessWidget {
                           TextFormField(
                             controller: title,
                             maxLength: 100,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: AppLocalizations.of(context).subject,
                             ),
                             validator:
@@ -138,8 +138,9 @@ class MyReportsScreen extends StatelessWidget {
                             controller: body,
                             maxLength: 2000,
                             maxLines: 4,
-                            decoration: const InputDecoration(
-                              labelText: AppLocalizations.of(context).describeIssue,
+                            decoration: InputDecoration(
+                              labelText:
+                                  AppLocalizations.of(context).describeIssue,
                             ),
                             validator:
                                 (v) =>
@@ -165,8 +166,8 @@ class MyReportsScreen extends StatelessWidget {
                                 setState(() => sending = true);
                                 try {
                                   await WorkflowService.call('submitReport', {
-                                    'title': title.text,
-                                    'description': body.text,
+                                    'title': title.text.trim(),
+                                    'description': body.text.trim(),
                                     'feedback': true,
                                   });
                                   if (c.mounted) Navigator.pop(c);

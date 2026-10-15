@@ -5,6 +5,7 @@ import '../../services/workflow_service.dart';
 import '../../widgets/paged_records.dart';
 import 'request_tracking_screen.dart';
 import '../maps/blood_requests_map_screen.dart';
+import '../receiver/sos_status_screen.dart';
 import '../../l10n/app_localizations.dart';
 
 class RequestListScreen extends StatefulWidget {
@@ -53,7 +54,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
     }
   }
 
-  Widget _tile(Map<String, dynamic> d, String id) => Card(
+  Widget _tile(Map<String, dynamic> d, String id, {String? sosId}) => Card(
     child: ListTile(
       title: Text('${d['bloodGroup']} • ${d['hospitalName'] ?? 'SOS'}'),
       subtitle: Text(
@@ -64,7 +65,11 @@ class _RequestListScreenState extends State<RequestListScreen> {
           () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => RequestTrackingScreen(requestId: id),
+              builder:
+                  (_) =>
+                      widget.mode == 'sos' && sosId != null
+                          ? SosStatusScreen(sosId: sosId, requestId: id)
+                          : RequestTrackingScreen(requestId: id),
             ),
           ),
     ),
@@ -194,6 +199,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
                   return _tile(
                     d,
                     mode == 'sos' ? d['requestId'] ?? doc.id : doc.id,
+                    sosId: mode == 'sos' ? doc.id : null,
                   );
                 },
               ),

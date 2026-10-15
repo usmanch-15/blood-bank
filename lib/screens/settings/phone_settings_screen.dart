@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/settings_service.dart';
 import '../../utils/validators.dart';
@@ -46,12 +47,15 @@ class _PhoneSettingsScreenState extends State<PhoneSettingsScreen> {
             FirebaseAuth.instance.currentUser?.phoneNumber == null
                 ? AppLocalizations.of(context).phoneNotVerified
                 : AppLocalizations.of(context).verifiedPhone(
-                    FirebaseAuth.instance.currentUser!.phoneNumber!,
-                  ),
+                  FirebaseAuth.instance.currentUser!.phoneNumber!,
+                ),
           ),
           TextFormField(
             controller: _phone,
             keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+()\s-]')),
+            ],
             validator: AppValidators.validatePhone,
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context).mobileNumber,

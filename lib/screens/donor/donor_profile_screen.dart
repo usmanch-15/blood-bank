@@ -1,5 +1,4 @@
 import '../../utils/feedback.dart';
-import '../../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../controllers/donor_controller.dart';

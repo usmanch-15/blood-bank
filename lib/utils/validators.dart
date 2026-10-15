@@ -1,7 +1,8 @@
 class AppValidators {
   static String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) return 'Email required';
-    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$').hasMatch(value.trim())
+    final email = value.trim();
+    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$').hasMatch(email)
         ? null
         : 'Enter a valid email';
   }
@@ -19,14 +20,14 @@ class AppValidators {
   }
 
   static String? validateAge(String? value) {
-    final age = int.tryParse(value ?? '');
+    final age = int.tryParse(value?.trim() ?? '');
     return age != null && age >= 1 && age <= 120
         ? null
         : 'Age must be between 1 and 120';
   }
 
   static String? validateUnitsRequired(String? value) {
-    final units = int.tryParse(value ?? '');
+    final units = int.tryParse(value?.trim() ?? '');
     return units != null && units >= 1 && units <= 50
         ? null
         : 'Units must be between 1 and 50';
@@ -67,9 +68,17 @@ class AppValidators {
   }
 
   static String? validateName(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Name required';
-    if (value.trim().length < 2) return 'Name too short';
-    if (value.trim().length > 100) return 'Name must be at most 100 characters';
+    final name = value?.trim() ?? '';
+    if (name.isEmpty) return 'Name required';
+    if (name.length < 2) return 'Name too short';
+    if (name.length > 100) return 'Name must be at most 100 characters';
+    // Support Latin and Urdu names, spaces, apostrophes, periods and hyphens;
+    // reject digits, control characters, and unrelated punctuation.
+    if (!RegExp(
+      r"^[A-Za-zÀ-ÖØ-öø-ÿ\u0600-\u06FF][A-Za-zÀ-ÖØ-öø-ÿ\u0600-\u06FF\s.'-]*$",
+    ).hasMatch(name)) {
+      return 'Enter a valid name using letters and spaces';
+    }
     return null;
   }
 
@@ -90,4 +99,14 @@ class AppValidators {
 
   static String? validateRequired(String? value, String fieldName) =>
       value == null || value.trim().isEmpty ? '$fieldName is required' : null;
+
+  static String? validateAddress(String? value, {bool required = true}) {
+    final address = value?.trim() ?? '';
+    if (address.isEmpty) return required ? 'Address is required' : null;
+    if (address.length > 300) return 'Address is too long (max 300 characters)';
+    if (RegExp(r'[\x00-\x1F<>]').hasMatch(address)) {
+      return 'Address contains invalid characters';
+    }
+    return null;
+  }
 }

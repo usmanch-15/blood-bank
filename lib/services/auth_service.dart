@@ -58,6 +58,25 @@ class AuthService {
     if (!const ['donor', 'receiver'].contains(role)) {
       throw ArgumentError('Choose donor or receiver.');
     }
+    final nameError = AppValidators.validateName(name);
+    if (nameError != null) throw ArgumentError(nameError);
+    final emailError = AppValidators.validateEmail(email);
+    if (emailError != null) throw ArgumentError(emailError);
+    final passwordError = AppValidators.validatePassword(password);
+    if (passwordError != null) throw ArgumentError(passwordError);
+    if (phoneNumber != null && phoneNumber.trim().isNotEmpty) {
+      final phoneError = AppValidators.validatePhone(phoneNumber);
+      if (phoneError != null) throw ArgumentError(phoneError);
+    }
+    if (bloodGroup != null &&
+        AppValidators.validateBloodGroup(bloodGroup) != null) {
+      throw ArgumentError('Select a valid blood group.');
+    }
+    if (cnic != null &&
+        cnic.trim().isNotEmpty &&
+        AppValidators.validateCnic(cnic) != null) {
+      throw ArgumentError('Enter a valid CNIC.');
+    }
     User? createdUser;
     bool profileSaved = false;
     try {
