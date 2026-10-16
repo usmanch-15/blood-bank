@@ -34,6 +34,7 @@ class BloodRequestFormScreen extends StatefulWidget {
 
 class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _formScrollController = ScrollController();
   final FirestoreService _firestoreService = FirestoreService();
 
   final _patientNameController = TextEditingController();
@@ -243,6 +244,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
       onDiscard: () => setState(() => _dirty = false),
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(
           title: Text(
             'Blood Request Form',
@@ -258,10 +260,20 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
             if (!_dirty) setState(() => _dirty = true);
           },
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            controller: _formScrollController,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.xl + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                 // ── Gradient hint banner ──
                 Container(
                   width: double.infinity,
@@ -455,7 +467,9 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -473,34 +487,29 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   );
 
   Widget _genderSelector() {
-    return Row(
-      children:
-          _genders.map((g) {
+    return Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: _genders.map((g) {
             final selected = _selectedGender == g;
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.sm),
-                child: ChoiceChip(
-                  label: Text(g),
-                  selected: selected,
-                  onSelected:
-                      (_) => setState(() {
-                        _selectedGender = g;
-                        _dirty = true;
-                      }),
-                  selectedColor: AppColors.primaryRed.withValues(alpha: 0.15),
-                  labelStyle: TextStyle(
-                    color:
-                        selected
-                            ? AppColors.primaryRed
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                  side: BorderSide(
-                    color:
-                        selected ? AppColors.primaryRed : Colors.grey.shade300,
-                  ),
-                ),
+            return ChoiceChip(
+              label: Text(g),
+              selected: selected,
+              onSelected:
+                  (_) => setState(() {
+                    _selectedGender = g;
+                    _dirty = true;
+                  }),
+              selectedColor: AppColors.primaryRed.withValues(alpha: 0.15),
+              labelStyle: TextStyle(
+                color:
+                    selected
+                        ? AppColors.primaryRed
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              side: BorderSide(
+                color: selected ? AppColors.primaryRed : Colors.grey.shade300,
               ),
             );
           }).toList(),

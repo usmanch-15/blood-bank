@@ -79,7 +79,13 @@ class FirestoreService {
               ? _firestore.collection('blood_requests').doc().id
               : request.id;
       final data = request.toFirestore();
+      // Callable Functions accept JSON-compatible values only. Keep the
+      // request workflow's existing millisecond timestamp contract for both
+      // dates; leaving createdAt as DateTime causes the client-side callable
+      // parameter assertion to fail before the Function is invoked.
+      data['createdAt'] = request.createdAt.millisecondsSinceEpoch;
       data['requiredBy'] = request.requiredBy?.millisecondsSinceEpoch;
+      data['fulfilledAt'] = request.fulfilledAt?.millisecondsSinceEpoch;
       final result = await WorkflowService.call('createBloodRequest', {
         ...data,
         'requestId': id,

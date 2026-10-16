@@ -209,19 +209,32 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                 const SizedBox(height: AppSpacing.xl),
 
                 // ── Create Request (unchanged destination: BloodRequestFormScreen) ──
-                _actionTile(
-                  title: AppLocalizations.of(context).createBloodRequest,
-                  icon: Icons.add_circle_outline,
-                  color: AppColors.secondaryBlue,
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const BloodRequestFormScreen(),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.add_circle_outline),
+                    label: Text(
+                      AppLocalizations.of(context).createBloodRequest,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const BloodRequestFormScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondaryBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: AppSpacing.elevationLow,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                       ),
-                    );
-                    // Form submit hone ke baad list auto-refresh hogi (StreamBuilder)
-                  },
+                    ),
+                  ),
                 ),
 
                 const SizedBox(height: AppSpacing.md),

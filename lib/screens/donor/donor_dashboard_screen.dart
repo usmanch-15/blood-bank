@@ -246,26 +246,36 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
               // ── Stats Row ──
               SlideInAnimation(
                 delay: const Duration(milliseconds: 80),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: StatCard(
-                        label: 'Donations',
-                        value: '$_donationCount',
-                        icon: Icons.bloodtype,
-                        color: AppColors.primaryRed,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md + 3),
-                    Expanded(
-                      child: StatCard(
-                        label: 'Points',
-                        value: '$rewardPoints',
-                        icon: Icons.stars,
-                        color: AppColors.warning,
-                      ),
-                    ),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.maxWidth >= 420
+                        ? (constraints.maxWidth - AppSpacing.md - 3) / 2
+                        : constraints.maxWidth;
+                    return Wrap(
+                      spacing: AppSpacing.md + 3,
+                      runSpacing: AppSpacing.md,
+                      children: [
+                        SizedBox(
+                          width: width,
+                          child: StatCard(
+                            label: 'Donations',
+                            value: '$_donationCount',
+                            icon: Icons.bloodtype,
+                            color: AppColors.primaryRed,
+                          ),
+                        ),
+                        SizedBox(
+                          width: width,
+                          child: StatCard(
+                            label: 'Points',
+                            value: '$rewardPoints',
+                            icon: Icons.stars,
+                            color: AppColors.warning,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
