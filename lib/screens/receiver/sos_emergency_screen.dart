@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/settings_service.dart';
 import '../../services/workflow_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../utils/validators.dart';
+import '../../utils/input_formatters.dart';
 import '../maps/hospital_location_screen.dart';
 import '../requests/request_list_screen.dart';
 import 'sos_status_screen.dart';
@@ -20,7 +20,9 @@ class SosEmergencyScreen extends StatefulWidget {
 class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
   final _form = GlobalKey<FormState>();
   final _hospital = TextEditingController(), _phone = TextEditingController();
+  final _hospitalFocusNode = FocusNode();
   LatLng? _point;
+  String _hospitalAddress = '';
   String _group = 'O+', _urgency = 'critical';
   String? _error;
   int _count = 0;
@@ -43,6 +45,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
   void dispose() {
     _timer?.cancel();
     _hospital.dispose();
+    _hospitalFocusNode.dispose();
     _phone.dispose();
     super.dispose();
   }
@@ -57,8 +60,12 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
     if (selection != null && mounted) {
       setState(() {
         _point = selection.point;
-        if (_hospital.text.trim().isEmpty) _hospital.text = selection.address;
+        _hospital.text = selection.hospitalName;
+        _hospitalAddress = selection.address;
       });
+      if (selection.hospitalName.isEmpty) {
+        FocusScope.of(context).requestFocus(_hospitalFocusNode);
+      }
     }
   }
 
@@ -96,6 +103,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
         'latitude': _point!.latitude,
         'longitude': _point!.longitude,
         'hospitalName': _hospital.text.trim(),
+        'hospitalAddress': _hospitalAddress,
         'contactNumber': AppValidators.normalizePhone(_phone.text),
       });
       if (mounted) {
@@ -122,6 +130,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
     appBar: AppBar(title: Text(AppLocalizations.of(context).sosEmergency)),
     body: Form(
       key: _form,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -161,23 +170,19 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
           ),
           TextFormField(
             controller: _hospital,
+            focusNode: _hospitalFocusNode,
+            inputFormatters: AppInputFormatters.hospitalName,
             maxLength: 100,
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context).hospitalMeetingPoint,
             ),
-            validator:
-                (v) =>
-                    v == null || v.trim().isEmpty
-                        ? 'Enter a hospital or meeting point'
-                        : null,
+            validator: AppValidators.validateHospitalName,
             enabled: !_sending && _count == 0,
           ),
           TextFormField(
             controller: _phone,
             keyboardType: TextInputType.phone,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9+()\s-]')),
-            ],
+            inputFormatters: AppInputFormatters.phone,
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context).contactNumber,
             ),

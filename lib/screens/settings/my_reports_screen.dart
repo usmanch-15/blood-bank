@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/paged_records.dart';
 import '../../services/workflow_service.dart';
+import '../../utils/input_formatters.dart';
+import '../../utils/validators.dart';
 
 class MyReportsScreen extends StatelessWidget {
   final bool admin;
@@ -118,6 +120,7 @@ class MyReportsScreen extends StatelessWidget {
                   title: Text(AppLocalizations.of(context).supportRequest),
                   content: Form(
                     key: form,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
                     child: SingleChildScrollView(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -125,28 +128,24 @@ class MyReportsScreen extends StatelessWidget {
                           TextFormField(
                             controller: title,
                             maxLength: 100,
+                            inputFormatters: AppInputFormatters.subject,
                             decoration: InputDecoration(
                               labelText: AppLocalizations.of(context).subject,
                             ),
-                            validator:
-                                (v) =>
-                                    v == null || v.trim().isEmpty
-                                        ? 'Enter a subject'
-                                        : null,
+                            validator: AppValidators.validateSubject,
                           ),
                           TextFormField(
                             controller: body,
-                            maxLength: 2000,
+                            maxLength: 300,
+                            inputFormatters: AppInputFormatters.notes,
                             maxLines: 4,
                             decoration: InputDecoration(
                               labelText:
                                   AppLocalizations.of(context).describeIssue,
                             ),
-                            validator:
-                                (v) =>
-                                    v == null || v.trim().isEmpty
-                                        ? 'Describe the issue'
-                                        : null,
+                            validator: (value) =>
+                                AppValidators.validateRequired(value, 'Description') ??
+                                AppValidators.validateNotes(value),
                           ),
                         ],
                       ),

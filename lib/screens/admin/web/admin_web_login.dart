@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../services/auth_service.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../utils/input_formatters.dart';
 import '../../../utils/validators.dart';
 
 class AdminWebLogin extends StatefulWidget {
@@ -14,6 +15,7 @@ class AdminWebLogin extends StatefulWidget {
 
 class _AdminWebLoginState extends State<AdminWebLogin> {
   final _formKey = GlobalKey<FormState>();
+  final _emailFieldKey = GlobalKey<FormFieldState<String>>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -115,6 +117,7 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                 padding: const EdgeInsets.all(32),
                 child: Form(
                   key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -147,7 +150,9 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                       ),
                       const SizedBox(height: 32),
                       TextFormField(
+                        key: _emailFieldKey,
                         controller: _emailController,
+                        inputFormatters: AppInputFormatters.email,
                         decoration: InputDecoration(
                           labelText: AppLocalizations.of(context).adminEmail,
                           prefixIcon: const Icon(Icons.email),
@@ -188,15 +193,10 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                           ),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
+                          if (AppValidators.validateLoginPassword(value) != null) {
                             return AppLocalizations.of(
                               context,
                             ).passwordRequired;
-                          }
-                          if (value.length < 6) {
-                            return AppLocalizations.of(
-                              context,
-                            ).passwordMinLength;
                           }
                           return null;
                         },
@@ -227,11 +227,8 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: () async {
+                          if (!_emailFieldKey.currentState!.validate()) return;
                           String email = _emailController.text.trim();
-                          if (email.isEmpty || !email.contains('@')) {
-                            _showError('Pehle email field mein email daalo');
-                            return;
-                          }
                           await FirebaseAuth.instance.sendPasswordResetEmail(
                             email: email,
                           );

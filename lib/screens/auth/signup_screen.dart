@@ -3,39 +3,9 @@ import 'package:flutter/services.dart';
 import '../../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../../constants/app_constants.dart';
 import '../../services/auth_service.dart';
+import '../../utils/input_formatters.dart';
 import '../../utils/validators.dart';
 import '../../l10n/app_localizations.dart';
-
-/// ✅ NEW — auto-inserts the CNIC dashes as the user types
-/// (12345-1234567-1), same UX pattern as bank/telco apps use for CNIC.
-class _CnicInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final digits = newValue.text
-        .replaceAll(RegExp(r'[^0-9]'), '')
-        .substring(
-          0,
-          newValue.text.replaceAll(RegExp(r'[^0-9]'), '').length > 13
-              ? 13
-              : newValue.text.replaceAll(RegExp(r'[^0-9]'), '').length,
-        );
-    final buffer = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      buffer.write(digits[i]);
-      if (i == 4 || i == 11) {
-        if (i != digits.length - 1) buffer.write('-');
-      }
-    }
-    final formatted = buffer.toString();
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -331,6 +301,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                             // Form
                             Form(
                               key: _formKey,
+                              autovalidateMode: AutovalidateMode.onUserInteraction,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
@@ -343,6 +314,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     icon: Icons.person_outline,
                                     textInputAction: TextInputAction.next,
                                     autofillHints: const [AutofillHints.name],
+                                    inputFormatters: AppInputFormatters.name,
                                     validator: AppValidators.validateName,
                                   ),
                                   const SizedBox(height: 18),
@@ -357,6 +329,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     keyboardType: TextInputType.emailAddress,
                                     textInputAction: TextInputAction.next,
                                     autofillHints: const [AutofillHints.email],
+                                    inputFormatters: AppInputFormatters.email,
                                     validator: AppValidators.validateEmail,
                                   ),
                                   const SizedBox(height: 18),
@@ -369,11 +342,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     hint: '03XX-XXXXXXX',
                                     icon: Icons.phone_outlined,
                                     keyboardType: TextInputType.phone,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.allow(
-                                        RegExp(r'[0-9+()\s-]'),
-                                      ),
-                                    ],
+                                    inputFormatters: AppInputFormatters.phone,
                                     textInputAction: TextInputAction.next,
                                     autofillHints: const [
                                       AutofillHints.telephoneNumber,
@@ -391,15 +360,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                                     icon: Icons.badge_outlined,
                                     keyboardType: TextInputType.number,
                                     textInputAction: TextInputAction.next,
-                                    inputFormatters: [_CnicInputFormatter()],
-                                    validator:
-                                        (value) =>
-                                            value == null ||
-                                                    value.trim().isEmpty
-                                                ? null
-                                                : AppValidators.validateCnic(
-                                                  value,
-                                                ),
+                                    inputFormatters: AppInputFormatters.cnic,
+                                    validator: AppValidators.validateCnic,
                                   ),
                                   const SizedBox(height: 4),
                                   Padding(
@@ -518,15 +480,11 @@ class _SignUpScreenState extends State<SignUpScreen>
                                         size: 20,
                                       ),
                                     ),
-                                    validator: (v) {
-                                      if (v == null || v.isEmpty) {
-                                        return 'Confirm your password';
-                                      }
-                                      if (v != _passwordController.text) {
-                                        return 'Passwords do not match';
-                                      }
-                                      return null;
-                                    },
+                                    validator: (v) =>
+                                        AppValidators.validateConfirmPassword(
+                                          v,
+                                          _passwordController.text,
+                                        ),
                                   ),
                                   const SizedBox(height: 28),
 

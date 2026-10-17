@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../utils/validators.dart';
+import '../../utils/input_formatters.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 import '../../services/storage_service.dart';
@@ -436,6 +437,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
                   ),
                   child: Form(
                     key: _formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
                     child: Column(
                       children: [
                         // ── Personal Info Card ──
@@ -586,9 +588,11 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
             title: const Text('Verify a new phone number'),
             content: Form(
               key: form,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               child: TextFormField(
                 controller: phone,
                 keyboardType: TextInputType.phone,
+                inputFormatters: AppInputFormatters.phone,
                 validator: AppValidators.validatePhone,
                 decoration: const InputDecoration(labelText: 'Mobile number'),
               ),
@@ -667,6 +671,7 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
           prefixIcon: Icons.person_outline_rounded,
           enabled: true,
           validator: AppValidators.validateName,
+          inputFormatters: AppInputFormatters.name,
         ),
         const SizedBox(height: AppSpacing.lg),
         CustomTextField(
@@ -697,16 +702,15 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
           prefixIcon: Icons.badge_outlined,
           enabled: true,
           keyboardType: TextInputType.number,
-          validator:
-              (value) =>
-                  value == null || value.isEmpty
-                      ? null
-                      : AppValidators.validateCnic(value),
+          inputFormatters: AppInputFormatters.cnic,
+          validator: AppValidators.validateCnic,
         ),
         const SizedBox(height: AppSpacing.lg),
         CustomTextField(
           controller: _locationController,
           label: 'City / general area',
+          inputFormatters: AppInputFormatters.address,
+          validator: (value) => AppValidators.validateAddress(value, required: false),
           suffixIcon: IconButton(
             onPressed: _updateLocation,
             icon: Icon(Icons.my_location),
@@ -738,6 +742,8 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
         CustomTextField(
           controller: _addressController,
           label: 'Address / general area',
+          inputFormatters: AppInputFormatters.address,
+          validator: AppValidators.validateAddress,
           helperText:
               'Visible to signed-in users. Avoid a precise home address.',
         ),

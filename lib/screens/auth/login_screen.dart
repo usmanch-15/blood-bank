@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/push_navigation_service.dart';
 import '../../constants/app_spacing.dart'; // ✅ light-touch polish
 import '../../utils/account_policy.dart';
+import '../../utils/input_formatters.dart';
 import '../../utils/validators.dart';
 import 'signup_screen.dart';
 import '../../l10n/app_localizations.dart';
@@ -295,6 +296,7 @@ class _LoginScreenState extends State<LoginScreen>
                       position: _slideAnim,
                       child: Form(
                         key: _formKey,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -305,6 +307,7 @@ class _LoginScreenState extends State<LoginScreen>
                               hint: 'your@email.com',
                               icon: Icons.email_outlined,
                               keyboardType: TextInputType.emailAddress,
+                              inputFormatters: AppInputFormatters.email,
                               textInputAction: TextInputAction.next,
                               autofillHints: const [AutofillHints.email],
                               validator: AppValidators.validateEmail,
@@ -334,15 +337,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   size: 20,
                                 ),
                               ),
-                              validator: (v) {
-                                if (v == null || v.isEmpty) {
-                                  return 'Password required';
-                                }
-                                if (v.length < 6) {
-                                  return 'Min 6 characters';
-                                }
-                                return null;
-                              },
+                              validator: AppValidators.validateLoginPassword,
                             ),
                             const SizedBox(height: 12),
 
@@ -528,6 +523,7 @@ class _LoginScreenState extends State<LoginScreen>
     Widget? suffix,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    List<TextInputFormatter>? inputFormatters,
     TextInputAction? textInputAction, // ✅ NEW
     Iterable<String>? autofillHints, // ✅ NEW
     void Function(String)? onSubmitted, // ✅ NEW
@@ -537,6 +533,7 @@ class _LoginScreenState extends State<LoginScreen>
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      inputFormatters: inputFormatters,
       textInputAction: textInputAction,
       autofillHints: autofillHints,
       onFieldSubmitted: onSubmitted,
@@ -663,6 +660,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _showForgotPassword() {
     final emailCtrl = TextEditingController();
+    final emailFieldKey = GlobalKey<FormFieldState<String>>();
     showDialog(
       context: context,
       barrierColor: Colors.black87,
@@ -699,9 +697,13 @@ class _LoginScreenState extends State<LoginScreen>
                       style: TextStyle(color: Color(0xFF757575), fontSize: 13),
                     ),
                     const SizedBox(height: 20),
-                    TextField(
+                    TextFormField(
+                      key: emailFieldKey,
                       controller: emailCtrl,
                       keyboardType: TextInputType.emailAddress,
+                      inputFormatters: AppInputFormatters.email,
+                      validator: AppValidators.validateEmail,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         hintText: AppLocalizations.of(context).emailHint,
@@ -757,7 +759,7 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             onPressed: () async {
-                              if (emailCtrl.text.trim().isEmpty) return;
+                              if (!emailFieldKey.currentState!.validate()) return;
                               Navigator.pop(ctx);
                               try {
                                 await _authService.resetPassword(

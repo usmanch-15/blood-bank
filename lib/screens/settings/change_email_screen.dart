@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../constants/app_colors.dart';
 import '../../services/settings_service.dart';
 import '../../l10n/app_localizations.dart';
+import '../../utils/input_formatters.dart';
 import '../../utils/validators.dart';
 
 /// ✅ NEW — Change Email screen.
@@ -98,6 +99,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Form(
                   key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -112,6 +114,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                       TextFormField(
                         controller: _newEmailController,
                         keyboardType: TextInputType.emailAddress,
+                        inputFormatters: AppInputFormatters.email,
                         decoration: InputDecoration(
                           labelText:
                               AppLocalizations.of(context).newEmailAddress,
@@ -157,7 +160,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
                         ),
                         validator:
                             (v) =>
-                                (v == null || v.isEmpty)
+                                AppValidators.validateLoginPassword(v) != null
                                     ? AppLocalizations.of(
                                       context,
                                     ).enterCurrentPassword

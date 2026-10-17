@@ -6,13 +6,13 @@ import '../../widgets/unsaved_changes_guard.dart';
 import '../../controllers/auth_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../models/blood_request_model.dart';
 import '../../services/firestore_service.dart';
 
 import '../../utils/validators.dart';
+import '../../utils/input_formatters.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../widgets/custom_text_field.dart';
@@ -57,6 +57,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   double? _currentLat;
   double? _currentLng;
   String? _hospitalId;
+  bool _hospitalSelectionError = false;
 
   final List<String> _bloodGroups = [
     'A+',
@@ -91,9 +92,15 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         _hospitalNameController.text = selection.hospitalName;
         _hospitalAddressController.text = selection.address;
         _dirty = true;
+        _hospitalSelectionError = false;
       });
+      if (selection.hospitalName.isEmpty) {
+        FocusScope.of(context).requestFocus(_hospitalNameFocusNode);
+      }
     }
   }
+
+  final _hospitalNameFocusNode = FocusNode();
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
@@ -120,8 +127,10 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
   }
 
   Future<void> _submitRequest() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_currentLat == null || _currentLng == null) {
+    final hasHospitalLocation = _currentLat != null && _currentLng != null;
+    setState(() => _hospitalSelectionError = !hasHospitalLocation);
+    final isValid = _formKey.currentState!.validate();
+    if (!hasHospitalLocation) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context).selectHospitalPoint),
@@ -129,6 +138,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
       );
       return;
     }
+    if (!isValid) return;
 
     if (_requiredByDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -256,6 +266,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         ),
         body: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           onChanged: () {
             if (!_dirty) setState(() => _dirty = true);
           },
@@ -303,6 +314,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   controller: _patientNameController,
                   label: 'Patient Name',
                   prefixIcon: Icons.person_outline,
+                  inputFormatters: AppInputFormatters.name,
                   validator: AppValidators.validateName,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -311,7 +323,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   label: 'Age',
                   prefixIcon: Icons.cake_outlined,
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: AppInputFormatters.age,
                   validator: AppValidators.validateAge,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -348,7 +360,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   label: 'Units Required',
                   prefixIcon: Icons.bloodtype_outlined,
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: AppInputFormatters.units,
                   validator: AppValidators.validateUnitsRequired,
                 ),
 
@@ -362,12 +374,30 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   'Select a hospital by name to view its location and area on the map.',
                 ),
                 const SizedBox(height: AppSpacing.md),
+                OutlinedButton.icon(
+                  onPressed: _pickHospital,
+                  icon: const Icon(Icons.pin_drop),
+                  label: Text(
+                    _currentLat == null ? 'Select hospital on map' : 'Change selected hospital',
+                  ),
+                ),
+                if (_hospitalSelectionError)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      'Select a hospital location before submitting.',
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                const SizedBox(height: AppSpacing.md),
                 CustomTextField(
                   controller: _hospitalNameController,
                   label: 'Hospital Name',
                   prefixIcon: Icons.local_hospital_outlined,
                   validator: AppValidators.validateHospitalName,
-                  readOnly: true,
+                  focusNode: _hospitalNameFocusNode,
+                  inputFormatters: AppInputFormatters.hospitalName,
+                  onChanged: (_) => _hospitalId = null,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(
@@ -375,7 +405,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   label: 'Hospital Address',
                   prefixIcon: Icons.location_on_outlined,
                   validator: (v) => AppValidators.validateAddress(v),
-                  readOnly: true,
+                  inputFormatters: AppInputFormatters.address,
+                  onChanged: (_) => _hospitalId = null,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CustomTextField(
@@ -383,6 +414,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   label: 'Contact Number',
                   prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
+                  inputFormatters: AppInputFormatters.phone,
                   validator: AppValidators.validatePhone,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -391,6 +423,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                   label: 'Reason / Notes (optional)',
                   prefixIcon: Icons.notes_outlined,
                   maxLines: 3,
+                  inputFormatters: AppInputFormatters.notes,
+                  validator: AppValidators.validateNotes,
                 ),
 
                 const SizedBox(height: AppSpacing.lg),
@@ -422,15 +456,6 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
 
                 const SizedBox(height: AppSpacing.xxl),
 
-                OutlinedButton.icon(
-                  onPressed: _pickHospital,
-                  icon: const Icon(Icons.pin_drop),
-                  label: Text(
-                    _currentLat == null
-                        ? 'Select hospital'
-                        : 'Change selected hospital',
-                  ),
-                ),
                 SizedBox(
                   width: double.infinity,
                   height: 54,
@@ -583,6 +608,7 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
 
   @override
   void dispose() {
+    _hospitalNameFocusNode.dispose();
     _patientNameController.dispose();
     _patientAgeController.dispose();
     _hospitalNameController.dispose();

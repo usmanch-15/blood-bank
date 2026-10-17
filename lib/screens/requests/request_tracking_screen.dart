@@ -191,6 +191,13 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
       'awaiting_confirmation',
     ].contains(mine?['status']);
     final agreementPending = mine?['status'] == 'accepted';
+    final canViewHospitalAddress =
+        owner ||
+        d?['canViewPrivate'] == true ||
+        // The callable includes this field only for request participants.
+        (d?.containsKey('hospitalAddress') ?? false);
+    final hospitalName = (d?['hospitalName'] ?? '').toString().trim();
+    final hospitalAddress = (d?['hospitalAddress'] ?? '').toString().trim();
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).requestTracking),
@@ -222,7 +229,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                 padding: const EdgeInsets.all(20),
                 children: [
                   Text(
-                    '${d['bloodGroup']} • ${d['hospitalName']}',
+                    '${d['bloodGroup']} • ${hospitalName.isEmpty ? 'Hospital not specified' : hospitalName}',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 12),
@@ -234,16 +241,20 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                   ),
                   if (deadline != null)
                     Text('Required by: ${deadline.toDate().toLocal()}'),
-                  if (d['canViewPrivate'] != true)
+                  if (!canViewHospitalAddress)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 16),
                       child: Text(
                         'Patient details and the meeting location are shared after you accept. Each commitment represents one unit.',
                       ),
                     ),
-                  if (d['canViewPrivate'] == true) ...[
+                  if (canViewHospitalAddress) ...[
                     const Divider(),
-                    Text('Hospital address: ${d['hospitalAddress'] ?? ''}'),
+                    Text(
+                      'Hospital address: ${hospitalAddress.isEmpty ? 'Not provided' : hospitalAddress}',
+                    ),
+                  ],
+                  if (d['canViewPrivate'] == true) ...[
                     if ((d['patientName'] ?? '').toString().isNotEmpty)
                       Text('Patient: ${d['patientName']}'),
                     if ((d['reason'] ?? '').toString().isNotEmpty)

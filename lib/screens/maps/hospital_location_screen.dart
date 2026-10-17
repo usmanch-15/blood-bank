@@ -44,13 +44,18 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
   List<_Place> _results = const [];
   String? _error;
   bool _locating = false, _searching = false;
+  bool _resolvingAddress = false;
+  int _selectionVersion = 0;
   Timer? _debounce;
   @override
   void initState() {
     super.initState();
     _point = widget.initial;
     _loadHospitals();
-    if (_point != null) _reverse(_point!);
+    if (_point != null) {
+      _resolvingAddress = true;
+      _reverse(_point!, _selectionVersion);
+    }
   }
 
   Future<void> _loadHospitals() async {
@@ -73,23 +78,40 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
   List<HospitalModel> _configuredHospitals = const [];
 
   void _setPoint(LatLng p, {String? address, String? name, String id = ''}) {
+    final resolvedAddress = address?.trim() ?? '';
+    final selectionVersion = ++_selectionVersion;
     setState(() {
       _point = p;
-      _address = address ?? _address;
-      _name = name ?? '';
+      _address = resolvedAddress;
+      _name = name?.trim() ?? '';
       _hospitalId = id;
       _error = null;
+      _resolvingAddress = resolvedAddress.isEmpty;
     });
-    if (address == null) _reverse(p);
+    if (_resolvingAddress) _reverse(p, selectionVersion);
   }
 
-  Future<void> _reverse(LatLng p) async {
-    final a = await LocationHelper.getAddressFromCoordinates(
-      p.latitude,
-      p.longitude,
-    );
-    if (mounted && _point == p) {
-      setState(() => _address = a ?? 'Selected map location');
+  Future<void> _reverse(LatLng p, int selectionVersion) async {
+    try {
+      final a = await LocationHelper.getAddressFromCoordinates(
+        p.latitude,
+        p.longitude,
+      ).timeout(const Duration(seconds: 10));
+      if (mounted && _selectionVersion == selectionVersion) {
+        setState(() {
+          _address = a != null && a.trim().isNotEmpty
+              ? a.trim()
+              : '${p.latitude.toStringAsFixed(6)}, ${p.longitude.toStringAsFixed(6)}';
+          _resolvingAddress = false;
+        });
+      }
+    } catch (_) {
+      if (mounted && _selectionVersion == selectionVersion) {
+        setState(() {
+          _address = '${p.latitude.toStringAsFixed(6)}, ${p.longitude.toStringAsFixed(6)}';
+          _resolvingAddress = false;
+        });
+      }
     }
   }
 
@@ -289,7 +311,7 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
                         _setPoint(
                           r.point,
                           address: catalog?.address ?? r.name,
-                          name: catalog?.name,
+                          name: catalog?.name ?? r.name.split(',').first.trim(),
                           id: r.id,
                         );
                         _map.move(r.point, 15);
@@ -341,9 +363,11 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        _address.isEmpty
-                            ? 'Tap the map, drag the pin, or search for a place.'
-                            : _address,
+                        _resolvingAddress
+                            ? 'Resolving address...'
+                            : _address.isEmpty
+                                ? 'Tap the map, drag the pin, or search for a place.'
+                                : _address,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -387,20 +411,14 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
                     Expanded(
                       child: FilledButton(
                         onPressed:
-                            _point == null
+                            _point == null || _resolvingAddress || _address.isEmpty
                                 ? null
                                 : () => Navigator.pop(
                                   context,
                                   LocationSelection(
                                     point: _point!,
-                                    address:
-                                        _address.isEmpty
-                                            ? 'Selected map location'
-                                            : _address,
-                                    hospitalName:
-                                        _name.isEmpty
-                                            ? 'Selected location'
-                                            : _name,
+                                    address: _address,
+                                    hospitalName: _name,
                                     hospitalId: _hospitalId,
                                   ),
                                 ),

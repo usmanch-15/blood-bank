@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/settings_service.dart';
+import '../../utils/input_formatters.dart';
 import '../../utils/validators.dart';
 import '../../l10n/app_localizations.dart';
 import '../auth/otp_verification_screen.dart';
@@ -40,6 +40,7 @@ class _PhoneSettingsScreenState extends State<PhoneSettingsScreen> {
     appBar: AppBar(title: Text(AppLocalizations.of(context).verifyChangePhone)),
     body: Form(
       key: _form,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -53,9 +54,7 @@ class _PhoneSettingsScreenState extends State<PhoneSettingsScreen> {
           TextFormField(
             controller: _phone,
             keyboardType: TextInputType.phone,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9+()\s-]')),
-            ],
+            inputFormatters: AppInputFormatters.phone,
             validator: AppValidators.validatePhone,
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context).mobileNumber,

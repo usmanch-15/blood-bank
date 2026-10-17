@@ -76,8 +76,12 @@ class _BloodRequestsMapScreenState extends State<BloodRequestsMapScreen> {
                     '${request['urgency']} • ${request['remainingUnits'] ?? request['quantity']} unit(s) • ${request['distanceKm'] is num ? (request['distanceKm'] as num).toStringAsFixed(1) : '?'} km',
                   ),
                   Text(
-                    request['hospitalName'] ??
-                        AppLocalizations.of(context).selectedLocation,
+                    (request['hospitalName'] ?? '').toString().trim().isEmpty
+                        ? 'Hospital not specified'
+                        : request['hospitalName'].toString(),
+                  ),
+                  Text(
+                    'Hospital address: ${(request['hospitalAddress'] ?? '').toString().trim().isEmpty ? 'Not provided' : request['hospitalAddress']}',
                   ),
                   const SizedBox(height: 12),
                   FilledButton(

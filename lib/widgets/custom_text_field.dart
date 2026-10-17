@@ -21,6 +21,7 @@ class CustomTextField extends StatelessWidget {
   final bool enabled;
   final bool readOnly;
   final TextInputType? keyboardType;
+  final FocusNode? focusNode;
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
   final int? maxLines;
@@ -42,6 +43,7 @@ class CustomTextField extends StatelessWidget {
     this.enabled = true,
     this.readOnly = false,
     this.keyboardType,
+    this.focusNode,
     this.validator,
     this.onChanged,
     this.maxLines = 1,
@@ -61,6 +63,7 @@ class CustomTextField extends StatelessWidget {
       enabled: enabled,
       readOnly: readOnly,
       keyboardType: keyboardType,
+      focusNode: focusNode,
       inputFormatters: inputFormatters,
       validator: validator,
       onChanged: onChanged,

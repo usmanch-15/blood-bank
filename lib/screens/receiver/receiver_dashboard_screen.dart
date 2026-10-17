@@ -440,7 +440,9 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    request.hospitalName,
+                    request.hospitalName.trim().isEmpty
+                        ? 'Hospital not specified'
+                        : request.hospitalName,
                     style: TextStyle(color: Colors.grey),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -459,7 +461,9 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    request.location,
+                    (request.hospitalAddress ?? '').trim().isEmpty
+                        ? 'Not provided'
+                        : request.hospitalAddress!,
                     style: TextStyle(color: Colors.grey),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

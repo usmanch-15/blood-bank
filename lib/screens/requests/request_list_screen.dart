@@ -56,9 +56,12 @@ class _RequestListScreenState extends State<RequestListScreen> {
 
   Widget _tile(Map<String, dynamic> d, String id, {String? sosId}) => Card(
     child: ListTile(
-      title: Text('${d['bloodGroup']} • ${d['hospitalName'] ?? 'SOS'}'),
+      title: Text(
+        '${d['bloodGroup']} • ${(d['hospitalName'] ?? '').toString().trim().isEmpty ? 'Hospital not specified' : d['hospitalName']}',
+      ),
       subtitle: Text(
-        '${d['status']} • ${d['remainingUnits'] ?? d['quantity'] ?? 1} unit(s) remaining',
+        '${d['status']} • ${d['remainingUnits'] ?? d['quantity'] ?? 1} unit(s) remaining\n'
+        'Hospital address: ${(d['hospitalAddress'] ?? '').toString().trim().isEmpty ? 'Not provided' : d['hospitalAddress']}',
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap:
