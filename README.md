@@ -70,7 +70,7 @@ For an Android emulator, also pass `--dart-define=FIREBASE_EMULATOR_HOST=10.0.2.
 
 Use a staging project first. Review `firestore.rules`, `firestore.indexes.json`, `storage.rules`, and `functions/migrateProfiles.js`. Keep Admin SDK credentials outside source control. Back up Firestore, run the profile migration as a reviewed operation, deploy rules/indexes, deploy Functions on Blaze, and verify rollback procedures before production use.
 
-The project intentionally does not include chat, blood drives, localization, hospital accounts, inventory management, or a clinical blood-stock system. The app coordinates donors and receivers; it does not replace clinical screening or emergency services.
+The project includes participant chat, Urdu/English localization, a hospital catalog with OSM selection, and an Agora voice scaffold. Chat message notifications and incoming-call routing are implemented; unread counts, explicit phone sharing and the full call lifecycle remain staged work. Hospital accounts, inventory management and a clinical blood-stock system are not implemented. The app coordinates donors and receivers; it does not replace clinical screening or emergency services. See [Stage A audit and verification](docs/stage-a-report.md) for current limitations and setup.
 
 ## Android build
 

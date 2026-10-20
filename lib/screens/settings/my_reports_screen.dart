@@ -143,9 +143,13 @@ class MyReportsScreen extends StatelessWidget {
                               labelText:
                                   AppLocalizations.of(context).describeIssue,
                             ),
-                            validator: (value) =>
-                                AppValidators.validateRequired(value, 'Description') ??
-                                AppValidators.validateNotes(value),
+                            validator:
+                                (value) =>
+                                    AppValidators.validateRequired(
+                                      value,
+                                      'Description',
+                                    ) ??
+                                    AppValidators.validateNotes(value),
                           ),
                         ],
                       ),

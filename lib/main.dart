@@ -1,11 +1,13 @@
 import 'services/firebase_runtime.dart';
 import 'widgets/account_access_guard.dart';
+import 'widgets/premium_states.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'firebase_options.dart';
 import 'constants/app_theme.dart'; // ✅ USE THIS
@@ -25,7 +27,7 @@ import 'l10n/app_localizations.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/role_selection_screen.dart';
-import 'screens/donor/donor_dashboard_screen.dart';
+import 'screens/donor/blood_needed_near_you_screen.dart';
 import 'screens/receiver/receiver_dashboard_screen.dart';
 
 // Admin Web Screens
@@ -100,16 +102,17 @@ class BloodBankApp extends StatelessWidget {
               builder:
                   (context, child) => Consumer<AuthController>(
                     builder:
-                        (context, auth, _) => Stack(
-                          children: [
-                            child!,
-                            if (auth.accessRevoked)
-                              const Positioned.fill(
-                                child: AccountAccessGuard(
-                                  child: SizedBox.shrink(),
-                                ),
-                              ),
-                          ],
+                        (context, auth, _) => StreamBuilder<List<ConnectivityResult>>(
+                          stream: Connectivity().onConnectivityChanged,
+                          initialData: const [ConnectivityResult.wifi],
+                          builder: (context, connectivity) {
+                            final offline = connectivity.hasData && connectivity.data!.every((result) => result == ConnectivityResult.none);
+                            return Stack(children: [
+                              child!,
+                              if (offline) const Positioned(left: 0, right: 0, bottom: 0, child: OfflineBanner()),
+                              if (auth.accessRevoked) const Positioned.fill(child: AccountAccessGuard(child: SizedBox.shrink())),
+                            ]);
+                          },
                         ),
                   ),
 
@@ -144,7 +147,7 @@ class BloodBankApp extends StatelessWidget {
                 '/donor':
                     (context) => const AccountAccessGuard(
                       role: 'donor',
-                      child: DonorDashboardScreen(),
+                      child: BloodNeededNearYouScreen(),
                     ),
                 '/receiver':
                     (context) => const AccountAccessGuard(

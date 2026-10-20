@@ -9,6 +9,7 @@ import '../../constants/app_colors.dart';
 
 import '../../models/donation_model.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/workflow_service.dart';
 
 /// Donation History Screen - View all past donations
 class DonationHistoryScreen extends StatefulWidget {
@@ -20,10 +21,14 @@ class DonationHistoryScreen extends StatefulWidget {
 
 class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
   final user = FirebaseAuth.instance.currentUser;
+  bool _receiver = false;
 
   @override
   void initState() {
     super.initState();
+    FirebaseFirestore.instance.collection('users').doc(user?.uid).get().then((doc) {
+      if (mounted) setState(() => _receiver = doc.data()?['role'] == 'receiver');
+    });
   }
 
   @override
@@ -35,7 +40,7 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
             : PagedRecords(
               query: FirebaseFirestore.instance
                   .collection('donations')
-                  .where('donorId', isEqualTo: user!.uid)
+                  .where(_receiver ? 'requesterId' : 'donorId', isEqualTo: user!.uid)
                   .orderBy('donationDate', descending: true),
               itemBuilder:
                   (context, doc) => _buildDonationCard(
@@ -84,7 +89,7 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    donation.location,
+                    '${_receiver ? donation.donorName.split(' ').first : donation.location} • ${donation.statusLabel}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -92,6 +97,15 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
                       color: AppColors.textSecondary,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(AppLocalizations.of(context).medicalEligibilityDisclaimer),
+                  if (donation.certificateUrl != null)
+                    const Text('Certificate available'),
+                  if (!_receiver && donation.statusLabel == 'completed')
+                    Wrap(children: [
+                      TextButton(onPressed: () => _acknowledge(donation.id), child: Text(AppLocalizations.of(context).acknowledgeDonation)),
+                      TextButton(onPressed: () => _dispute(donation.id), child: Text(AppLocalizations.of(context).disputeDonation)),
+                    ]),
                   const SizedBox(height: 5),
                   Row(
                     children: [
@@ -134,5 +148,12 @@ class _DonationHistoryScreenState extends State<DonationHistoryScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _acknowledge(String id) async => WorkflowService.call('acknowledgeDonation', {'donationId': id});
+  Future<void> _dispute(String id) async {
+    final c = TextEditingController();
+    final reason = await showDialog<String>(context: context, builder: (context) => AlertDialog(title: Text(AppLocalizations.of(context).disputeDonation), content: TextField(controller: c, maxLength: 1000, maxLines: 3, decoration: InputDecoration(labelText: AppLocalizations.of(context).reason)), actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context).cancelAction)), FilledButton(onPressed: () => Navigator.pop(context, c.text.trim()), child: Text(AppLocalizations.of(context).submitAction))]));
+    c.dispose(); if (reason != null && reason.isNotEmpty) await WorkflowService.call('disputeDonation', {'donationId': id, 'reason': reason});
   }
 }

@@ -111,6 +111,9 @@ class SettingsService {
     final data = <String, dynamic>{'locationSharingEnabled': enabled};
     if (enabled) {
       final position = await GeoLocationService().getCurrentLocation();
+      if (!LocationHelper.inPakistan(position.latitude, position.longitude)) {
+        throw LocationOutsidePakistan();
+      }
       data['latitude'] = LocationHelper.roundForPrivacy(position.latitude);
       data['longitude'] = LocationHelper.roundForPrivacy(position.longitude);
       data['locationUpdatedAt'] = FieldValue.serverTimestamp();

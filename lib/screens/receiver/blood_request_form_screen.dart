@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../l10n/app_localizations.dart';
 import '../maps/hospital_location_screen.dart';
-import '../requests/request_tracking_screen.dart';
+import '../maps/nearby_donors_map_screen.dart';
 import '../../widgets/unsaved_changes_guard.dart';
 import '../../controllers/auth_controller.dart';
 import 'package:provider/provider.dart';
@@ -231,7 +231,12 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => RequestTrackingScreen(requestId: requestId),
+            builder:
+                (_) => NearbyDonorsMapScreen(
+                  requestId: requestId,
+                  bloodGroup: _selectedBloodGroup,
+                  unitsNeeded: units,
+                ),
           ),
         );
       }
@@ -285,213 +290,229 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                // ── Gradient hint banner ──
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.white, size: 22),
-                      SizedBox(width: AppSpacing.sm + 2),
-                      Expanded(
-                        child: Text(
-                          'Nearby matching donors will be notified automatically once you submit.',
-                          style: TextStyle(color: Colors.white, fontSize: 13),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-
-                _sectionTitle('Patient Information'),
-                const SizedBox(height: AppSpacing.sm + 2),
-                CustomTextField(
-                  controller: _patientNameController,
-                  label: 'Patient Name',
-                  prefixIcon: Icons.person_outline,
-                  inputFormatters: AppInputFormatters.name,
-                  validator: AppValidators.validateName,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  controller: _patientAgeController,
-                  label: 'Age',
-                  prefixIcon: Icons.cake_outlined,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: AppInputFormatters.age,
-                  validator: AppValidators.validateAge,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _genderSelector(),
-
-                const SizedBox(height: AppSpacing.xl),
-                const Divider(),
-                const SizedBox(height: AppSpacing.md),
-
-                _sectionTitle('Blood Requirement'),
-                const SizedBox(height: AppSpacing.sm + 2),
-                Text(
-                  'Blood Group',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _bloodGroupSelector(),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Urgency Level',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _urgencySelector(),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  controller: _unitsRequiredController,
-                  label: 'Units Required',
-                  prefixIcon: Icons.bloodtype_outlined,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: AppInputFormatters.units,
-                  validator: AppValidators.validateUnitsRequired,
-                ),
-
-                const SizedBox(height: AppSpacing.xl),
-                const Divider(),
-                const SizedBox(height: AppSpacing.md),
-
-                _sectionTitle('Hospital Information'),
-                const SizedBox(height: AppSpacing.sm + 2),
-                const Text(
-                  'Select a hospital by name to view its location and area on the map.',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                OutlinedButton.icon(
-                  onPressed: _pickHospital,
-                  icon: const Icon(Icons.pin_drop),
-                  label: Text(
-                    _currentLat == null ? 'Select hospital on map' : 'Change selected hospital',
-                  ),
-                ),
-                if (_hospitalSelectionError)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      'Select a hospital location before submitting.',
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
-                    ),
-                  ),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  controller: _hospitalNameController,
-                  label: 'Hospital Name',
-                  prefixIcon: Icons.local_hospital_outlined,
-                  validator: AppValidators.validateHospitalName,
-                  focusNode: _hospitalNameFocusNode,
-                  inputFormatters: AppInputFormatters.hospitalName,
-                  onChanged: (_) => _hospitalId = null,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  controller: _hospitalAddressController,
-                  label: 'Hospital Address',
-                  prefixIcon: Icons.location_on_outlined,
-                  validator: (v) => AppValidators.validateAddress(v),
-                  inputFormatters: AppInputFormatters.address,
-                  onChanged: (_) => _hospitalId = null,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  controller: _contactNumberController,
-                  label: 'Contact Number',
-                  prefixIcon: Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: AppInputFormatters.phone,
-                  validator: AppValidators.validatePhone,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CustomTextField(
-                  controller: _reasonController,
-                  label: 'Reason / Notes (optional)',
-                  prefixIcon: Icons.notes_outlined,
-                  maxLines: 3,
-                  inputFormatters: AppInputFormatters.notes,
-                  validator: AppValidators.validateNotes,
-                ),
-
-                const SizedBox(height: AppSpacing.lg),
-                InkWell(
-                  onTap: _selectDate,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context).requiredByDate,
-                      prefixIcon: Icon(
-                        Icons.calendar_today_outlined,
-                        size: AppSpacing.iconSm + 4,
-                      ),
-                      border: OutlineInputBorder(
+                    // ── Gradient hint banner ──
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        gradient: AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
+                          AppSpacing.radiusLg,
                         ),
                       ),
-                      filled: true,
-                      fillColor: Theme.of(context).colorScheme.surface,
-                    ),
-                    child: Text(
-                      _requiredByDate == null
-                          ? 'Select Date'
-                          : DateFormat('dd MMM yyyy').format(_requiredByDate!),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: AppSpacing.xxl),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submitRequest,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryRed,
-                      foregroundColor: Colors.white,
-                      elevation: AppSpacing.elevationLow,
-                      shadowColor: AppColors.shadowRed,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
-                        ),
-                      ),
-                    ),
-                    child:
-                        _isLoading
-                            ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                            : Text(
-                              'Submit Request',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          SizedBox(width: AppSpacing.sm + 2),
+                          Expanded(
+                            child: Text(
+                              'Nearby matching donors will be notified automatically once you submit.',
                               style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                fontSize: 13,
                               ),
                             ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+
+                    _sectionTitle('Patient Information'),
+                    const SizedBox(height: AppSpacing.sm + 2),
+                    CustomTextField(
+                      controller: _patientNameController,
+                      label: 'Patient Name',
+                      prefixIcon: Icons.person_outline,
+                      inputFormatters: AppInputFormatters.name,
+                      validator: AppValidators.validateName,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    CustomTextField(
+                      controller: _patientAgeController,
+                      label: 'Age',
+                      prefixIcon: Icons.cake_outlined,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: AppInputFormatters.age,
+                      validator: AppValidators.validateAge,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _genderSelector(),
+
+                    const SizedBox(height: AppSpacing.xl),
+                    const Divider(),
+                    const SizedBox(height: AppSpacing.md),
+
+                    _sectionTitle('Blood Requirement'),
+                    const SizedBox(height: AppSpacing.sm + 2),
+                    Text(
+                      'Blood Group',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _bloodGroupSelector(),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Urgency Level',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _urgencySelector(),
+                    const SizedBox(height: AppSpacing.md),
+                    CustomTextField(
+                      controller: _unitsRequiredController,
+                      label: 'Units Required',
+                      prefixIcon: Icons.bloodtype_outlined,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: AppInputFormatters.units,
+                      validator: AppValidators.validateUnitsRequired,
+                    ),
+
+                    const SizedBox(height: AppSpacing.xl),
+                    const Divider(),
+                    const SizedBox(height: AppSpacing.md),
+
+                    _sectionTitle('Hospital Information'),
+                    const SizedBox(height: AppSpacing.sm + 2),
+                    const Text(
+                      'Select a hospital by name to view its location and area on the map.',
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    OutlinedButton.icon(
+                      onPressed: _pickHospital,
+                      icon: const Icon(Icons.pin_drop),
+                      label: Text(
+                        _currentLat == null
+                            ? 'Select hospital on map'
+                            : 'Change selected hospital',
+                      ),
+                    ),
+                    if (_hospitalSelectionError)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Select a hospital location before submitting.',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: AppSpacing.md),
+                    CustomTextField(
+                      controller: _hospitalNameController,
+                      label: 'Hospital Name',
+                      prefixIcon: Icons.local_hospital_outlined,
+                      validator: AppValidators.validateHospitalName,
+                      focusNode: _hospitalNameFocusNode,
+                      inputFormatters: AppInputFormatters.hospitalName,
+                      onChanged: (_) => _hospitalId = null,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    CustomTextField(
+                      controller: _hospitalAddressController,
+                      label: 'Hospital Address',
+                      prefixIcon: Icons.location_on_outlined,
+                      validator: (v) => AppValidators.validateAddress(v),
+                      inputFormatters: AppInputFormatters.address,
+                      onChanged: (_) => _hospitalId = null,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    CustomTextField(
+                      controller: _contactNumberController,
+                      label: 'Contact Number',
+                      prefixIcon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: AppInputFormatters.phone,
+                      validator: AppValidators.validatePhone,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    CustomTextField(
+                      controller: _reasonController,
+                      label: 'Reason / Notes (optional)',
+                      prefixIcon: Icons.notes_outlined,
+                      maxLines: 3,
+                      inputFormatters: AppInputFormatters.notes,
+                      validator: AppValidators.validateNotes,
+                    ),
+
+                    const SizedBox(height: AppSpacing.lg),
+                    InkWell(
+                      onTap: _selectDate,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText:
+                              AppLocalizations.of(context).requiredByDate,
+                          prefixIcon: Icon(
+                            Icons.calendar_today_outlined,
+                            size: AppSpacing.iconSm + 4,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surface,
+                        ),
+                        child: Text(
+                          _requiredByDate == null
+                              ? 'Select Date'
+                              : DateFormat(
+                                'dd MMM yyyy',
+                              ).format(_requiredByDate!),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: AppSpacing.xxl),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _submitRequest,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryRed,
+                          foregroundColor: Colors.white,
+                          elevation: AppSpacing.elevationLow,
+                          shadowColor: AppColors.shadowRed,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                          ),
+                        ),
+                        child:
+                            _isLoading
+                                ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : Text(
+                                  'Submit Request',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
                   ],
                 ),
               ),
@@ -515,7 +536,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
     return Wrap(
       spacing: AppSpacing.sm,
       runSpacing: AppSpacing.sm,
-      children: _genders.map((g) {
+      children:
+          _genders.map((g) {
             final selected = _selectedGender == g;
             return ChoiceChip(
               label: Text(g),

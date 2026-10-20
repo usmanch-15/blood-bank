@@ -56,5 +56,10 @@ functions/.env.*
 .npm-cache/
 .firebase/
 .firebase-cache/
+.firebase-config/
 analysis-results.txt
+/analyze_output.txt
+/test_analyze_output.txt
+*.encoding-backup
+/.query-audit.txt
 /audit-artifacts/

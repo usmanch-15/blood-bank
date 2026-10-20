@@ -14,6 +14,7 @@ import 'help_support_screen.dart';
 import 'about_screen.dart';
 import 'change_email_screen.dart';
 import '../../l10n/app_localizations.dart';
+import '../../utils/location_helper.dart';
 
 /// âœ… PHASE 1 â€” Settings Screen
 ///
@@ -385,7 +386,18 @@ class _LocationSharingTile extends StatelessWidget {
             value: locationEnabled,
             activeThumbColor: AppColors.primaryRed,
             onChanged: (v) async {
-              await settingsService.setLocationSharing(v);
+              try {
+                await settingsService.setLocationSharing(v);
+              } catch (e) {
+                if (!context.mounted) return;
+                onSnack(
+                  e is LocationOutsidePakistan
+                      ? AppLocalizations.of(context).locationInsidePakistan
+                      : AppLocalizations.of(context).operationFailed,
+                  isError: true,
+                );
+                return;
+              }
               onSnack(
                 v
                     ? 'Location sharing enabled.'

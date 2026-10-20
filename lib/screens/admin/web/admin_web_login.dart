@@ -193,7 +193,8 @@ class _AdminWebLoginState extends State<AdminWebLogin> {
                           ),
                         ),
                         validator: (value) {
-                          if (AppValidators.validateLoginPassword(value) != null) {
+                          if (AppValidators.validateLoginPassword(value) !=
+                              null) {
                             return AppLocalizations.of(
                               context,
                             ).passwordRequired;

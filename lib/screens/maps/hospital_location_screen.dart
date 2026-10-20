@@ -78,6 +78,12 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
   List<HospitalModel> _configuredHospitals = const [];
 
   void _setPoint(LatLng p, {String? address, String? name, String id = ''}) {
+    if (!LocationHelper.inPakistan(p.latitude, p.longitude)) {
+      setState(
+        () => _error = AppLocalizations.of(context).locationInsidePakistan,
+      );
+      return;
+    }
     final resolvedAddress = address?.trim() ?? '';
     final selectionVersion = ++_selectionVersion;
     setState(() {
@@ -99,16 +105,18 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
       ).timeout(const Duration(seconds: 10));
       if (mounted && _selectionVersion == selectionVersion) {
         setState(() {
-          _address = a != null && a.trim().isNotEmpty
-              ? a.trim()
-              : '${p.latitude.toStringAsFixed(6)}, ${p.longitude.toStringAsFixed(6)}';
+          _address =
+              a != null && a.trim().isNotEmpty
+                  ? a.trim()
+                  : '${p.latitude.toStringAsFixed(6)}, ${p.longitude.toStringAsFixed(6)}';
           _resolvingAddress = false;
         });
       }
     } catch (_) {
       if (mounted && _selectionVersion == selectionVersion) {
         setState(() {
-          _address = '${p.latitude.toStringAsFixed(6)}, ${p.longitude.toStringAsFixed(6)}';
+          _address =
+              '${p.latitude.toStringAsFixed(6)}, ${p.longitude.toStringAsFixed(6)}';
           _resolvingAddress = false;
         });
       }
@@ -366,8 +374,8 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
                         _resolvingAddress
                             ? 'Resolving address...'
                             : _address.isEmpty
-                                ? 'Tap the map, drag the pin, or search for a place.'
-                                : _address,
+                            ? 'Tap the map, drag the pin, or search for a place.'
+                            : _address,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -411,7 +419,13 @@ class _HospitalLocationScreenState extends State<HospitalLocationScreen> {
                     Expanded(
                       child: FilledButton(
                         onPressed:
-                            _point == null || _resolvingAddress || _address.isEmpty
+                            _point == null ||
+                                    !LocationHelper.inPakistan(
+                                      _point!.latitude,
+                                      _point!.longitude,
+                                    ) ||
+                                    _resolvingAddress ||
+                                    _address.isEmpty
                                 ? null
                                 : () => Navigator.pop(
                                   context,

@@ -37,19 +37,19 @@ void main() {
     expect(AccountPolicy.canSwitchMode('donor', 'admin'), isFalse);
     expect(AccountPolicy.canSwitchMode('admin', 'donor'), isFalse);
     expect(AccountPolicy.route({'role': 'admin'}), '/admin/dashboard');
-    expect(AccountPolicy.route({'role': 'donor'}), '/donor');
-    expect(AccountPolicy.route({'role': 'receiver'}), '/receiver');
+    expect(AccountPolicy.route({'role': 'donor'}), '/role-select');
+    expect(AccountPolicy.route({'role': 'receiver'}), '/role-select');
   });
   test('Pakistani phone formats normalize consistently', () {
-    for (final value in [
-      '0300 1234567',
-      '+92 300-1234567',
-      '923001234567',
-      '00923001234567',
-    ]) {
+    for (final value in ['0300 1234567', '+92 300-1234567']) {
       expect(AppValidators.normalizePhone(value), '+923001234567');
       expect(AppValidators.validatePhone(value), isNull);
     }
+    // Bare 92/0092 prefixes are normalized for storage but are not accepted
+    // as input: the app accepts the two real user-facing forms, local 03xx
+    // and international +92 3xx.
+    expect(AppValidators.validatePhone('923001234567'), isNotNull);
+    expect(AppValidators.validatePhone('00923001234567'), isNotNull);
     expect(AppValidators.validatePhone('12345678901'), isNotNull);
   });
   test(

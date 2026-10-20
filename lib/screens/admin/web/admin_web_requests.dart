@@ -163,10 +163,10 @@ class AdminEmergencyRequests extends StatelessWidget {
           return ListTile(
             leading: const Icon(Icons.emergency, color: Colors.red),
             title: Text(
-              '${data['bloodGroup']} • ${data['urgency'] ?? 'critical'}',
+              '${data['bloodGroup']} â€¢ ${data['urgency'] ?? 'critical'}',
             ),
             subtitle: Text(
-              '${data['receiverId']} • ${data['status'] ?? 'Queued'}',
+              '${data['receiverId']} â€¢ ${data['status'] ?? 'Queued'}',
             ),
             trailing: Text(data['isResolved'] == true ? 'Resolved' : 'Open'),
             onTap:
@@ -197,7 +197,7 @@ class _AdminWebRequestsState extends State<AdminWebRequests>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -212,7 +212,7 @@ class _AdminWebRequestsState extends State<AdminWebRequests>
       backgroundColor: const Color(0xFFF5F6FA),
       body: Column(
         children: [
-          // ── Tab Bar ──
+          // â”€â”€ Tab Bar â”€â”€
           Container(
             color: Colors.white,
             child: TabBar(
@@ -228,11 +228,16 @@ class _AdminWebRequestsState extends State<AdminWebRequests>
                 ),
                 Tab(icon: Icon(Icons.bloodtype), text: 'Blood Requests'),
                 Tab(icon: Icon(Icons.emergency), text: 'SOS Requests'),
+                Tab(icon: Icon(Icons.fact_check), text: 'Emergency Review'),
+                Tab(
+                  icon: Icon(Icons.verified_user),
+                  text: 'Verification Review',
+                ),
               ],
             ),
           ),
 
-          // ── Tab Views ──
+          // â”€â”€ Tab Views â”€â”€
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -240,6 +245,8 @@ class _AdminWebRequestsState extends State<AdminWebRequests>
                 _PendingUsersTab(),
                 _BloodRequestsTab(),
                 AdminEmergencyRequests(),
+                AdminEmergencyReviewQueue(),
+                AdminVerificationReviewQueue(),
               ],
             ),
           ),
@@ -249,9 +256,9 @@ class _AdminWebRequestsState extends State<AdminWebRequests>
   }
 }
 
-// ════════════════════════════════════════════════════════════════
+// â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-
 // TAB 1: Pending User Approvals
-// ════════════════════════════════════════════════════════════════
+// â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-
 class _PendingUsersTab extends StatelessWidget {
   const _PendingUsersTab();
 
@@ -265,7 +272,7 @@ class _PendingUsersTab extends StatelessWidget {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('✅ User approved successfully!'),
+        content: Text('âœ… User approved successfully!'),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
       ),
@@ -309,7 +316,7 @@ class _PendingUsersTab extends StatelessWidget {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('❌ User rejected.'),
+          content: Text('âŒ User rejected.'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -378,7 +385,7 @@ class _PendingUsersTab extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    // ── Avatar ──
+                    // â”€â”€ Avatar â”€â”€
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: Colors.orange.shade50,
@@ -396,7 +403,7 @@ class _PendingUsersTab extends StatelessWidget {
                     ),
                     const SizedBox(width: 16),
 
-                    // ── User Info ──
+                    // â”€â”€ User Info â”€â”€
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,8 +447,8 @@ class _PendingUsersTab extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                               ],
-                              // ✅ FIX: blood_requests docs never had a
-                              // 'phoneNumber' field — the form saves it as
+                              // âœ… FIX: blood_requests docs never had a
+                              // 'phoneNumber' field â€” the form saves it as
                               // 'contactNumber' (see blood_request_form_screen.dart
                               // and BloodRequestModel). This was always
                               // silently showing nothing.
@@ -460,7 +467,7 @@ class _PendingUsersTab extends StatelessWidget {
                       ),
                     ),
 
-                    // ── Status Badge ──
+                    // â”€â”€ Status Badge â”€â”€
                     Container(
                       margin: const EdgeInsets.only(right: 16),
                       padding: const EdgeInsets.symmetric(
@@ -482,7 +489,7 @@ class _PendingUsersTab extends StatelessWidget {
                       ),
                     ),
 
-                    // ── Action Buttons ──
+                    // â”€â”€ Action Buttons â”€â”€
                     ElevatedButton.icon(
                       onPressed: () => _approveUser(uid, context),
                       icon: const Icon(Icons.check, size: 16),
@@ -520,9 +527,9 @@ class _PendingUsersTab extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════════════════════════
+// â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-
 // TAB 2: Blood Requests (aapka purana content yahan)
-// ════════════════════════════════════════════════════════════════
+// â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-â-
 class _BloodRequestsTab extends StatelessWidget {
   const _BloodRequestsTab();
 
@@ -622,4 +629,292 @@ class _BloodRequestsTab extends StatelessWidget {
       },
     );
   }
+}
+
+class AdminEmergencyReviewQueue extends StatelessWidget {
+  const AdminEmergencyReviewQueue({super.key});
+
+  Future<void> _review(BuildContext context, DocumentSnapshot doc) async {
+    final note = TextEditingController();
+    String decision = 'approved';
+    final result = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => StatefulBuilder(
+            builder:
+                (ctx, setState) => AlertDialog(
+                  title: const Text('Review emergency request'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: decision,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'approved',
+                            child: Text('Approve'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'rejected',
+                            child: Text('Reject'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'flagged',
+                            child: Text('Flag'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'clarification',
+                            child: Text('Request clarification'),
+                          ),
+                        ],
+                        onChanged:
+                            (v) => setState(() => decision = v ?? decision),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: note,
+                        maxLines: 4,
+                        maxLength: 2000,
+                        decoration: const InputDecoration(
+                          labelText: 'Mandatory note',
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () async {
+                        if (note.text.trim().isEmpty) return;
+                        try {
+                          await WorkflowService.call('reviewEmergencyRequest', {
+                            'id': doc.id,
+                            'decision': decision,
+                            'note': note.text.trim(),
+                            'sos': false,
+                          });
+                          if (ctx.mounted) Navigator.pop(ctx, true);
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text('Review failed: $e')),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Submit'),
+                    ),
+                  ],
+                ),
+          ),
+    );
+    note.dispose();
+    if (result == true && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Emergency review saved.')));
+    }
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream:
+        FirebaseFirestore.instance
+            .collection('blood_requests')
+            .where('reviewStatus', isEqualTo: 'pending_review')
+            .orderBy('createdAt')
+            .limit(50)
+            .snapshots(),
+    builder: (context, snap) {
+      if (snap.hasError) {
+        return Center(
+          child: Text('Unable to load emergency reviews: ${snap.error}'),
+        );
+      }
+      if (!snap.hasData) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      final docs =
+          snap.data!.docs
+              .where(
+                (d) => [
+                  'urgent',
+                  'critical',
+                  'life_threatening',
+                ].contains(d.data()['urgency']),
+              )
+              .toList();
+      if (docs.isEmpty) {
+        return const Center(
+          child: Text('No emergency requests awaiting review.'),
+        );
+      }
+      return ListView.builder(
+        itemCount: docs.length,
+        itemBuilder: (context, i) {
+          final d = docs[i], v = d.data();
+          final created = (v['createdAt'] as Timestamp?)?.toDate();
+          final waiting =
+              created == null
+                  ? ''
+                  : 'Waiting ${(DateTime.now().difference(created).inMinutes)} min';
+          return Card(
+            child: ListTile(
+              leading: const Icon(Icons.warning_amber, color: Colors.red),
+              title: Text(
+                '${v['bloodGroup'] ?? ''} - ${v['urgency'] ?? ''} - ${v['quantity'] ?? 0} units',
+              ),
+              subtitle: Text(
+                '${v['hospitalName'] ?? 'Hospital unavailable'}\n${v['reason'] ?? ''}\n$waiting',
+              ),
+              isThreeLine: true,
+              trailing: FilledButton(
+                onPressed: () => _review(context, d),
+                child: const Text('Review'),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+class AdminVerificationReviewQueue extends StatelessWidget {
+  const AdminVerificationReviewQueue({super.key});
+
+  Future<void> _review(BuildContext context, DocumentSnapshot doc) async {
+    final note = TextEditingController();
+    String decision = 'approved';
+    final result = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => StatefulBuilder(
+            builder:
+                (ctx, setState) => AlertDialog(
+                  title: Text('Verification: ${doc.id}'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Evidence path: ${doc['evidencePath'] ?? 'not provided'}',
+                      ),
+                      DropdownButtonFormField<String>(
+                        initialValue: decision,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'approved',
+                            child: Text('Approve'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'rejected',
+                            child: Text('Reject'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'more_info_needed',
+                            child: Text('Request more information'),
+                          ),
+                        ],
+                        onChanged:
+                            (v) => setState(() => decision = v ?? decision),
+                      ),
+                      TextField(
+                        controller: note,
+                        maxLines: 4,
+                        maxLength: 2000,
+                        decoration: const InputDecoration(
+                          labelText: 'Mandatory review note',
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () async {
+                        if (note.text.trim().isEmpty) return;
+                        try {
+                          await WorkflowService.call('reviewVerification', {
+                            'userId': doc.id,
+                            'decision': decision,
+                            'note': note.text.trim(),
+                          });
+                          if (ctx.mounted) Navigator.pop(ctx, true);
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text('Review failed: $e')),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Submit'),
+                    ),
+                  ],
+                ),
+          ),
+    );
+    note.dispose();
+    if (result == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Verification review saved.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream:
+        FirebaseFirestore.instance
+            .collection('verification_requests')
+            .where('status', isEqualTo: 'pending')
+            .orderBy('submittedAt')
+            .limit(50)
+            .snapshots(),
+    builder: (context, snap) {
+      if (snap.hasError) {
+        return Center(
+          child: Text('Unable to load verification reviews: ${snap.error}'),
+        );
+      }
+      if (!snap.hasData) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      final docs = snap.data!.docs;
+      if (docs.isEmpty) {
+        return const Center(
+          child: Text('No pending verification submissions.'),
+        );
+      }
+      return ListView.builder(
+        itemCount: docs.length,
+        itemBuilder: (context, i) {
+          final d = docs[i], v = d.data();
+          return Card(
+            child: ListTile(
+              leading: const Icon(Icons.verified_user),
+              title: Text(d.id),
+              subtitle: Text(
+                'Submitted: ${v['submittedAt'] ?? ''}\n${v['evidencePath'] ?? ''}',
+              ),
+              trailing: FilledButton(
+                onPressed: () => _review(context, d),
+                child: const Text('Review'),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
 }

@@ -2,8 +2,17 @@ import 'dart:math';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
+class LocationOutsidePakistan implements Exception {}
+
 class LocationHelper {
   static const double earthRadiusKm = 6371.0;
+  static bool inPakistan(double lat, double lng) =>
+      lat.isFinite &&
+      lng.isFinite &&
+      lat >= 23.5 &&
+      lat <= 37.1 &&
+      lng >= 60.8 &&
+      lng <= 77.9;
 
   // ── NEW: GPS + Geocoding ─────────────────────────────────────────────────
 

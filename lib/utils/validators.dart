@@ -2,13 +2,14 @@ class AppValidators {
   static String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) return 'Email required';
     final email = value;
-    if (email.length > 100 || email.indexOf('@') > 64 ||
+    if (email.length > 100 ||
+        email.indexOf('@') > 64 ||
         email.contains(RegExp(r'[\s\x00-\x1F\x7F]'))) {
       return 'Enter a valid email';
     }
     return RegExp(
-      r"^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.[A-Za-z]{2,}$",
-    ).hasMatch(email)
+          r"^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.[A-Za-z]{2,}$",
+        ).hasMatch(email)
         ? null
         : 'Enter a valid email';
   }
@@ -26,18 +27,16 @@ class AppValidators {
   }
 
   static String? validateAge(String? value) {
-    final age = RegExp(r'^[0-9]+$').hasMatch(value ?? '')
-        ? int.tryParse(value!)
-        : null;
+    final age =
+        RegExp(r'^[0-9]+$').hasMatch(value ?? '') ? int.tryParse(value!) : null;
     return age != null && age >= 1 && age <= 120
         ? null
         : 'Age must be between 1 and 120';
   }
 
   static String? validateUnitsRequired(String? value) {
-    final units = RegExp(r'^[0-9]+$').hasMatch(value ?? '')
-        ? int.tryParse(value!)
-        : null;
+    final units =
+        RegExp(r'^[0-9]+$').hasMatch(value ?? '') ? int.tryParse(value!) : null;
     return units != null && units >= 1 && units <= 50
         ? null
         : 'Units must be between 1 and 50';
@@ -90,10 +89,11 @@ class AppValidators {
     if (name.trim().isEmpty) return 'Name required';
     if (name.length > 100) return 'Name must be at most 100 characters';
     if (!RegExp(
-      r"^[A-Za-z\u0621-\u063A\u0641-\u065F\u066E-\u06D3\u06D5\u06EE-\u06EF\u06FA-\u06FC\u06FF .'-]+$",
-    ).hasMatch(name) || !RegExp(
-      r'[A-Za-z\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06EE-\u06EF\u06FA-\u06FC\u06FF]',
-    ).hasMatch(name)) {
+          r"^[A-Za-z\u0621-\u063A\u0641-\u065F\u066E-\u06D3\u06D5\u06EE-\u06EF\u06FA-\u06FC\u06FF .'-]+$",
+        ).hasMatch(name) ||
+        !RegExp(
+          r'[A-Za-z\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06EE-\u06EF\u06FA-\u06FC\u06FF]',
+        ).hasMatch(name)) {
       return 'Enter a valid name using letters and spaces';
     }
     return null;
@@ -134,7 +134,9 @@ class AppValidators {
     final address = value ?? '';
     if (address.length > 300) return 'Address is too long (max 300 characters)';
     if (address.trim().isEmpty) return required ? 'Address is required' : null;
-    if (address.trim().length < 5) return 'Address must be at least 5 characters';
+    if (address.trim().length < 5) {
+      return 'Address must be at least 5 characters';
+    }
     if (RegExp(r'[\x00-\x1F\x7F-\x9F<>]').hasMatch(address)) {
       return 'Address contains invalid characters';
     }
@@ -143,6 +145,8 @@ class AppValidators {
 
   static String? validateNotes(String? value) {
     if (value == null) return null;
-    return value.length > 300 ? 'Notes are too long (max 300 characters)' : null;
+    return value.length > 300
+        ? 'Notes are too long (max 300 characters)'
+        : null;
   }
 }

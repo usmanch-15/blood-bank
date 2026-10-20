@@ -11,6 +11,10 @@ service cloud.firestore {
       return active() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     function bloodGroup(value) { return value in ['A+','A-','B+','B-','AB+','AB-','O+','O-']; }
+    function pakistan(d) {
+      return d.latitude == null || (d.latitude >= 23.5 && d.latitude <= 37.1
+        && d.longitude >= 60.8 && d.longitude <= 77.9);
+    }
     function profileValid(d) {
       return d.name is string && d.name.size() >= 2 && d.name.size() <= 100
         && bloodGroup(d.bloodGroup) && d.isDonor is bool && d.isReceiver is bool
@@ -24,7 +28,7 @@ service cloud.firestore {
     }
     match /users/{uid} {
       allow read: if owner(uid) || admin();
-      allow create: if owner(uid) && profileValid(request.resource.data)
+      allow create: if owner(uid) && profileValid(request.resource.data) && pakistan(request.resource.data)
         && request.resource.data.keys().hasOnly(['uid','email','name','role','bloodGroup','status',
           'isDonor','isReceiver','isAvailable','locationSharingEnabled','isEligible','rewardPoints',
           'createdAt','lastLoginAt','lastDonationDate','location','latitude','longitude','profileImageUrl'])
@@ -33,6 +37,7 @@ service cloud.firestore {
         && request.resource.data.rewardPoints == 0 && request.resource.data.isEligible == true
         && request.resource.data.lastDonationDate == null;
       allow update: if (owner(uid) && admin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt','notificationsEnabled','notificationPrefs'])) || (owner(uid) && active() && profileValid(request.resource.data)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['latitude','longitude']) || pakistan(request.resource.data))
         && resource.data.role in ['donor','receiver'] && request.resource.data.role in ['donor','receiver']
         && (!resource.data.isDonor || request.resource.data.isDonor)
         && (!resource.data.isReceiver || request.resource.data.isReceiver)
@@ -65,6 +70,10 @@ service cloud.firestore {
         allow delete: if owner(uid) && active() && document == 'device';
       }
     }
+    match /verification_requests/{uid} {
+      allow read: if admin() || (active() && request.auth.uid == uid);
+      allow write: if false;
+    }
     // Hospitals are maintained by administrators and are read-only to app users.
     // The client rejects entries that do not contain a valid name, address, and pin.
     match /hospitals/{hospitalId} {
@@ -74,8 +83,8 @@ service cloud.firestore {
         && request.resource.data.address is string
         && request.resource.data.latitude is number
         && request.resource.data.longitude is number
-        && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
-        && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180;
+        && request.resource.data.latitude >= 23.5 && request.resource.data.latitude <= 37.1
+        && request.resource.data.longitude >= 60.8 && request.resource.data.longitude <= 77.9;
       allow delete: if admin();
     }
     function participant(d) {
@@ -88,6 +97,13 @@ service cloud.firestore {
         allow read: if admin() || participant(get(/databases/$(database)/documents/blood_requests/$(id)).data);
         allow write: if false;
       }
+      match /private/contact {
+        allow read, write: if admin() || (active() && request.auth.uid == get(/databases/$(database)/documents/blood_requests/$(id)).data.requesterId);
+      }
+      match /notReadyDonors/{donorId} {
+        allow read: if admin() || (active() && request.auth.uid == get(/databases/$(database)/documents/blood_requests/$(id)).data.requesterId);
+        allow write: if false;
+      }
     }
     match /conversations/{conversationId} {
       allow read: if active() && request.auth.uid in resource.data.participantIds;
@@ -97,6 +113,9 @@ service cloud.firestore {
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
         allow create: if active()
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
+          && !((get(/databases/$(database)/documents/conversations/$(conversationId)).data.blockedUserIds is list)
+            && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.blockedUserIds)
+          && get(/databases/$(database)/documents/blood_requests/$(get(/databases/$(database)/documents/conversations/$(conversationId)).data.requestId)).data.status in ['pending','accepted','partially_fulfilled']
           && request.resource.data.keys().hasOnly(['senderId','body','createdAt'])
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.body is string
@@ -132,6 +151,7 @@ service cloud.firestore {
     match /blood_drives/{id} { allow read: if active(); allow write: if admin(); }
     match /audit_logs/{id} { allow read: if admin(); allow write: if false; }
     match /rate_limits/{id} { allow read: if admin(); allow write: if false; }
+    match /admin_cache/{id} { allow read: if admin(); allow write: if false; }
     match /reports/{id} {
       allow read: if admin() || (active() && resource.data.reportedBy == request.auth.uid);
       allow create: if active() && request.resource.data.reportedBy == request.auth.uid;

@@ -97,7 +97,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
     return PopScope(
       canPop: false,
       child: Scaffold(
-        backgroundColor: const Color(0xFF0A0A0F),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Stack(
           children: [
             // ── Background blobs ──
@@ -282,9 +282,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                             LayoutBuilder(
                               builder: (context, constraints) {
                                 final twoColumns = constraints.maxWidth >= 760;
-                                final cardWidth = twoColumns
-                                    ? (constraints.maxWidth - 16) / 2
-                                    : constraints.maxWidth;
+                                final cardWidth =
+                                    twoColumns
+                                        ? (constraints.maxWidth - 16) / 2
+                                        : constraints.maxWidth;
                                 return Wrap(
                                   spacing: 16,
                                   runSpacing: 16,
@@ -292,34 +293,41 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                                     SizedBox(
                                       width: cardWidth,
                                       child: _RoleCard(
-                              icon: Icons.volunteer_activism_rounded,
-                              badge: 'SAVE A LIFE',
-                              title: 'Donate Blood',
-                              description:
-                                  'Register as a donor and help someone in need.',
-                              ctaLabel: 'Continue as Donor',
-                              accentColor: const Color(0xFFEF5350),
-                              glowColor: const Color(0xFFB71C1C),
-                              isLoading: _isLoading && _selectedRole == 'donor',
+                                        icon: Icons.volunteer_activism_rounded,
+                                        badge: 'SAVE A LIFE',
+                                        title: 'Donate Blood',
+                                        description:
+                                            'Register as a donor and help someone in need.',
+                                        ctaLabel: 'Continue as Donor',
+                                        accentColor: const Color(0xFFEF5350),
+                                        glowColor: const Color(0xFFB71C1C),
+                                        isLoading:
+                                            _isLoading &&
+                                            _selectedRole == 'donor',
                                         isSelected: _selectedRole == 'donor',
-                                        onTap: () => _handleRoleSelection('donor'),
+                                        onTap:
+                                            () => _handleRoleSelection('donor'),
                                       ),
                                     ),
                                     SizedBox(
                                       width: cardWidth,
                                       child: _RoleCard(
-                              icon: Icons.local_hospital_rounded,
-                              badge: 'FIND A DONOR',
-                              title: 'Request Blood',
-                              description:
-                                  'Find compatible blood donors near you.',
-                              ctaLabel: 'Continue as Receiver',
-                              accentColor: const Color(0xFF42A5F5),
-                              glowColor: const Color(0xFF1565C0),
-                              isLoading:
-                                  _isLoading && _selectedRole == 'receiver',
+                                        icon: Icons.local_hospital_rounded,
+                                        badge: 'FIND A DONOR',
+                                        title: 'Request Blood',
+                                        description:
+                                            'Find compatible blood donors near you.',
+                                        ctaLabel: 'Continue as Receiver',
+                                        accentColor: const Color(0xFF42A5F5),
+                                        glowColor: const Color(0xFF1565C0),
+                                        isLoading:
+                                            _isLoading &&
+                                            _selectedRole == 'receiver',
                                         isSelected: _selectedRole == 'receiver',
-                                        onTap: () => _handleRoleSelection('receiver'),
+                                        onTap:
+                                            () => _handleRoleSelection(
+                                              'receiver',
+                                            ),
                                       ),
                                     ),
                                   ],
@@ -489,48 +497,52 @@ class _RoleCardState extends State<_RoleCard> {
     width: compact ? double.infinity : 170,
     height: 42,
     child: Center(
-      child: widget.isLoading
-          ? SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: widget.accentColor,
-              ),
-            )
-          : Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: widget.accentColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: widget.accentColor.withValues(alpha: 0.3),
+      child:
+          widget.isLoading
+              ? SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: widget.accentColor,
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      widget.ctaLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: widget.accentColor,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
+              )
+              : Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: widget.accentColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: widget.accentColor.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.ctaLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: widget.accentColor,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: widget.accentColor,
-                    size: 15,
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      color: widget.accentColor,
+                      size: 15,
+                    ),
+                  ],
+                ),
               ),
-            ),
     ),
   );
 
@@ -576,44 +588,44 @@ class _RoleCardState extends State<_RoleCard> {
               ),
             ],
           ),
-           child: LayoutBuilder(
-             builder: (context, constraints) {
-               final compact = constraints.maxWidth < 520;
-               if (compact) {
-                 return Column(
-                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                   children: [
-                     Row(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       children: [
-                         _iconBox(),
-                         const SizedBox(width: 18),
-                         Expanded(child: _copy()),
-                       ],
-                     ),
-                     const SizedBox(height: 18),
-                     _cta(compact: true),
-                   ],
-                 );
-               }
-               return Row(
-                 crossAxisAlignment: CrossAxisAlignment.center,
-                 children: [
-                   _iconBox(),
-                   const SizedBox(width: 18),
-                   Expanded(child: _copy()),
-                   const SizedBox(width: 16),
-                   _cta(compact: false),
-                 ],
-               );
-             },
-           ),
-           /*
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 520;
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _iconBox(),
+                        const SizedBox(width: 18),
+                        Expanded(child: _copy()),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    _cta(compact: true),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _iconBox(),
+                  const SizedBox(width: 18),
+                  Expanded(child: _copy()),
+                  const SizedBox(width: 16),
+                  _cta(compact: false),
+                ],
+              );
+            },
+          ),
+          /*
              The compact and wide layouts above deliberately keep the CTA's
              footprint stable while loading. This prevents selection from
              changing the text column's constraints and moving the card.
            */
-            /* children: [
+          /* children: [
               // Icon box
               Container(
                 width: 56,

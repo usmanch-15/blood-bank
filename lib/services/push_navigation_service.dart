@@ -1,4 +1,7 @@
 import '../screens/requests/request_tracking_screen.dart';
+import '../screens/communication/voice_call_screen.dart';
+import '../screens/communication/chat_screen.dart';
+import '../l10n/app_localizations.dart';
 import '../screens/settings/my_reports_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -73,6 +76,7 @@ class PushNavigationService {
   bool _initialized = false;
   bool _landingReady = false;
   RemoteMessage? _pendingMessage;
+  String? _openCall;
 
   void sessionLanded() {
     _landingReady = true;
@@ -112,6 +116,10 @@ class PushNavigationService {
   }
 
   void _showForegroundBanner(RemoteMessage message) {
+    if (message.data['type'] == 'incoming_call') {
+      _handleNotificationTap(message);
+      return;
+    }
     final context = rootNavigatorKey.currentState?.overlay?.context;
     if (context == null) return;
 
@@ -151,12 +159,57 @@ class PushNavigationService {
     final navigator = rootNavigatorKey.currentState;
     if (navigator == null) return;
     final auth = navigator.context.read<AuthController>();
-    if (!auth.isLoggedIn) return;
+    if (!auth.sessionReady) {
+      void whenReady() {
+        if (!auth.sessionReady) return;
+        auth.removeListener(whenReady);
+        openNotification(type, relatedId);
+      }
+
+      auth.addListener(whenReady);
+      return;
+    }
+    if (!auth.isLoggedIn || auth.accessRevoked) return;
     try {
+      final validId =
+          relatedId != null &&
+          relatedId.isNotEmpty &&
+          relatedId.length <= 256 &&
+          !relatedId.contains('/');
+      if (type == 'incoming_call' && validId) {
+        if (_openCall != null) return;
+        _openCall = relatedId;
+        try {
+          await navigator.push(
+            MaterialPageRoute(
+              builder: (_) => VoiceCallScreen(incomingSessionId: relatedId),
+            ),
+          );
+        } finally {
+          _openCall = null;
+        }
+        return;
+      }
+      if (type == 'chat_message' && validId) {
+        navigator.push(
+          MaterialPageRoute(
+            builder:
+                (_) => ChatScreen(
+                  conversationId: relatedId,
+                  title: AppLocalizations.of(navigator.context).chat,
+                ),
+          ),
+        );
+        return;
+      }
       if (type == 'report_update') {
         navigator.push(
           MaterialPageRoute(builder: (_) => const MyReportsScreen()),
         );
+        return;
+      }
+      if (type == 'donor_invite' && validId) {
+        navigator.push(MaterialPageRoute(builder: (_) => RequestTrackingScreen(requestId: relatedId)));
         return;
       }
       if ([

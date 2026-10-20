@@ -28,43 +28,54 @@ class GeoLocationService {
     );
   }
 
-  static const Map<String, List<String>> compatibleDonorGroups = {
-    'A+': ['A+', 'A-', 'O+', 'O-'],
-    'A-': ['A-', 'O-'],
-    'B+': ['B+', 'B-', 'O+', 'O-'],
-    'B-': ['B-', 'O-'],
-    'AB+': ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
-    'AB-': ['A-', 'B-', 'AB-', 'O-'],
-    'O+': ['O+', 'O-'],
-    'O-': ['O-'],
-  };
-
   Future<List<DonorWithDistance>> findCompatibleDonorsWithDistance({
     required double receiverLat,
     required double receiverLng,
     String? bloodGroup,
-    double maxRadiusKm = 2000,
+    double maxRadiusKm = 5,
+    String? cursor,
+  }) async =>
+      (await findCompatibleDonorsPage(
+        receiverLat: receiverLat,
+        receiverLng: receiverLng,
+        bloodGroup: bloodGroup,
+        maxRadiusKm: maxRadiusKm,
+        cursor: cursor,
+      )).donors;
+
+  Future<DonorSearchPage> findCompatibleDonorsPage({
+    required double receiverLat,
+    required double receiverLng,
+    String? bloodGroup,
+    double maxRadiusKm = 5,
+    String? cursor,
   }) async {
     final result = await WorkflowService.call('findDonors', {
       'latitude': receiverLat,
       'longitude': receiverLng,
       'bloodGroup': bloodGroup,
       'radiusKm': maxRadiusKm,
+      if (cursor != null) 'cursor': cursor,
     });
-    return (result['donors'] as List).map((raw) {
-      final d = Map<String, dynamic>.from(raw);
-      return DonorWithDistance(
-        donor: DonorModel.fromFirestore(d, d['uid']),
-        distanceKm: (d['distanceKm'] as num).toDouble(),
-      );
-    }).toList();
+    final donors =
+        (result['donors'] as List).map((raw) {
+          final d = Map<String, dynamic>.from(raw);
+          return DonorWithDistance(
+            donor: DonorModel.fromFirestore(d, d['uid']),
+            distanceKm: (d['distanceKm'] as num).toDouble(),
+          );
+        }).toList();
+    return DonorSearchPage(
+      donors: donors,
+      cursor: result['cursor']?.toString(),
+    );
   }
 
   Future<List<DonorModel>> findNearbyDonors({
     required double receiverLat,
     required double receiverLng,
     String? bloodGroup,
-    double radiusKm = 15,
+    double radiusKm = 5,
   }) async =>
       (await findCompatibleDonorsWithDistance(
         receiverLat: receiverLat,
@@ -76,7 +87,7 @@ class GeoLocationService {
     required double receiverLat,
     required double receiverLng,
     String? bloodGroup,
-    List<double> radiiKm = const [5, 10, 25, 50, 2000],
+    List<double> radiiKm = const [5, 10, 25, 50, 100, 250, 500, 1000],
   }) async {
     final all = await findCompatibleDonorsWithDistance(
       receiverLat: receiverLat,
@@ -100,4 +111,10 @@ class DonorWithDistance {
   final DonorModel donor;
   final double distanceKm;
   DonorWithDistance({required this.donor, required this.distanceKm});
+}
+
+class DonorSearchPage {
+  final List<DonorWithDistance> donors;
+  final String? cursor;
+  const DonorSearchPage({required this.donors, this.cursor});
 }

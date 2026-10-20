@@ -65,6 +65,7 @@ class AgoraVoiceController {
   Future<void> join(
     VoiceCallSession session, {
     required void Function(String) onState,
+    void Function()? onTokenExpiring,
   }) async {
     final engine = createAgoraRtcEngine();
     _engine = engine;
@@ -76,11 +77,13 @@ class AgoraVoiceController {
     );
     engine.registerEventHandler(
       RtcEngineEventHandler(
-        onJoinChannelSuccess: (_, __) => onState('connected'),
+        onJoinChannelSuccess: (_, __) => onState('connecting'),
         onUserJoined: (_, __, ___) => onState('connected'),
         onUserOffline: (_, __, ___) => onState('ended'),
         onError: (err, _) => onState('error:$err'),
         onConnectionStateChanged: (_, state, __) => onState(state.name),
+        onTokenPrivilegeWillExpire:
+            (connection, token) => onTokenExpiring?.call(),
       ),
     );
     await engine.enableAudio();
@@ -98,5 +101,13 @@ class AgoraVoiceController {
     if (engine == null) return;
     await engine.leaveChannel();
     await engine.release();
+  }
+
+  Future<void> setMuted(bool muted) async =>
+      _engine?.muteLocalAudioStream(muted);
+  Future<void> setSpeaker(bool enabled) async =>
+      _engine?.setEnableSpeakerphone(enabled);
+  Future<void> renewToken(String token) async {
+    await _engine?.renewToken(token);
   }
 }

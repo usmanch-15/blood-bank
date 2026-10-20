@@ -55,6 +55,7 @@ function isNotificationAllowed(userData, category) {
   // Default to true if the specific preference field doesn't exist yet
   // (so users who haven't touched Settings still get notified).
   const preference = category === 'donation_confirmed' ? 'rewardUpdates'
+    : category === 'eligibilityReminders' ? 'rewardUpdates'
     : category === 'sos' ? 'sosAlerts' : category;
   return prefs[preference] !== false;
 }

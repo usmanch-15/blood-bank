@@ -301,7 +301,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                             // Form
                             Form(
                               key: _formKey,
-                              autovalidateMode: AutovalidateMode.onUserInteraction,
+                              autovalidateMode:
+                                  AutovalidateMode.onUserInteraction,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
@@ -480,11 +481,12 @@ class _SignUpScreenState extends State<SignUpScreen>
                                         size: 20,
                                       ),
                                     ),
-                                    validator: (v) =>
-                                        AppValidators.validateConfirmPassword(
-                                          v,
-                                          _passwordController.text,
-                                        ),
+                                    validator:
+                                        (v) =>
+                                            AppValidators.validateConfirmPassword(
+                                              v,
+                                              _passwordController.text,
+                                            ),
                                   ),
                                   const SizedBox(height: 28),
 

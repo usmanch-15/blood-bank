@@ -2,7 +2,9 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     function active() {
-      return request.auth != null && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == 'approved';
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == 'approved';
     }
     match /certificates/{donorId}/{fileName} {
       allow read: if active() && request.auth.uid == donorId;
@@ -11,6 +13,7 @@ service firebase.storage {
     match /certificates/{donorId}/{donationId}/certificate.pdf {
       allow read: if active() && request.auth.uid == donorId;
       allow create, update: if active() && request.auth.uid == donorId
+        && firestore.exists(/databases/(default)/documents/donations/$(donationId))
         && firestore.get(/databases/(default)/documents/donations/$(donationId)).data.donorId == donorId
         && request.resource.size < 5 * 1024 * 1024 && request.resource.contentType == 'application/pdf';
       allow delete: if active() && request.auth.uid == donorId;
@@ -19,6 +22,14 @@ service firebase.storage {
       allow read: if active();
       allow create, update: if active() && request.auth.uid == userId
         && request.resource.size < 3 * 1024 * 1024 && request.resource.contentType.matches('image/.*');
+      allow delete: if active() && request.auth.uid == userId;
+    }
+    match /verification_evidence/{userId}/{fileName} {
+      allow create, update: if active() && request.auth.uid == userId
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf');
+      allow read: if active()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
       allow delete: if active() && request.auth.uid == userId;
     }
     match /{allPaths=**} { allow read, write: if false; }

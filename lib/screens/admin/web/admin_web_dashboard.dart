@@ -7,10 +7,12 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'admin_web_users.dart';
 import 'admin_web_requests.dart';
-import 'admin_web_analytics.dart';
+import 'admin_analytics_g2_screen.dart';
 import 'admin_web_donations.dart';
 import 'admin_web_reports.dart';
 import 'admin_web_notifications.dart';
+import 'admin_web_review_screens.dart';
+import 'admin_web_flagged_reports.dart';
 import '../../../services/auth_service.dart';
 import '../../auth/login_screen.dart';
 
@@ -80,6 +82,9 @@ class _AdminWebDashboardState extends State<AdminWebDashboard>
     ('Analytics', Icons.insights_rounded),
     ('Donations', Icons.favorite_rounded),
     ('Reports', Icons.flag_rounded),
+    ('Emergency Review', Icons.warning_amber_rounded),
+    ('Verification Review', Icons.verified_user_rounded),
+    ('Flagged / Reports', Icons.report_problem_rounded),
     ('Notifications', Icons.notifications_rounded),
     ('Support', Icons.support_agent),
     ('Audit & Export', Icons.history),
@@ -96,9 +101,12 @@ class _AdminWebDashboardState extends State<AdminWebDashboard>
       const _DashboardHome(),
       AdminWebUsers(),
       AdminWebRequests(),
-      AdminWebAnalytics(),
+      const AdminAnalyticsG2Screen(),
       AdminWebDonations(),
       AdminWebReports(),
+      const AdminEmergencyReviewScreen(),
+      const AdminVerificationReviewScreen(),
+      const AdminFlaggedReportsScreen(),
       AdminWebNotifications(),
       const MyReportsScreen(admin: true),
       const AdminAuditScreen(),
@@ -358,15 +366,21 @@ class _Sidebar extends StatelessWidget {
                           color: selected ? Colors.white : _T.slate400,
                         ),
                         const SizedBox(width: 12),
-                        Text(
-                          sections[i].$1,
-                          style: GoogleFonts.inter(
-                            color: selected ? Colors.white : _T.slate400,
-                            fontWeight:
-                                selected ? FontWeight.w600 : FontWeight.w500,
-                            fontSize: 13.5,
+                        Expanded(
+                          child: Text(
+                            sections[i].$1,
+                            style: GoogleFonts.inter(
+                              color: selected ? Colors.white : _T.slate400,
+                              fontWeight:
+                                  selected ? FontWeight.w600 : FontWeight.w500,
+                              fontSize: 13.5,
+                            ),
                           ),
                         ),
+                        if (sections[i].$1 == 'Emergency Review' ||
+                            sections[i].$1 == 'Verification Review' ||
+                            sections[i].$1 == 'Flagged / Reports')
+                          _AdminPendingBadge(kind: sections[i].$1),
                       ],
                     ),
                   ),
@@ -922,4 +936,23 @@ class _PanelRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AdminPendingBadge extends StatelessWidget {
+  final String kind;
+  const _AdminPendingBadge({required this.kind});
+  Stream<QuerySnapshot<Map<String, dynamic>>> _stream() {
+    final db = FirebaseFirestore.instance;
+    if (kind == 'Emergency Review') return db.collection('blood_requests').where('reviewStatus', isEqualTo: 'pending_review').limit(100).snapshots();
+    if (kind == 'Verification Review') return db.collection('verification_requests').where('status', isEqualTo: 'pending').limit(100).snapshots();
+    return db.collection('misuse_reports').where('status', isEqualTo: 'pending').limit(100).snapshots();
+  }
+  @override
+  Widget build(BuildContext context) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream: _stream(),
+    builder: (context, snap) {
+      if (!snap.hasData || snap.hasError || snap.data!.docs.isEmpty) return const SizedBox.shrink();
+      return Container(constraints: const BoxConstraints(minWidth: 20), padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: _T.crimson, borderRadius: BorderRadius.circular(10)), child: Text('${snap.data!.docs.length}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)));
+    },
+  );
 }

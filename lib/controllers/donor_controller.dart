@@ -86,6 +86,11 @@ class DonorController extends ChangeNotifier {
       throw StateError('Use phone verification to change your number.');
     }
     if (latitude != null || longitude != null) {
+      if (latitude == null ||
+          longitude == null ||
+          !LocationHelper.inPakistan(latitude, longitude)) {
+        throw LocationOutsidePakistan();
+      }
       final data = (await userRef.get()).data();
       if (data?['locationSharingEnabled'] != true) {
         throw StateError('Enable location sharing in Settings first.');

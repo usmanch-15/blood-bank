@@ -6,11 +6,7 @@ class AccountPolicy {
       const ['donor', 'receiver', 'admin'].contains(data['role']);
 
   static String route(Map<String, dynamic> data) =>
-      data['role'] == 'admin'
-          ? '/admin/dashboard'
-          : data['role'] == 'receiver'
-          ? '/receiver'
-          : '/donor';
+      data['role'] == 'admin' ? '/admin/dashboard' : '/role-select';
 
   static bool canSwitchMode(String? role, String mode) =>
       const ['donor', 'receiver'].contains(role) &&

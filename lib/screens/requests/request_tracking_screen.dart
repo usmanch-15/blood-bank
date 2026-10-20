@@ -132,36 +132,6 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
     }
   }
 
-  Future<void> _contact(String donor) async {
-    try {
-      final d = await WorkflowService.call('getDonorContact', {
-        'requestId': widget.requestId,
-        'donorId': donor,
-      });
-      await _phone(d['phoneNumber'] as String?);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
-    }
-  }
-
-  Future<void> _phone(String? number) async {
-    if (number == null ||
-        number.isEmpty ||
-        !await launchUrl(Uri(scheme: 'tel', path: number))) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Contact number or dialer unavailable.'),
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final d = _data,
@@ -239,6 +209,15 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                   Text(
                     'Requested: ${d['quantity']} • Donated: ${d['donatedUnits'] ?? 0} • Remaining: ${d['remainingUnits'] ?? d['quantity']}',
                   ),
+                  if (owner)
+                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: FirebaseFirestore.instance.collection('blood_requests/${widget.requestId}/invites').snapshots(),
+                      builder: (context, invites) {
+                        if (!invites.hasData || invites.data!.docs.isEmpty) return const SizedBox.shrink();
+                        final l = AppLocalizations.of(context);
+                        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const SizedBox(height: 8), Text('Donor invitations'), ...invites.data!.docs.map((invite) { final status = invite.data()['status']?.toString(); final label = status == 'confirmed' ? l.confirmedStatus : status == 'declined' ? l.declinedStatus : l.invitedStatus; return Text('${invite.id}: $label'); })]);
+                      },
+                    ),
                   if (deadline != null)
                     Text('Required by: ${deadline.toDate().toLocal()}'),
                   if (!canViewHospitalAddress)
@@ -265,14 +244,6 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                         children: [
                           OutlinedButton.icon(
                             onPressed:
-                                () => _phone(d['contactNumber'] as String?),
-                            icon: const Icon(Icons.call),
-                            label: Text(
-                              AppLocalizations.of(context).callRequester,
-                            ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed:
                                 () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -287,6 +258,25 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                             label: Text(AppLocalizations.of(context).callInApp),
                           ),
                         ],
+                      ),
+                    if (!owner && assigned && mine?['status'] != 'withdrawn')
+                      TextButton.icon(
+                        onPressed:
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) => ChatScreen(
+                                      conversationId:
+                                          '${widget.requestId}_${FirebaseAuth.instance.currentUser?.uid}',
+                                      title:
+                                          d['requesterName']?.toString() ??
+                                          'Private chat',
+                                    ),
+                              ),
+                            ),
+                        icon: const Icon(Icons.chat_bubble_outline),
+                        label: Text(AppLocalizations.of(context).chat),
                       ),
                     if (d['latitude'] != null && d['longitude'] != null)
                       OutlinedButton.icon(
@@ -318,16 +308,18 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                       !owner &&
                       !assigned &&
                       mine?['status'] != 'completed')
-                    FilledButton(
-                      onPressed:
-                          _busy
-                              ? null
-                              : () => _action(
-                                'acceptDonation',
-                                {},
-                                'Commit to donating one unit?',
-                              ),
-                      child: Text(AppLocalizations.of(context).acceptRespond),
+                    FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                      future: FirebaseFirestore.instance.doc('blood_requests/${widget.requestId}/invites/${_uid ?? ''}').get(),
+                      builder: (context, invite) {
+                        final status = invite.data?.data()?['status']?.toString();
+                        if (status == 'invited') {
+                          return Wrap(spacing: 8, children: [
+                            FilledButton(onPressed: _busy ? null : () => _action('acceptDonation', {}, 'Confirm donation invitation?'), child: Text(AppLocalizations.of(context).acceptRespond)),
+                            OutlinedButton(onPressed: _busy ? null : () => _action('declineRequest', {}, 'Decline donation invitation?'), child: Text(AppLocalizations.of(context).donorDidNotAgree)),
+                          ]);
+                        }
+                        return FilledButton(onPressed: _busy ? null : () => _action('acceptDonation', {}, 'Commit to donating one unit?'), child: Text(AppLocalizations.of(context).acceptRespond));
+                      },
                     ),
                   if (agreementPending && !owner)
                     FilledButton(
@@ -414,12 +406,6 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                                 Wrap(
                                   spacing: 8,
                                   children: [
-                                    TextButton(
-                                      onPressed: () => _contact(e.key),
-                                      child: Text(
-                                        AppLocalizations.of(context).contact,
-                                      ),
-                                    ),
                                     TextButton.icon(
                                       onPressed:
                                           () => Navigator.push(

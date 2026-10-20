@@ -11,7 +11,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/workflow_service.dart';
 import '../../constants/app_colors.dart';
+import '../../widgets/premium_ui.dart' hide UrgencyBadge;
 import '../../constants/app_spacing.dart';
 import '../../utils/app_animations.dart';
 
@@ -19,6 +21,8 @@ import '../../widgets/app_custom_widgets.dart';
 import '../../widgets/status_badge.dart';
 import 'donor_profile_screen.dart';
 import 'donation_history_screen.dart';
+import 'my_responses_screen.dart';
+import 'blood_needed_near_you_screen.dart';
 
 import 'rewards_screen.dart'; // ✅ FIX — see note below
 import '../settings/settings_screen.dart'; // ✅ NEW — was never reachable anywhere in the app
@@ -243,14 +247,39 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
               ),
               const SizedBox(height: AppSpacing.xl),
 
+              PremiumSectionHeader(
+                title: AppLocalizations.of(context).dashboard,
+                subtitle: AppLocalizations.of(context).matchingMedicalNote,
+              ),
+
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Available to donate'),
+                subtitle: const Text('Keep this in sync with Settings'),
+                value: _userData?['isAvailable'] == true,
+                onChanged: (value) async {
+                  final uid = _auth.currentUser?.uid;
+                  if (uid == null) return;
+                  await _firestore.collection('users').doc(uid).update({
+                    'isAvailable': value,
+                  });
+                  if (mounted) {
+                    setState(
+                      () => _userData = {...?_userData, 'isAvailable': value},
+                    );
+                  }
+                },
+              ),
+
               // ── Stats Row ──
               SlideInAnimation(
                 delay: const Duration(milliseconds: 80),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final width = constraints.maxWidth >= 420
-                        ? (constraints.maxWidth - AppSpacing.md - 3) / 2
-                        : constraints.maxWidth;
+                    final width =
+                        constraints.maxWidth >= 420
+                            ? (constraints.maxWidth - AppSpacing.md - 3) / 2
+                            : constraints.maxWidth;
                     return Wrap(
                       spacing: AppSpacing.md + 3,
                       runSpacing: AppSpacing.md,
@@ -327,6 +356,17 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
               ),
               const SizedBox(height: AppSpacing.xxl + 1),
 
+              if ((_userData?['lastDonationDate'] as Timestamp?) != null)
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: const Text('You may be able to donate again'),
+                    subtitle: Text(
+                      'After ${EligibilityChecker.nextEligibleDate((_userData?['lastDonationDate'] as Timestamp).toDate())?.toLocal().toString().split(' ').first ?? 'the eligible date'}, subject to medical screening. Qualified medical staff decide actual eligibility.',
+                    ),
+                  ),
+                ),
+
               // ── Available Blood Requests ──
               Text(
                 'Matching Blood Requests',
@@ -342,6 +382,50 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                 style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
               const SizedBox(height: AppSpacing.md),
+
+              FutureBuilder<Map<String, dynamic>>(
+                future: WorkflowService.call('discoverRequests', {
+                  'radiusKm': 50,
+                  'limit': 3,
+                }),
+                builder: (context, snap) {
+                  final items = (snap.data?['requests'] as List?) ?? const [];
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (snap.connectionState == ConnectionState.waiting)
+                        const LinearProgressIndicator(),
+                      ...items
+                          .take(3)
+                          .map(
+                            (r) => ListTile(
+                              dense: true,
+                              title: Text(
+                                '${r['bloodGroup'] ?? '—'} • ${r['hospitalName'] ?? 'Blood request'}',
+                              ),
+                              subtitle: Text(
+                                '${r['unitsNeeded'] ?? 0} units • ${r['status'] ?? 'open'}',
+                              ),
+                            ),
+                          ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed:
+                              () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => const BloodNeededNearYouScreen(),
+                                ),
+                              ),
+                          child: const Text('See all'),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
 
               _buildActionTile(
                 title: 'My Active Donations',
@@ -365,6 +449,18 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                       MaterialPageRoute(
                         builder:
                             (_) => const RequestListScreen(mode: 'discover'),
+                      ),
+                    ),
+              ),
+              _buildActionTile(
+                title: 'My responses',
+                icon: Icons.track_changes,
+                color: Colors.indigo,
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MyResponsesScreen(),
                       ),
                     ),
               ),

@@ -16,7 +16,8 @@ class _BloodRequestsMapScreenState extends State<BloodRequestsMapScreen> {
   final _requests = <Map<String, dynamic>>[];
   String? _error;
   bool _loading = true;
-  double _radius = 50;
+  double _radius = 5;
+  String? _cursor;
 
   @override
   void initState() {
@@ -24,7 +25,7 @@ class _BloodRequestsMapScreenState extends State<BloodRequestsMapScreen> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool more = false}) async {
     setState(() {
       _loading = true;
       _error = null;
@@ -32,6 +33,7 @@ class _BloodRequestsMapScreenState extends State<BloodRequestsMapScreen> {
     try {
       final page = await WorkflowService.call('discoverRequests', {
         'radiusKm': _radius,
+        if (more) 'cursor': _cursor,
       });
       final items =
           (page['items'] as List)
@@ -40,9 +42,9 @@ class _BloodRequestsMapScreenState extends State<BloodRequestsMapScreen> {
               .toList();
       if (mounted) {
         setState(() {
-          _requests
-            ..clear()
-            ..addAll(items);
+          if (!more) _requests.clear();
+          _requests.addAll(items);
+          _cursor = page['cursor'] as String?;
           _loading = false;
         });
       }
@@ -155,8 +157,8 @@ class _BloodRequestsMapScreenState extends State<BloodRequestsMapScreen> {
                   child: Slider(
                     value: _radius,
                     min: 5,
-                    max: 50,
-                    divisions: 9,
+                    max: 1000,
+                    divisions: 995,
                     label: '${_radius.round()} km',
                     onChanged: (v) => setState(() => _radius = v),
                     onChangeEnd: (_) => _load(),
@@ -166,6 +168,11 @@ class _BloodRequestsMapScreenState extends State<BloodRequestsMapScreen> {
               ],
             ),
           ),
+          if (_cursor != null)
+            TextButton(
+              onPressed: () => _load(more: true),
+              child: Text(AppLocalizations.of(context).loadMore),
+            ),
           Expanded(
             child:
                 _requests.isEmpty

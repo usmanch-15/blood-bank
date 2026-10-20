@@ -10,6 +10,7 @@ class DonationModel {
   final int pointsEarned;
   final String? certificateUrl;
   final Map<String, dynamic>? healthCheckData; // BP, hemoglobin, etc.
+  final String statusLabel;
 
   DonationModel({
     required this.id,
@@ -22,6 +23,7 @@ class DonationModel {
     this.pointsEarned = 50, // Default points per donation
     this.certificateUrl,
     this.healthCheckData,
+    this.statusLabel = 'completed',
   });
 
   /// Create DonationModel from Firestore document
@@ -37,6 +39,7 @@ class DonationModel {
       pointsEarned: json['pointsEarned'] ?? 50,
       certificateUrl: json['certificateUrl'],
       healthCheckData: json['healthCheckData'],
+      statusLabel: donationTimelineLabel(json),
     );
   }
 
@@ -54,4 +57,12 @@ class DonationModel {
       'healthCheckData': healthCheckData,
     };
   }
+}
+
+String donationTimelineLabel(Map<String, dynamic> data) {
+  if (data['disputed'] == true || data['status'] == 'disputed') return 'disputed';
+  if (['cancelled', 'withdrawn', 'released'].contains(data['status'])) return 'cancelled';
+  if (data['completedAt'] != null || data['status'] == 'completed') return 'completed';
+  if (data['acceptedAt'] != null || data['status'] == 'accepted') return 'accepted';
+  return 'proposed';
 }

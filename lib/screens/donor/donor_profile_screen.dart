@@ -1,4 +1,6 @@
 import '../../utils/feedback.dart';
+import '../../utils/location_helper.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../controllers/donor_controller.dart';
@@ -651,7 +653,11 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
+          content: Text(
+            e is LocationOutsidePakistan
+                ? AppLocalizations.of(context).locationInsidePakistan
+                : e.toString(),
+          ),
           action: SnackBarAction(
             label: 'App settings',
             onPressed: Geolocator.openAppSettings,
@@ -710,7 +716,8 @@ class _DonorProfileScreenState extends State<DonorProfileScreen> {
           controller: _locationController,
           label: 'City / general area',
           inputFormatters: AppInputFormatters.address,
-          validator: (value) => AppValidators.validateAddress(value, required: false),
+          validator:
+              (value) => AppValidators.validateAddress(value, required: false),
           suffixIcon: IconButton(
             onPressed: _updateLocation,
             icon: Icon(Icons.my_location),

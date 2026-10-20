@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
+import 'premium_states.dart';
 
 /// Cursor paging retains earlier pages; refresh deliberately starts a new snapshot.
 class PagedRecords extends StatefulWidget {
@@ -87,19 +88,11 @@ class _PagedRecordsState extends State<PagedRecords> {
         ),
         ..._items.map((d) => widget.itemBuilder(context, d)),
         if (_items.isEmpty && !_loading && _error == null)
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(widget.emptyMessage),
-          ),
+          PremiumEmptyState(title: widget.emptyMessage),
         if (_error != null)
-          Padding(padding: const EdgeInsets.all(16), child: Text(_error!)),
+          PremiumErrorState(onRetry: _load, message: _error),
         if (_loading)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            ),
-          ),
+          const PremiumLoading(rows: 1),
         if (!_loading && (_more || _error != null))
           TextButton(
             onPressed: _load,

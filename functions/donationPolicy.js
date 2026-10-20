@@ -11,9 +11,11 @@ const eligible = (donor, now) => !donor.lastDonationDate ||
   now - donor.lastDonationDate.toMillis() >= INTERVAL_MS;
 const compatible = (donorGroup, recipientGroup) =>
   (GROUPS[recipientGroup] || []).includes(donorGroup);
+const urgencyWeight = urgency => ({critical:4, life_threatening:4, urgent:3, normal:2, low:1}[urgency] || 2);
+const matchScore = (urgency, distance) => urgencyWeight(urgency) * 100 - distance;
 function distanceKm(a, b, c, d) {
   const rad = x => x * Math.PI / 180;
   const h = Math.sin(rad(c-a)/2)**2 + Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(rad(d-b)/2)**2;
   return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, h)));
 }
-module.exports = { GROUPS, INTERVAL_MS, POINTS, active, eligible, compatible, distanceKm };
+module.exports = { GROUPS, INTERVAL_MS, POINTS, active, eligible, compatible, distanceKm, urgencyWeight, matchScore };

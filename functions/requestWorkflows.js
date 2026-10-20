@@ -1,12 +1,14 @@
 const {HttpsError} = require('firebase-functions/v2/https');
 const admin = require('./firebaseAdmin');
-const {active, eligible, compatible, INTERVAL_MS, POINTS, distanceKm} = require('./donationPolicy');
-const {nearbyDonors} = require('./nearbyDonors');
+const {active, eligible, compatible, INTERVAL_MS, POINTS, distanceKm, matchScore} = require('./donationPolicy');
+const {nearbyDonors, nearbyDonorsPaged} = require('./nearbyDonors');
+const {radiusKm, inPakistan} = require('./searchPolicy');
 const {validHospitalRecord, matchesHospitalSelection} = require('./hospitalPolicy');
 const db = admin.firestore();
 const now = () => admin.firestore.Timestamp.now();
 const fail = (code, message) => { throw new HttpsError(code, message); };
 const openStatuses = ['pending', 'accepted', 'partially_fulfilled'];
+const DUPLICATE_REQUEST_WINDOW_MINUTES = Number(process.env.DUPLICATE_REQUEST_WINDOW_MINUTES || 30);
 function id(value) {
   if (typeof value !== 'string' || !value.length || value.length > 128 || value.includes('/')) fail('invalid-argument','Invalid identifier.');
   return value;
@@ -48,7 +50,10 @@ function text(value, max, required = false) {
   return value.trim();
 }
 function coordinates(data) {
-  if (!Number.isFinite(data.latitude) || Math.abs(data.latitude)>90 || !Number.isFinite(data.longitude) || Math.abs(data.longitude)>180) fail('invalid-argument','Select a valid hospital location.');
+  if (!inPakistan(data.latitude, data.longitude)) fail('invalid-argument','Select a location inside Pakistan.');
+}
+function searchRadius(value) {
+  try { return radiusKm(value); } catch (_) { fail('invalid-argument','Select a valid search radius.'); }
 }
 async function rateLimit(key, maximum, window = 3600000) {
   await db.runTransaction(async tx => {
@@ -96,9 +101,21 @@ async function createBloodRequest(request) {
     }
   }
   const data = requestData(input, user);
+  if (['urgent','critical','life_threatening'].includes(input.urgency)) data.reviewStatus='pending_review';
   // Client-generated ID makes retries of a successful submission idempotent.
   const requestId = id(request.data?.requestId), ref = db.doc(`blood_requests/${requestId}`);
   await rateLimit(`requests_${user.uid}`,20);
+  const existingBefore = await ref.get();
+  if (existingBefore.exists) {
+    if (existingBefore.data().requesterId !== user.uid) fail('permission-denied','Request belongs to another account.');
+    return {id:requestId};
+  }
+  const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - DUPLICATE_REQUEST_WINDOW_MINUTES * 60000);
+  const recent = await db.collection('blood_requests').where('requesterId','==',user.uid).where('createdAt','>=',cutoff).limit(25).get();
+  if (recent.docs.some(d => {
+    const r=d.data();
+    return r.bloodGroup===data.bloodGroup && String(r.hospitalId||'')===String(data.hospitalId||'') && r.hospitalName===data.hospitalName && ['pending','accepted','partially_fulfilled'].includes(r.status);
+  })) fail('already-exists','A similar blood request was created recently. Please review it before creating another.');
   await db.runTransaction(async tx => {
     const existing = await tx.get(ref);
     if (existing.exists) {
@@ -133,9 +150,27 @@ async function acceptDonation(request) {
     const conversationId = `${requestId}_${caller}`;
     tx.set(db.doc(`conversations/${conversationId}`), {requestId, participantIds:[r.requesterId, caller], updatedAt:now()}, {merge:true});
     tx.update(donorSnap.ref,{activeRequestId:requestId});
+    tx.set(db.doc(`blood_requests/${requestId}/invites/${caller}`),{status:'confirmed',updatedAt:now()},{merge:true});
     notification(tx,`accepted_${requestId}_${caller}`,r.requesterId,requestId,'Donor accepted',`${d.name || 'A donor'} committed one unit. Open request tracking.`);
     event(tx,ref,caller,'accepted');
     return {accepted:true};
+  });
+}
+async function declineRequest(request) {
+  const user=await actor(request), requestId=id(request.data?.requestId), ref=db.doc(`blood_requests/${requestId}`);
+  if (!user.isDonor) fail('permission-denied','Donor account required.');
+  return db.runTransaction(async tx=>{
+    const snap=await tx.get(ref), r=snap.data();
+    if (!r || !openStatuses.includes(r.status) || expired(r)) fail('failed-precondition','This request is closed or expired.');
+    if (r.requesterId===user.uid || !compatible(user.bloodGroup,r.bloodGroup) || !eligible(user,Date.now()) || !user.isAvailable) fail('permission-denied','This request is not available to you.');
+    const existing = assignments(r)[user.uid];
+    if (existing && ['accepted','agreed','awaiting_confirmation','completed'].includes(existing.status)) fail('failed-precondition','You already accepted this request.');
+    const declined=[...(user.declinedRequestIds || [])];
+    if (declined.includes(requestId)) return {declined:true,alreadyDeclined:true};
+    declined.push(requestId);
+    tx.update(db.doc(`users/${user.uid}`),{declinedRequestIds:declined});
+    tx.set(db.doc(`blood_requests/${requestId}/invites/${user.uid}`),{status:'declined',updatedAt:now()},{merge:true});
+    return {declined:true};
   });
 }
 async function updateAssignment(request) {
@@ -243,7 +278,7 @@ function serialize(value) {
   return value;
 }
 function summary(r, requestId, viewer) {
-  const result = {id:requestId,bloodGroup:r.bloodGroup,hospitalName:r.hospitalName,quantity:r.quantity,donatedUnits:r.donatedUnits || 0,remainingUnits:r.remainingUnits ?? r.quantity,urgency:r.urgency,status:expired(r)&&openStatuses.includes(r.status)?'expired':r.status,requiredBy:r.requiredBy,createdAt:r.createdAt};
+  const result = {id:requestId,bloodGroup:r.bloodGroup,hospitalName:r.hospitalName,quantity:r.quantity,donatedUnits:r.donatedUnits || 0,remainingUnits:r.remainingUnits ?? r.quantity,urgency:r.urgency,status:expired(r)&&openStatuses.includes(r.status)?'expired':r.status,reviewStatus:r.reviewStatus || null,requiredBy:r.requiredBy,createdAt:r.createdAt};
   if (viewer && Number.isFinite(viewer.latitude) && Number.isFinite(viewer.longitude) && Number.isFinite(r.latitude) && Number.isFinite(r.longitude)) {
     result.distanceKm = distanceKm(viewer.latitude, viewer.longitude, r.latitude, r.longitude);
     result.latitude = Math.round(r.latitude * 100) / 100;
@@ -256,7 +291,7 @@ async function getRequest(request) {
   if (!r) fail('not-found','Request no longer exists.');
   const permitted=user.role==='admin' || participants(r).includes(user.uid);
   if (!permitted && (!user.isDonor || !openStatuses.includes(r.status) || expired(r))) fail('permission-denied','Request is not available.');
-  const donorParticipant = user.isDonor && participants(r).includes(user.uid);
+  const donorParticipant = user.isDonor && user.uid !== r.requesterId && user.role !== 'admin' && participants(r).includes(user.uid);
   const donorView = donorParticipant ? {
     id:requestId, bloodGroup:r.bloodGroup, hospitalName:r.hospitalName,
     hospitalAddress:r.hospitalAddress, location:r.location, latitude:r.latitude,
@@ -271,24 +306,40 @@ async function getRequest(request) {
 async function discoverRequests(request) {
   const user=await actor(request);
   if (!user.isDonor) fail('permission-denied','Donor account required.');
-  const radius=Math.min(50,Math.max(5,Number(request.data?.radiusKm)||50));
-  let query=db.collection('blood_requests').orderBy(admin.firestore.FieldPath.documentId()).limit(40);
-  if (request.data?.cursor) query=query.startAfter(id(request.data.cursor));
-  const page=await query.get();
-  const items=page.docs.filter(doc=>{const r=doc.data();const distance=Number.isFinite(user.latitude)&&Number.isFinite(user.longitude)&&Number.isFinite(r.latitude)&&Number.isFinite(r.longitude)?distanceKm(user.latitude,user.longitude,r.latitude,r.longitude):Infinity;return r.requesterId!==user.uid && openStatuses.includes(r.status) && !expired(r) && distance<=radius && compatible(user.bloodGroup,r.bloodGroup) && eligible(user,Date.now()) && user.isAvailable;}).map(doc=>summary(doc.data(),doc.id,user));
-  return {items,cursor:page.size===40?page.docs.at(-1).id:null};
+  const radius=searchRadius(request.data?.radiusKm);
+  if (!inPakistan(user.latitude,user.longitude)) fail('failed-precondition','Save a location inside Pakistan to discover requests.');
+  if (!eligible(user,Date.now()) || !user.isAvailable) return {items:[],cursor:null};
+  // Only open requests, at most 400 reads per invocation. Continue through
+  // sparse pages; return a cursor even when the bounded scan has no matches.
+  const base=db.collection('blood_requests').where('status','in',openStatuses)
+    .orderBy(admin.firestore.FieldPath.documentId()).limit(100);
+  let cursor=request.data?.cursor ? id(request.data.cursor) : null;
+  const items=[];
+  for (let batch=0;batch<4;batch++) {
+    const page=await (cursor ? base.startAfter(cursor) : base).get();
+    for (const doc of page.docs) {
+      const r=doc.data();
+      if (r.requesterId!==user.uid && !expired(r) && inPakistan(r.latitude,r.longitude) &&
+          compatible(user.bloodGroup,r.bloodGroup) && !(user.declinedRequestIds || []).includes(doc.id) && distanceKm(user.latitude,user.longitude,r.latitude,r.longitude)<=radius) {
+        items.push(summary(r,doc.id,user));
+      }
+    }
+    cursor=page.size===100?page.docs.at(-1).id:null;
+    if (!cursor || items.length>=40) break;
+  }
+  const urgencyWeight = {critical:4,life_threatening:4,urgent:3,normal:2,low:1};
+  items.sort((a,b)=>(urgencyWeight[b.urgency]||1)-(urgencyWeight[a.urgency]||1) || a.distanceKm-b.distanceKm);
+  return {items,cursor};
 }
 async function findDonors(request) {
   const user=await actor(request), data=request.data || {}; coordinates(data);
-  // Start with the product's 10 km search radius; callers may expand it up
-  // to the nationwide 2,000 km limit when local matches are insufficient.
-  // Presets remain 5/10/25/50 km in the client, but callers may expand
-  // discovery beyond the local area for nationwide matching.
-  const radius=Math.min(2000,Math.max(5,Number(data.radiusKm)||10));
-  const ids=(await nearbyDonors(data.latitude,data.longitude,data.bloodGroup || null,radius)).filter(k=>k!==user.uid);
+  const radius=searchRadius(data.radiusKm);
+  const page=await nearbyDonorsPaged(data.latitude,data.longitude,data.bloodGroup || null,radius,data.cursor,Math.min(100,Number(data.limit)||100));
+  const ids=page.matches.map(k=>k.uid).filter(k=>k!==user.uid);
   const docs=await Promise.all(ids.map(k=>db.doc(`users/${k}`).get()));
   // Never return email, address, donation dates, patient info or exact coordinates.
-  return {donors:docs.filter(doc=>doc.exists).map(doc=>{const d=doc.data();return {uid:doc.id,name:d.name,bloodGroup:d.bloodGroup,isEligible:eligible(d,Date.now()),isAvailable:d.isAvailable===true,status:d.status,latitude:Math.round(d.latitude*100)/100,longitude:Math.round(d.longitude*100)/100,distanceKm:distanceKm(data.latitude,data.longitude,d.latitude,d.longitude)};}).sort((a,b)=>a.distanceKm-b.distanceKm)};
+  const donors=docs.filter(doc=>doc.exists).map(doc=>{const d=doc.data();const distance=distanceKm(data.latitude,data.longitude,d.latitude,d.longitude);const verified=d.verificationStatus==='approved' && (!d.verificationExpiresAt || millis(d.verificationExpiresAt)>Date.now());return {uid:doc.id,name:d.name,bloodGroup:d.bloodGroup,profileImageUrl:d.profileImageUrl || null,profileVerified:verified,isEligible:eligible(d,Date.now()),isAvailable:d.isAvailable===true,status:d.status,latitude:Math.round(d.latitude*100)/100,longitude:Math.round(d.longitude*100)/100,distanceKm:distance,matchScore:matchScore(data.urgency || 'normal',distance)};}).sort((a,b)=>b.matchScore-a.matchScore);
+  return {donors,cursor:page.cursor,scannedPages:page.scannedPages,ranking:'score = urgencyWeight(request) × 100 − distanceKm; urgency weights critical/life_threatening=4, urgent=3, normal=2, low=1'};
 }
 async function createSosAlert(request) {
   const user=await actor(request);
@@ -300,8 +351,8 @@ async function createSosAlert(request) {
   await rateLimit(`sos_${user.uid}`,3);
   const ref=db.collection('sosRequests').doc(), requestRef=db.collection('blood_requests').doc();
   const batch=db.batch();
-  batch.create(requestRef,{...r,sosId:ref.id});
-  batch.create(ref,{receiverId:user.uid,requestId:requestRef.id,bloodGroup:r.bloodGroup,latitude:r.latitude,longitude:r.longitude,urgency:r.urgency,triggerTime:now(),requiredBy:r.requiredBy,isResolved:false,status:'queued',notifiedDonors:[]});
+  batch.create(requestRef,{...r,sosId:ref.id,reviewStatus:'pending_review'});
+  batch.create(ref,{receiverId:user.uid,requestId:requestRef.id,bloodGroup:r.bloodGroup,latitude:r.latitude,longitude:r.longitude,urgency:r.urgency,triggerTime:now(),requiredBy:r.requiredBy,isResolved:false,status:'queued',reviewStatus:'pending_review',notifiedDonors:[]});
   await batch.commit(); return {id:ref.id,requestId:requestRef.id};
 }
 async function getSos(request) {
@@ -320,13 +371,10 @@ async function resolveSos(request) {
   return {resolved:true};
 }
 async function getDonorContact(request) {
-  const user=await actor(request), donorId=id(request.data?.donorId), requestId=id(request.data?.requestId);
-  const r=(await db.doc(`blood_requests/${requestId}`).get()).data();
-  if (!r || (r.requesterId!==user.uid && user.role!=='admin') || !participants(r).includes(donorId)) fail('permission-denied','Contact is shared after a donor accepts your request.');
-  await rateLimit(`contact_${user.uid}`,20);
-  const contact=(await db.doc(`users/${donorId}/private/contact`).get()).data();
-  await db.collection('audit_logs').add({action:'donor_contact_viewed',viewedBy:user.uid,donorId,requestId,createdAt:now()});
-  return {phoneNumber:contact?.phoneNumber || null};
+  await actor(request);
+  // Retain the callable name for old clients, but acceptance alone is not
+  // consent to disclose a telephone number. Explicit sharing comes in Stage C.
+  fail('permission-denied','Automatic phone disclosure is disabled. Use in-app communication.');
 }
 async function expireRequests() {
   // Page every open request; legacy records without deadlines stay visible for migration.
@@ -339,4 +387,4 @@ async function expireRequests() {
     cursor=page.size===100?page.docs.at(-1).id:null;
   } while(cursor);
 }
-module.exports={createBloodRequest,acceptDonation,updateAssignment,confirmDonation,closeRequest,getRequest,discoverRequests,findDonors,createSosAlert,getSos,resolveSos,getDonorContact,actor,rateLimit,serialize,expired,openStatuses,expireRequests};
+module.exports={createBloodRequest,acceptDonation,declineRequest,updateAssignment,confirmDonation,closeRequest,getRequest,discoverRequests,findDonors,createSosAlert,getSos,resolveSos,getDonorContact,actor,rateLimit,serialize,expired,openStatuses,expireRequests};

@@ -759,7 +759,9 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             onPressed: () async {
-                              if (!emailFieldKey.currentState!.validate()) return;
+                              if (!emailFieldKey.currentState!.validate()) {
+                                return;
+                              }
                               Navigator.pop(ctx);
                               try {
                                 await _authService.resetPassword(

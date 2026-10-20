@@ -19,7 +19,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
   final _items = <Map<String, dynamic>>[];
   String? _cursor, _error;
   bool _loading = false, _more = true;
-  double _radiusKm = 50;
+  double _radiusKm = 5;
   String? _urgency;
   @override
   void initState() {
@@ -54,6 +54,32 @@ class _RequestListScreenState extends State<RequestListScreen> {
     }
   }
 
+  Future<void> _respond(String id) async {
+    try {
+      await WorkflowService.call('acceptDonation', {'requestId': id});
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  Future<void> _decline(String id) async {
+    try {
+      await WorkflowService.call('declineRequest', {'requestId': id});
+      setState(() => _items.removeWhere((item) => item['id'] == id));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
   Widget _tile(Map<String, dynamic> d, String id, {String? sosId}) => Card(
     child: ListTile(
       title: Text(
@@ -63,7 +89,21 @@ class _RequestListScreenState extends State<RequestListScreen> {
         '${d['status']} • ${d['remainingUnits'] ?? d['quantity'] ?? 1} unit(s) remaining\n'
         'Hospital address: ${(d['hospitalAddress'] ?? '').toString().trim().isEmpty ? 'Not provided' : d['hospitalAddress']}',
       ),
-      trailing: const Icon(Icons.chevron_right),
+      trailing:
+          widget.mode == 'discover'
+              ? Wrap(
+                children: [
+                  TextButton(
+                    onPressed: () => _respond(id),
+                    child: const Text('Respond'),
+                  ),
+                  TextButton(
+                    onPressed: () => _decline(id),
+                    child: const Text('Decline'),
+                  ),
+                ],
+              )
+              : const Icon(Icons.chevron_right),
       onTap:
           () => Navigator.push(
             context,
@@ -140,19 +180,31 @@ class _RequestListScreenState extends State<RequestListScreen> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(AppLocalizations.of(context).within),
-                      for (final radius in [5.0, 10.0, 25.0, 50.0])
+                      for (final radius in [
+                        5.0,
+                        10.0,
+                        25.0,
+                        50.0,
+                        100.0,
+                        250.0,
+                        500.0,
+                        1000.0,
+                      ])
                         ChoiceChip(
                           label: Text('${radius.round()} km'),
                           selected: _radiusKm == radius,
-                          onSelected: (_) {
-                            setState(() {
-                              _radiusKm = radius;
-                              _cursor = null;
-                              _items.clear();
-                              _more = true;
-                            });
-                            _load();
-                          },
+                          onSelected:
+                              _loading
+                                  ? null
+                                  : (_) {
+                                    setState(() {
+                                      _radiusKm = radius;
+                                      _cursor = null;
+                                      _items.clear();
+                                      _more = true;
+                                    });
+                                    _load();
+                                  },
                         ),
                       DropdownButton<String>(
                         value: _urgency,

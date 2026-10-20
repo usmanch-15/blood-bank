@@ -20,14 +20,15 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const { sendPushToUsers } = require('./notificationService');
 
-const MIN_DAYS_BETWEEN_DONATIONS = 90;
+// Medical-review setting. Keep the current policy default unless a clinician changes it.
+const DONATION_REMINDER_INTERVAL_DAYS = Number(process.env.DONATION_REMINDER_INTERVAL_DAYS || 90);
 
 async function checkEligibilityReminders() {
   const now = Date.now();
   // Donors become eligible 90 days after lastDonationDate. We check for
   // donors whose eligibility window opened in the last 24 hours (i.e.
   // ran this job daily), so each donor gets exactly one reminder.
-  const windowEnd = now - MIN_DAYS_BETWEEN_DONATIONS * 24 * 60 * 60 * 1000;
+  const windowEnd = now - DONATION_REMINDER_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
   const windowStart = windowEnd - 24 * 60 * 60 * 1000;
 
   const donorsSnap = await db
@@ -47,11 +48,11 @@ async function checkEligibilityReminders() {
 
   await sendPushToUsers(uids, {
     title: "You're eligible to donate again! 🩸",
-    body: 'It has been 90 days since your last donation. Someone nearby might need your help.',
-    data: { type: 'rewardUpdates' }, // reuses existing category, or add a new 'eligibilityReminders' pref
+    body: `You may be able to donate again after ${DONATION_REMINDER_INTERVAL_DAYS} days, subject to medical screening.`,
+    data: { type: 'eligibilityReminders' },
   });
 
   return null;
 }
 
-module.exports = { checkEligibilityReminders };
+module.exports = { checkEligibilityReminders, DONATION_REMINDER_INTERVAL_DAYS };

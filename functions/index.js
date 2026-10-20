@@ -1,5 +1,5 @@
 
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("./firebaseAdmin");
@@ -10,19 +10,42 @@ const db = admin.firestore();
 const { sendPushToUsers, sendPushToUser } = require("./notificationService");
 const { sendSmsFallback, twilioAuthToken } = require("./smsFallback");
 const { checkEligibilityReminders } = require("./eligibilityReminder");
+const donationHistory = require('./donationHistoryWorkflows');
+const verification = require('./verificationWorkflows');
+const emergencyReview = require('./emergencyReviewWorkflows');
+const {notifyPendingEmergency} = require('./emergencyAlerts');
+const {escalatePendingEmergencyReviews} = require('./emergencyEscalation');
+exports.notifyPendingEmergency = onDocumentCreated('blood_requests/{requestId}', notifyPendingEmergency);
 
 const workflows = require('./secureWorkflows');
 const voice = require('./voiceWorkflows');
 const {nearbyDonors} = require('./nearbyDonors');
-for (const name of ['createBloodRequest','acceptDonation','updateAssignment','closeRequest','getRequest','discoverRequests','findDonors','getSos','resolveSos']) exports[name] = onCall(workflows[name]);
+const {notifyRequest} = require('./requestNotifications');
+const {notifyChatMessage} = require('./chatNotifications');
+const chatWorkflows = require('./chatWorkflows');
+exports.onChatMessageCreated = onDocumentCreated('conversations/{conversationId}/messages/{messageId}', notifyChatMessage);
+for (const name of ['createBloodRequest','acceptDonation','declineRequest','updateAssignment','closeRequest','getRequest','discoverRequests','findDonors','getSos','resolveSos']) exports[name] = onCall(workflows[name]);
 const administration = require('./adminWorkflows');
 for (const name of ['adminAction','submitReport','exportPage','adminRequestAction']) exports[name] = onCall(administration[name]);
+exports.adminAnalytics = onCall(administration.adminAnalytics);
+exports.donationHistory = onCall(donationHistory.donationHistory);
+exports.submitDonationDispute = onCall(donationHistory.submitDonationDispute);
+exports.acknowledgeDonation = onCall(donationHistory.acknowledgeDonation);
+exports.disputeDonation = onCall(donationHistory.disputeDonation);
+exports.submitVerification = onCall(verification.submitVerification);
+exports.reviewVerification = onCall(verification.reviewVerification);
+exports.revokeVerification = onCall(verification.revokeVerification);
+exports.reviewEmergencyRequest = onCall(emergencyReview.reviewEmergencyRequest);
+exports.replyEmergencyClarification = onCall(emergencyReview.replyEmergencyClarification);
+for (const name of ['blockUser','unblockUser','markConversationRead','reportConversation','sharePhoneNumber']) exports[name] = onCall(chatWorkflows[name]);
 exports.confirmDonation = onCall(workflows.confirmDonation);
 exports.deleteAccount = onCall(request => workflows.deleteAccount(request));
 exports.createSosAlert = onCall(workflows.createSosAlert);
 exports.createVoiceCallSession = onCall({secrets: [voice.agoraCertificate]}, voice.createVoiceCallSession);
 exports.getVoiceCallToken = onCall({secrets: [voice.agoraCertificate]}, voice.getVoiceCallToken);
 exports.updateVoiceCallSession = onCall({secrets: [voice.agoraCertificate]}, voice.updateVoiceCallSession);
+exports.inviteDonor = onCall(voice.inviteDonor);
+exports.markDonorNotReady = onCall(voice.markDonorNotReady);
 
 exports.sendPushNotification = onDocumentCreated(
   "notifications/{notificationId}",
@@ -135,31 +158,6 @@ exports.dailyEligibilityCheck = onSchedule(
     await checkEligibilityReminders();
   }
 );
-async function notifyRequest(request) {
-  if (!request.auth) throw new HttpsError('unauthenticated','Sign in first.');
-  const requestId = request.data?.requestId;
-  if (typeof requestId !== 'string' || requestId.includes('/')) throw new HttpsError('invalid-argument','Request required.');
-  const ref = db.doc(`blood_requests/${requestId}`);
-  const [req, user] = await Promise.all([ref.get(), db.doc(`users/${request.auth.uid}`).get()]);
-  const r=req.data();
-  if (!r || r.requesterId !== request.auth.uid || user.data()?.status !== 'approved' || !workflows.openStatuses.includes(r.status) || workflows.expired(r)) {
-    throw new HttpsError('permission-denied','An active request belonging to you is required.');
-  }
-  const ids = await nearbyDonors(r.latitude,r.longitude,r.bloodGroup,50);
-  const requested = request.data.userIds;
-  const recipients = ids.filter(uid => uid !== request.auth.uid &&
-    (!Array.isArray(requested) || requested.includes(uid)));
-  for (const uid of recipients) {
-    try {
-      await db.doc(`notifications/request_${requestId}_${uid}`).create({
-        userId:uid, title:'Blood donation request', body:`${r.bloodGroup} blood needed at ${r.hospitalName || 'a nearby hospital'}. Open the app for details.`,
-        type:'blood_request',relatedId:requestId,isRead:false,createdAt:admin.firestore.Timestamp.now(),
-      });
-    } catch(e) { if(e.code !== 6) throw e; }
-  }
-  if (recipients.length) await ref.update({notifiedDonors: admin.firestore.FieldValue.arrayUnion(...recipients)});
-  return {count:recipients.length};
-}
 exports.notifyRequest = onCall(notifyRequest);
 
 // Matching runs on the server even if the client closes after saving.
@@ -167,16 +165,19 @@ exports.onBloodRequestCreated = onDocumentCreated('blood_requests/{requestId}', 
   const data = event.data?.data();
   if (!data || data.sosId || data.status !== 'pending' || !Number.isFinite(data.latitude) || !Number.isFinite(data.longitude)) return;
   let recipients = [];
+  let selectedRadius = 5;
   // Keep automatic matching aligned with the client-supported radius choices.
   // The first radius with eligible recipients wins, limiting notification fan-out.
   for (const radius of [5, 10, 25, 50]) {
+    selectedRadius = radius;
     recipients = (await nearbyDonors(data.latitude, data.longitude, data.bloodGroup, radius))
       .filter(uid => uid !== data.requesterId);
     if (recipients.length) break;
   }
   await notifyRequest({auth: {uid: data.requesterId}, data: {
-    requestId: event.params.requestId, userIds: recipients,
+    requestId: event.params.requestId, userIds: recipients, radiusKm: selectedRadius,
   }});
 });
 
 exports.expireOpenRequests = onSchedule('every 15 minutes', workflows.expireRequests);
+exports.escalateEmergencyReviews = onSchedule('every 15 minutes', escalatePendingEmergencyReviews);

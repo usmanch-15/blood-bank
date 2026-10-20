@@ -14,6 +14,7 @@ import '../../constants/app_spacing.dart';
 import '../../models/blood_request_model.dart';
 import '../../utils/app_animations.dart';
 import '../../widgets/status_badge.dart';
+import '../../widgets/premium_ui.dart' hide UrgencyBadge;
 import '../../widgets/paged_records.dart';
 import 'blood_request_form_screen.dart';
 import 'sos_emergency_screen.dart';
@@ -172,6 +173,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                 const SizedBox(height: AppSpacing.xxl + 1),
 
                 // ── SOS Button (unchanged destination: SosEmergencyScreen) ──
+                PremiumSectionHeader(title: AppLocalizations.of(context).dashboard, subtitle: AppLocalizations.of(context).matchingMedicalNote),
                 SlideInAnimation(
                   delay: const Duration(milliseconds: 80),
                   child: ElevatedButton.icon(
@@ -231,7 +233,9 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       elevation: AppSpacing.elevationLow,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
                       ),
                     ),
                   ),
