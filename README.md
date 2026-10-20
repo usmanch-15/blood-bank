@@ -1,46 +1,35 @@
-# Smart Blood Bank
+# Blood Connect — Smart Blood Bank
 
-Smart Blood Bank is a Flutter and Firebase final-year project for coordinating blood donors, receivers, emergency requests, and administrator review.
+Blood Connect is a Flutter + Firebase application that helps receivers find compatible, available donors and lets donors manage responses, requests, donations, notifications, and account settings. It is a coordination tool; qualified healthcare staff must confirm medical eligibility and emergency services remain the correct response for emergencies.
 
-## Implemented and ready in the repository
+## App capabilities
 
-- Email/password authentication, account restoration, approved-account checks, password recovery, and donor/receiver capability switching.
-- Secure user profiles with private contact/CNIC storage, opt-in approximate location sharing, availability, and account deletion workflows.
-- Server-controlled blood requests with hospital coordinates, requested/donated/remaining units, deadlines, donor assignment, withdrawal, reassignment, completion, cancellation, and expiry handling.
-- Server-side donor discovery with blood-group compatibility, eligibility, availability, consent, distance filtering, and self-exclusion.
-- Hospital location selection with a required map pin and manual coordinate fallback.
-- Active request tracking, assignment events, donor contact authorization, SOS linking, and SOS owner/participant authorization.
-- Donation history, reward points, eligibility intervals, and donation acknowledgements generated from confirmed records.
-- Paginated request, donation, notification, report, reward, and audit views. Admin analytics uses Firestore aggregation queries rather than downloading whole collections.
-- Per-device notification token registration, refresh handling, invalid-token cleanup, notification preferences, and notification history.
-- Admin user/request/report/notification management, audited workflow actions, audit browsing, and paginated exports.
-- Firestore security rules, indexes, backend policy tests, emulator security tests, and callable workflow tests.
+- Email/password sign-in, password reset, account restoration, approved-account checks, and donor/receiver capability switching.
+- Donor profiles with availability, opt-in approximate location sharing, profile photos, verification status, private contact data, account deletion, and English/Urdu localization.
+- Blood requests with hospital selection, OSM map pinning, urgency, blood group, units, deadlines, review states, cancellation, expiry, and live tracking.
+- Server-side donor matching using compatibility, recorded eligibility, availability, consent, radius, urgency, and distance ranking. Returned locations are privacy-rounded.
+- Donor request discovery with map/list views, cursor paging, response actions, My Responses, and request status updates.
+- Donor map cards with cached avatars, blood-group fallback markers, approximate distance, safe call/invitation actions, and per-request not-ready handling.
+- Donation commitments and history, acknowledgement/dispute workflows, rewards, certificates, reminders, and admin review queues.
+- Participant chat with pagination, unread counters, block/report controls, read-only closed-request states, and explicit phone sharing through typed system messages.
+- Authenticated Agora voice-call flow with server-issued tokens, busy-call checks, invitations, readiness prompts, and FCM notification routing.
+- FCM notification inbox, device-token refresh, user preferences, request/response/chat notifications, and notification tap routing.
+- Admin dashboard with users, requests, verification, emergency review, reports, broadcasts, analytics, audit logs, and paginated exports.
+- Firestore/Storage security rules, composite indexes, callable authorization, rate limits, and emulator security/workflow coverage.
 
-The application targets Android and web in this repository. There is no iOS project, so iOS support is not claimed.
+The repository targets Android and web. There is no iOS project, so iOS support is not claimed.
 
-## Not deployed or fully verified
+## Architecture and services
 
-### Requires Firebase Blaze and Functions deployment
+- Flutter client with Provider controllers and named routes.
+- Firebase Auth, Firestore, Storage, Cloud Functions, Cloud Messaging, Crashlytics, and App Check integration.
+- OpenStreetMap through `flutter_map` and `latlong2`; no Google Maps API key is required.
+- Agora is used for in-app voice calls. The Agora certificate is server-only.
+- Optional Twilio SMS fallback is server-side and disabled until explicitly configured.
 
-Cloud Functions are present but are not deployed from this repository. Blaze is required for Cloud Build, Artifact Registry, callable workflows, scheduled request expiry, eligibility reminders, notification triggers, SOS matching triggers, and server-side admin workflows.
+## Local development
 
-### Requires Firebase Console configuration
-
-- Enable Email/Password and Phone Authentication.
-- Configure authorized domains and web reCAPTCHA for browser phone authentication.
-- Register App Check providers and inspect metrics before enabling enforcement.
-- Configure FCM/APNs credentials and notification settings.
-- Configure restricted map/routing keys and any required billing.
-- Configure a managed support mailbox with `--dart-define=SUPPORT_EMAIL=...`.
-- Configure a private release keystore before distribution.
-
-### Requires real-device or browser testing
-
-OTP delivery, Android automatic verification, web phone confirmation, push delivery and tap navigation, token refresh across multiple devices, App Check attestation, maps/location permissions, signed Android builds, accessibility, dark mode, and narrow-screen layouts require external testing.
-
-## Local setup
-
-Use the committed lockfiles. The project uses Flutter, Node 22 for Functions, and JDK 17 for Android builds. JDK 21 is suitable for Firebase emulator tooling.
+Use the committed lockfiles. Functions target Node.js 22. Android uses Java 17; Java 21 is suitable for Firebase emulator tooling.
 
 ```powershell
 flutter pub get
@@ -51,36 +40,59 @@ npm.cmd --prefix functions run check
 npm.cmd --prefix functions test
 ```
 
-Run the emulator security suite through the Firebase emulator runner:
+Run the complete local emulator suite with the demo project ID:
 
 ```powershell
-functions\node_modules\.bin\firebase.cmd emulators:exec --project demo-blood-bank --only firestore,auth,storage "npm.cmd --prefix functions run test:emulator"
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+firebase.cmd emulators:exec --only firestore,functions,auth,storage --project demo-bloodbank "cd functions && npm run test:emulator"
 ```
 
-Start the local demo environment:
+For an Android emulator, use `--dart-define=FIREBASE_EMULATOR_HOST=10.0.2.2`. Emulator mode must never be used for release builds.
+
+## Firebase rollout
+
+Use a staging Firebase project first. Review and deploy `firestore.rules`, `storage.rules`, and `firestore.indexes.json` together, then deploy Functions on a Blaze project:
 
 ```powershell
-functions\node_modules\.bin\firebase.cmd emulators:start --project demo-blood-bank --only auth,firestore,functions,storage
-flutter run -d chrome --web-port 5195 --dart-define=USE_FIREBASE_EMULATORS=true
+firebase deploy --project <staging-project> --only firestore:rules,firestore:indexes,storage
+firebase deploy --project <staging-project> --only functions
 ```
 
-For an Android emulator, also pass `--dart-define=FIREBASE_EMULATOR_HOST=10.0.2.2`. Release builds reject emulator mode.
+Required console/operator configuration includes:
 
-## Controlled Firebase rollout
+- Email/Password and Phone Authentication, authorized domains, reCAPTCHA, Android SHA fingerprints, and FCM credentials.
+- App Check registration and metrics review before enforcement.
+- `AGORA_APP_ID` plus the Firebase secret `AGORA_APP_CERTIFICATE`.
+- Optional Twilio values and `TWILIO_AUTH_TOKEN` only if SMS fallback is enabled.
+- A managed support mailbox through `--dart-define=SUPPORT_EMAIL=...`.
+- Backups, migration review, indexes, rollback procedures, and admin account setup.
 
-Use a staging project first. Review `firestore.rules`, `firestore.indexes.json`, `storage.rules`, and `functions/migrateProfiles.js`. Keep Admin SDK credentials outside source control. Back up Firestore, run the profile migration as a reviewed operation, deploy rules/indexes, deploy Functions on Blaze, and verify rollback procedures before production use.
+Never place service-account keys, Firebase CLI config, `.env` files, Agora certificates, Twilio tokens, keystores, or `android/key.properties` in Git.
 
-The project includes participant chat, Urdu/English localization, a hospital catalog with OSM selection, and an Agora voice scaffold. Chat message notifications and incoming-call routing are implemented; unread counts, explicit phone sharing and the full call lifecycle remain staged work. Hospital accounts, inventory management and a clinical blood-stock system are not implemented. The app coordinates donors and receivers; it does not replace clinical screening or emergency services. See [Stage A audit and verification](docs/stage-a-report.md) for current limitations and setup.
+## Android release
 
-## Android build
+Current app version: `1.0.0+2`.
+
+Release signing requires the private files `android/upload-keystore.jks` and `android/key.properties`. `android/app/build.gradle.kts` fails the build when `key.properties` is missing and never falls back to the debug key.
 
 ```powershell
-flutter config --jdk-dir="<installed JDK 17 directory>"
-flutter doctor -v
-flutter build apk --debug
-flutter build apk --release
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:GRADLE_USER_HOME = "C:\Users\premier\.gradle"
+cd android
+.\gradlew.bat signingReport
+cd ..
+flutter build appbundle --release
 ```
 
-When `android/key.properties` is absent, the release APK uses Android's debug signing key for local testing only. This build is not production-ready and must not be distributed as an official release. To create a distributable APK, configure `android/key.properties` and a private release keystore; release builds automatically use that signing configuration when present. Keep both files private and out of source control.
+Back up the keystore and properties file in encrypted private storage. Losing the keystore prevents future updates to the same Play application.
 
-See `docs/app-review-2026-10-06.md` for the detailed production-readiness review and remaining external checks.
+## Current limitations and release checks
+
+- Production Firebase deployment and console settings require operator verification.
+- Real-device FCM, Agora audio, token renewal, busy calls, background/terminated incoming calls, location/microphone/notification permissions, and accessibility still require device validation.
+- Admin abuse-flag visibility depends on the available backend account/report schema.
+- Stage H visual polish is incomplete across some screens and requires responsive light/dark/Urdu review.
+- The app does not provide hospital inventory, clinical blood-stock management, medical clearance, or emergency dispatch.
+
+See the stage reports in `docs/` and `docs/app-review-2026-10-06.md` for implementation evidence, deployment notes, rollback guidance, and manual checklists.

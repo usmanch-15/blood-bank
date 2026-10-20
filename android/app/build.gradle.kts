@@ -10,6 +10,9 @@ val signingFile = rootProject.file("key.properties")
 val hasReleaseSigning = signingFile.exists()
 val releaseKeys = Properties()
 if (hasReleaseSigning) signingFile.inputStream().use { releaseKeys.load(it) }
+check(hasReleaseSigning) {
+    "Release signing is not configured. Create android/key.properties and the referenced private keystore before building a release."
+}
 android {
     namespace = "com.usmanch.bloodbank"
     compileSdk = flutter.compileSdkVersion
@@ -39,12 +42,7 @@ android {
     }
     buildTypes {
         release {
-            signingConfig =
-                if (hasReleaseSigning) {
-                    signingConfigs.getByName("release")
-                } else {
-                    signingConfigs.getByName("debug")
-                }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

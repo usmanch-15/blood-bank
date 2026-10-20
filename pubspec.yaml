@@ -1,7 +1,7 @@
 name: bloodbank
 description: "Blood Bank - A Flutter mobile application for managing blood donations and requests"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.7.0
