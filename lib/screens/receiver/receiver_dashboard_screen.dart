@@ -1,561 +1,260 @@
-import '../requests/request_tracking_screen.dart';
-import '../../l10n/app_localizations.dart';
-import '../requests/request_list_screen.dart';
-import '../../services/workflow_service.dart';
-import '../../utils/feedback.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
-import '../notification/notification_history_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../constants/app_colors.dart';
-import '../../constants/app_spacing.dart';
-import '../../models/blood_request_model.dart';
-import '../../utils/app_animations.dart';
-import '../../widgets/status_badge.dart';
-import '../../widgets/premium_ui.dart' hide UrgencyBadge;
+import '../../widgets/dashboard_components.dart';
 import '../../widgets/paged_records.dart';
+import '../requests/request_tracking_screen.dart';
+import '../requests/request_list_screen.dart';
+import '../notification/notification_history_screen.dart';
+import '../settings/settings_screen.dart';
+import '../maps/nearby_donors_map_screen.dart';
 import 'blood_request_form_screen.dart';
 import 'sos_emergency_screen.dart';
-import '../maps/nearby_donors_map_screen.dart'; // Nearby Donors map
-// Find Donors for a specific request
-import '../settings/settings_screen.dart'; // ✅ NEW — was never reachable anywhere in the app
 
-/// ✅ UI POLISH ONLY — all 3 features added earlier this session (SOS
-/// button → SosEmergencyScreen, "Find Nearby Donors" → NearbyDonorsMapScreen,
-/// per-request "Find Donors" → DonorMatchingScreen with requestId) are
-/// untouched: same destinations, same params, same imports. Only the
-/// visual layer changed (badges, spacing, entrance animation, empty state).
 class ReceiverDashboardScreen extends StatefulWidget {
   const ReceiverDashboardScreen({super.key});
-
   @override
   State<ReceiverDashboardScreen> createState() =>
       _ReceiverDashboardScreenState();
 }
 
 class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
-  final _auth = FirebaseAuth.instance;
-  final _firestore = FirebaseFirestore.instance;
-
-  Map<String, dynamic>? _userData;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) return;
-    try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-      if (mounted) setState(() => _userData = doc.data());
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(AppFeedback.message(e))));
-      }
-    }
+  int _refresh = 0;
+  Future<void> _open(Widget page) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+    if (mounted) setState(() => _refresh++);
   }
 
   @override
   Widget build(BuildContext context) {
-    final uid = _auth.currentUser?.uid ?? '';
-    final name =
-        context.watch<AuthController>().currentUser?.name ??
-        _userData?['name'] ??
-        'User';
-
+    final name = context.watch<AuthController>().currentUser?.name ?? '';
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final c = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // ── AppBar ──
-          SliverAppBar(
-            pinned: true,
-            floating: true,
-            backgroundColor: Colors.white,
-            elevation: 1,
-            title: Row(
-              children: [
-                GestureDetector(
-                  onTap:
-                      () => Navigator.pushReplacementNamed(
-                        context,
-                        '/role-select',
-                      ),
-                  child: Icon(Icons.arrow_back, color: AppColors.primaryRed),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Text(
-                  'Receiver Dashboard',
-                  style: TextStyle(
-                    color: AppColors.primaryRed,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            // ✅ NEW — Settings was completely unreachable from anywhere
-            // in the receiver flow before this.
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                tooltip: AppLocalizations.of(context).notificationsTooltip,
-                onPressed:
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationHistoryScreen(),
-                      ),
-                    ),
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.settings_outlined,
-                  color: AppColors.primaryRed,
-                ),
-                tooltip: AppLocalizations.of(context).settingsTooltip,
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  );
-                },
-              ),
-            ],
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: dashboardText(context, 'Switch mode', 'موڈ تبدیل کریں'),
+          onPressed:
+              () => Navigator.pushReplacementNamed(context, '/role-select'),
+          icon: const Icon(Icons.swap_horiz_rounded),
+        ),
+        title: Text(dashboardText(context, 'Receiver home', 'وصول کنندہ ہوم')),
+        actions: [
+          IconButton(
+            tooltip: dashboardText(context, 'Notifications', 'اطلاعات'),
+            onPressed: () => _open(const NotificationHistoryScreen()),
+            icon: const Icon(Icons.notifications_none_rounded),
           ),
-
-          SliverPadding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // ── Welcome Card ──
-                FadeInAnimation(
-                  child: Container(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.heroGradient,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.shadowMedium,
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome, $name',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Create a request or use SOS for emergencies',
-                          style: TextStyle(fontSize: 14, color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: AppSpacing.xxl + 1),
-
-                // ── SOS Button (unchanged destination: SosEmergencyScreen) ──
-                PremiumSectionHeader(title: AppLocalizations.of(context).dashboard, subtitle: AppLocalizations.of(context).matchingMedicalNote),
-                SlideInAnimation(
-                  delay: const Duration(milliseconds: 80),
-                  child: ElevatedButton.icon(
-                    icon: Icon(Icons.warning, size: 28),
-                    label: Text(
-                      'SOS EMERGENCY',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SosEmergencyScreen(),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryRed,
-                      foregroundColor: Colors.white,
-                      elevation: AppSpacing.elevationMedium,
-                      shadowColor: AppColors.shadowRed,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: AppSpacing.xl),
-
-                // ── Create Request (unchanged destination: BloodRequestFormScreen) ──
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.add_circle_outline),
-                    label: Text(
-                      AppLocalizations.of(context).createBloodRequest,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    onPressed: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const BloodRequestFormScreen(),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.secondaryBlue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      elevation: AppSpacing.elevationLow,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                // ── Find Nearby Donors on Map (unchanged destination: NearbyDonorsMapScreen) ──
-                _actionTile(
-                  title: AppLocalizations.of(context).findNearbyDonors,
-                  icon: Icons.map_outlined,
-                  color: Colors.teal,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NearbyDonorsMapScreen(),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: AppSpacing.xxl + 6),
-
-                _actionTile(
-                  title: AppLocalizations.of(context).allRequestsHistory,
-                  icon: Icons.history,
-                  color: Colors.teal,
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const RequestListScreen(),
-                        ),
-                      ),
-                ),
-                _actionTile(
-                  title: AppLocalizations.of(context).activeSosHistory,
-                  icon: Icons.emergency,
-                  color: Colors.red,
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const RequestListScreen(mode: 'sos'),
-                        ),
-                      ),
-                ),
-                Text(
-                  'Recent Requests',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-
-                // ── Real Firebase Requests (StreamBuilder) — unchanged query ──
-                uid.isEmpty
-                    ? Center(
-                      child: Text(AppLocalizations.of(context).notLoggedIn),
-                    )
-                    : PagedRecords(
-                      // This widget is already inside the dashboard's
-                      // CustomScrollView. Keep its list non-scrollable so it
-                      // can measure its content instead of creating a nested
-                      // viewport with unbounded height (which can blank the
-                      // Flutter web page after navigation).
-                      shrinkWrap: true,
-                      query: _firestore
-                          .collection('blood_requests')
-                          .where('requesterId', isEqualTo: uid)
-                          .orderBy('createdAt', descending: true),
-                      itemBuilder:
-                          (context, doc) => _requestCard(
-                            BloodRequestModel.fromFirestore(doc.data(), doc.id),
-                          ),
-                    ),
-
-                /*
-                    : StreamBuilder<QuerySnapshot>(
-                      stream:
-                          _firestore
-                              .collection('blood_requests')
-                              .where('requesterId', isEqualTo: uid)
-                              .orderBy('createdAt', descending: true)
-                              .limit(30)
-                              .snapshots(),
-                      builder: (context, snap) {
-                        if (snap.connectionState == ConnectionState.waiting) {
-                          return const LoadingShimmerList(itemCount: 2);
-                        }
-
-                        if (snap.hasError) {
-                          return Text(AppFeedback.message(snap.error!));
-                        }
-                        final docs = snap.data?.docs ?? [];
-
-                        if (docs.isEmpty) {
-                          return const EmptyState(
-                            icon: Icons.assignment_outlined,
-                            title: AppLocalizations.of(context).noRequestsYet,
-                            message: 'Tap "Create Blood Request" to add one.',
-                          );
-                        }
-
-                        return Column(
-                          children:
-                              docs.map((doc) {
-                                final request = BloodRequestModel.fromFirestore(
-                                  doc.data() as Map<String, dynamic>,
-                                  doc.id,
-                                );
-                                return _requestCard(request);
-                              }).toList(),
-                        );
-                      },
-                    ),*/
-                const SizedBox(height: AppSpacing.xxl),
-              ]),
-            ),
+          IconButton(
+            tooltip: dashboardText(context, 'Settings', 'ترتیبات'),
+            onPressed: () => _open(const SettingsScreen()),
+            icon: const Icon(Icons.settings_outlined),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _actionTile({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: AppSpacing.elevationLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 0,
+        onDestinationSelected: (i) {
+          if (i == 1) _open(const RequestListScreen());
+          if (i == 2) _open(const NearbyDonorsMapScreen());
+          if (i == 3) _open(const SettingsScreen());
+        },
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home_rounded),
+            label: dashboardText(context, 'Home', 'ہوم'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.assignment_outlined),
+            label: dashboardText(context, 'Requests', 'درخواستیں'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.map_outlined),
+            label: dashboardText(context, 'Donors', 'عطیہ دہندگان'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.settings_outlined),
+            label: dashboardText(context, 'Settings', 'ترتیبات'),
+          ),
+        ],
       ),
-      child: ListTile(
-        onTap: onTap,
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.15),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(title),
-        trailing: Icon(Icons.arrow_forward_ios, size: 18),
-      ),
-    );
-  }
-
-  BadgeStatus _badgeStatusFor(String status) {
-    switch (status) {
-      case 'fulfilled':
-        return BadgeStatus.verified;
-      case 'rejected':
-        return BadgeStatus.rejected;
-      default:
-        return BadgeStatus.pending;
-    }
-  }
-
-  Widget _requestCard(BloodRequestModel request) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-      ),
-      elevation: AppSpacing.elevationLow,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async => setState(() => _refresh++),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            children: [
+              DashboardPanel(
+                tint: c.primaryContainer.withValues(alpha: .35),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    BloodTypeBadge(bloodGroup: request.bloodGroup),
-                    const SizedBox(width: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Icon(Icons.favorite_outline_rounded, color: c.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            dashboardText(
+                              context,
+                              'HERE TO HELP',
+                              'مدد کے لیے حاضر',
+                            ),
+                            style: TextStyle(
+                              color: c.primary,
+                              fontSize: 11,
+                              letterSpacing: 1.2,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
                     Text(
-                      '${request.unitsRequired ?? request.quantity} Units',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                      dashboardText(context, 'Hello, $name', 'سلام، $name'),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      dashboardText(
+                        context,
+                        'Connect with donors. Keep every request in one place.',
+                        'عطیہ دہندگان سے رابطہ کریں اور اپنی درخواستیں ایک جگہ دیکھیں۔',
+                      ),
+                      style: TextStyle(color: c.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _open(const BloodRequestFormScreen()),
+                        icon: const Icon(Icons.add_rounded),
+                        label: Text(
+                          dashboardText(
+                            context,
+                            'Create blood request',
+                            'خون کی درخواست بنائیں',
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                StatusBadge(
-                  status: _badgeStatusFor(request.status),
-                  customLabel: request.status,
-                  customColor: null,
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm + 2),
-            Row(
-              children: [
-                Icon(
-                  Icons.local_hospital_outlined,
-                  size: AppSpacing.iconSm,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    request.hospitalName.trim().isEmpty
-                        ? 'Hospital not specified'
-                        : request.hospitalName,
-                    style: TextStyle(color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: AppSpacing.iconSm,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    (request.hospitalAddress ?? '').trim().isEmpty
-                        ? 'Not provided'
-                        : request.hospitalAddress!,
-                    style: TextStyle(color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            if (request.urgency.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.sm),
-              UrgencyBadge(urgency: request.urgency),
-            ],
-            if ([
-              'pending',
-              'accepted',
-              'partially_fulfilled',
-            ].contains(request.status))
-              TextButton.icon(
-                icon: Icon(Icons.cancel_outlined),
-                label: Text(AppLocalizations.of(context).cancelRequest),
-                onPressed: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder:
-                        (ctx) => AlertDialog(
-                          title: Text(
-                            AppLocalizations.of(context).cancelThisRequest,
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: Text(
-                                AppLocalizations.of(context).keepRequest,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: Text(
-                                AppLocalizations.of(context).cancelRequest,
-                              ),
-                            ),
-                          ],
-                        ),
-                  );
-                  if (confirmed != true) return;
-                  try {
-                    await WorkflowService.call('closeRequest', {
-                      'requestId': request.id,
-                    });
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Unable to cancel: $e')),
-                      );
-                    }
-                  }
-                },
               ),
-            // ── Find Donors (unchanged: DonorMatchingScreen with requestId,
-            // needed for confirmDonation Cloud Function authorization) ──
-            if (['pending', 'accepted'].contains(request.status)) ...[
-              const SizedBox(height: AppSpacing.sm + 2),
-              Align(
-                alignment: Alignment.centerRight,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => RequestTrackingScreen(requestId: request.id),
-                      ),
-                    );
-                  },
-                  icon: Icon(Icons.search, size: 16),
-                  label: Text(AppLocalizations.of(context).trackRequestDonors),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primaryRed,
-                    side: const BorderSide(color: AppColors.primaryRed),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        AppSpacing.radiusSm + 2,
+              DashboardPanel(
+                tint: c.errorContainer.withValues(alpha: .25),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.emergency_outlined, color: c.error),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            dashboardText(
+                              context,
+                              'Need help urgently?',
+                              'فوری مدد درکار ہے؟',
+                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      dashboardText(
+                        context,
+                        'Send an SOS to nearby donors and follow their responses.',
+                        'قریبی عطیہ دہندگان کو فوری اطلاع بھیجیں اور جوابات دیکھیں۔',
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _open(const SosEmergencyScreen()),
+                          icon: const Icon(Icons.sos),
+                          label: Text(
+                            dashboardText(
+                              context,
+                              'Start SOS',
+                              'ایس او ایس شروع کریں',
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed:
+                              () => _open(const RequestListScreen(mode: 'sos')),
+                          child: Text(
+                            dashboardText(
+                              context,
+                              'SOS status & history',
+                              'ایس او ایس کی صورتحال',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
+              DashboardAction(
+                title: dashboardText(
+                  context,
+                  'Find nearby donors',
+                  'قریبی عطیہ دہندگان',
+                ),
+                subtitle: dashboardText(
+                  context,
+                  'Explore compatible donors on the map.',
+                  'نقشے پر موزوں عطیہ دہندگان تلاش کریں۔',
+                ),
+                icon: Icons.travel_explore_rounded,
+                onTap: () => _open(const NearbyDonorsMapScreen()),
+              ),
+              DashboardHeading(
+                dashboardText(context, 'Your requests', 'آپ کی درخواستیں'),
+                action: dashboardText(context, 'View all', 'سب دیکھیں'),
+                onTap: () => _open(const RequestListScreen()),
+              ),
+              if (uid != null)
+                PagedRecords(
+                  key: ValueKey(_refresh),
+                  shrinkWrap: true,
+                  query: FirebaseFirestore.instance
+                      .collection('blood_requests')
+                      .where('requesterId', isEqualTo: uid)
+                      .orderBy('createdAt', descending: true),
+                  emptyMessage: dashboardText(
+                    context,
+                    'No requests yet. Create a request to start finding donors.',
+                    'ابھی کوئی درخواست نہیں۔ عطیہ دہندگان تلاش کرنے کے لیے درخواست بنائیں۔',
+                  ),
+                  itemBuilder:
+                      (context, doc) => OpportunityCard(
+                        data: doc.data(),
+                        action: dashboardText(
+                          context,
+                          'Track request & donors',
+                          'درخواست اور عطیہ دہندگان دیکھیں',
+                        ),
+                        onTap:
+                            () =>
+                                _open(RequestTrackingScreen(requestId: doc.id)),
+                      ),
+                ),
             ],
-          ],
+          ),
         ),
       ),
     );

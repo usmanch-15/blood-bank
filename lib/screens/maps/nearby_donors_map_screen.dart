@@ -1,3 +1,4 @@
+import '../../utils/feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -122,7 +123,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
       }
     } catch (e) {
       if (mounted && version == _loadVersion) {
-        setState(() => _error = e.toString());
+        setState(() => _error = AppFeedback.message(e));
         if (e.toString().toLowerCase().contains('permission')) {
           showPermissionDeniedSheet(context, 'Location');
         }
@@ -174,7 +175,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('$e')));
+        ).showSnackBar(SnackBar(content: Text(AppFeedback.message(e))));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -246,7 +247,7 @@ class _NearbyDonorsMapScreenState extends State<NearbyDonorsMapScreen> {
         await WorkflowService.call('inviteDonor', {'requestId': widget.requestId, 'donorId': donor.donor.uid});
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).invitationSent)));
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).invitationFailed(e.toString()))));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).invitationFailed(AppFeedback.message(e)))));
       }
     }
   }

@@ -2,11 +2,15 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class WorkflowService {
+  // Keep the default aligned with Functions' default deployment region.
+  static FirebaseFunctions get functions => FirebaseFunctions.instanceFor(
+    region: const String.fromEnvironment('FUNCTIONS_REGION', defaultValue: 'us-central1'),
+  );
   static Future<Map<String, dynamic>> call(
     String name, [
     Map<String, dynamic> data = const {},
   ]) async {
-    final result = await FirebaseFunctions.instance
+    final result = await functions
         .httpsCallable(name)
         .call(data);
     return Map<String, dynamic>.from(result.data as Map);

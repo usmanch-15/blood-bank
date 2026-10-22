@@ -1,540 +1,462 @@
-import '../requests/request_list_screen.dart';
-import '../../utils/eligibility_checker.dart';
-import '../../utils/feedback.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
-
-import '../notification/notification_history_screen.dart';
-import 'package:flutter/material.dart';
-import '../../l10n/app_localizations.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-import '../../services/auth_service.dart';
 import '../../services/workflow_service.dart';
-import '../../constants/app_colors.dart';
-import '../../widgets/premium_ui.dart' hide UrgencyBadge;
-import '../../constants/app_spacing.dart';
-import '../../utils/app_animations.dart';
-
-import '../../widgets/app_custom_widgets.dart';
-import '../../widgets/status_badge.dart';
+import '../../utils/feedback.dart';
+import '../../widgets/dashboard_components.dart';
+import '../../widgets/donor_awareness.dart';
+import '../../widgets/premium_states.dart';
+import '../notification/notification_history_screen.dart';
+import '../requests/request_tracking_screen.dart';
+import '../settings/settings_screen.dart';
+import 'blood_requests_hub.dart';
 import 'donor_profile_screen.dart';
 import 'donation_history_screen.dart';
-import 'my_responses_screen.dart';
-import 'blood_needed_near_you_screen.dart';
+import 'rewards_screen.dart';
+import 'eligibility_status_screen.dart';
 
-import 'rewards_screen.dart'; // ✅ FIX — see note below
-import '../settings/settings_screen.dart'; // ✅ NEW — was never reachable anywhere in the app
-
-/// ✅ FIXED BUG — this file used to define its OWN local `RewardsScreen`
-/// class (a placeholder that just showed the text "Rewards Screen"), while
-/// the REAL rewards feature (tier progress, certificates, gamification —
-/// lib/screens/donor/rewards_screen.dart) sat unused right next to it with
-/// the exact same class name. Since this file never imported that real
-/// file, "Rewards & Certificates" always opened the placeholder — the real
-/// screen was completely unreachable. Now this file imports the real
-/// RewardsScreen and no longer defines a duplicate.
-///
-/// ✅ ALSO FIXED — the "Contact: number" button on each request card had
-/// `onPressed: () {}` (did nothing at all when tapped). Now it opens the
-/// phone dialer.
 class DonorDashboardScreen extends StatefulWidget {
   const DonorDashboardScreen({super.key});
-
   @override
   State<DonorDashboardScreen> createState() => _DonorDashboardScreenState();
 }
 
 class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
-  final _auth = FirebaseAuth.instance;
-  final _firestore = FirebaseFirestore.instance;
-
-  Map<String, dynamic>? _userData;
-  int _donationCount = 0;
-  bool _isLoading = true;
-  String? _loadError;
-
+  late Future<Map<String, dynamic>> _nearby, _invitations;
+  late Future<int?> _donations;
+  bool _saving = false;
+  int _refreshKey = 0;
+  String get _uid => FirebaseAuth.instance.currentUser!.uid;
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _reload();
   }
 
-  Future<void> _loadUserData() async {
-    setState(() {
-      _isLoading = true;
-      _loadError = null;
-    });
+  Future<Map<String, dynamic>> _fetch(
+    String name, [
+    Map<String, dynamic> data = const {},
+  ]) async {
     try {
-      final uid = _auth.currentUser?.uid;
-      if (uid == null) throw StateError('Please sign in.');
+      return await WorkflowService.call(name, data);
+    } catch (e) {
+      return {'loadError': AppFeedback.message(e)};
+    }
+  }
 
-      // User profile load karo
-      final userDoc = await _firestore.collection('users').doc(uid).get();
-
-      // Donation count load karo
-      final donations =
-          await _firestore
+  Future<int?> _countDonations() async {
+    try {
+      return (await FirebaseFirestore.instance
               .collection('donations')
-              .where('donorId', isEqualTo: uid)
-              .get();
+              .where('donorId', isEqualTo: _uid)
+              .count()
+              .get())
+          .count;
+    } catch (_) {
+      return null;
+    }
+  }
 
-      if (mounted) {
-        setState(() {
-          _userData = userDoc.data();
-          _donationCount = donations.size;
-          _isLoading = false;
-        });
+  void _reload() {
+    _nearby = _fetch('discoverRequests', {'radiusKm': 25});
+    _invitations = _fetch('donorInvitations');
+    _donations = _countDonations();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _refreshKey++;
+      _reload();
+    });
+  }
+
+  Future<void> _go(Widget page) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+    if (mounted) _refresh();
+  }
+
+  Future<void> _profile() async {
+    try {
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(_uid).get();
+      if (mounted && doc.exists) {
+        await _go(DonorProfileScreen(userData: doc.data()!));
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _loadError = AppFeedback.message(e);
-        });
+      if (mounted) AppFeedback.error(context, e);
+    }
+  }
+
+  void _requests([int tab = 0]) => _go(BloodRequestsHub(initialIndex: tab));
+  Future<void> _availability(bool value) async {
+    setState(() => _saving = true);
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(_uid).update({
+        'isAvailable': value,
+        'availabilityUpdatedAt': FieldValue.serverTimestamp(),
+      });
+      if (mounted) _refresh();
+    } catch (e) {
+      if (mounted) AppFeedback.error(context, e);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Widget _preview(
+    Future<Map<String, dynamic>> future, {
+    required bool invitations,
+  }) => FutureBuilder<Map<String, dynamic>>(
+    future: future,
+    builder: (context, snap) {
+      if (snap.connectionState != ConnectionState.done) {
+        return const PremiumLoading(rows: 1);
       }
-    }
-  }
-
-  Future<void> _logout() async {
-    await AuthService().signOut();
-    if (mounted) Navigator.of(context).pushReplacementNamed('/login');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primaryRed),
-        ),
-      );
-    }
-
-    if (_loadError != null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context).donorDashboard),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_loadError!),
-              TextButton(
-                onPressed: _loadUserData,
-                child: Text(AppLocalizations.of(context).retryAction),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    final liveUser = context.watch<AuthController>().currentUser;
-    if (liveUser != null) {
-      _userData = {...?_userData, ...liveUser.toFirestore()};
-    }
-    final name = _userData?['name'] ?? 'Donor';
-    final bloodGroup = _userData?['bloodGroup'] ?? '—';
-    final rewardPoints = _userData?['rewardPoints'] ?? 0;
-    final isEligible = EligibilityChecker.isEligibleForDonation(
-      (_userData?['lastDonationDate'] as Timestamp?)?.toDate(),
-    );
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios),
-          onPressed:
-              () => Navigator.pushReplacementNamed(context, '/role-select'),
-        ),
-        title: Text(
-          'Donor Dashboard',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: AppLocalizations.of(context).notificationsTooltip,
-            onPressed:
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const NotificationHistoryScreen(),
-                  ),
-                ),
-          ),
-          IconButton(icon: Icon(Icons.logout), onPressed: _logout),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadUserData,
-        color: AppColors.primaryRed,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpacing.lg),
+      if (snap.hasError || snap.data?['loadError'] != null) {
+        return DashboardPanel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header Card ──
-              FadeInAnimation(
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.heroGradient,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.shadowRed,
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 32,
-                        backgroundColor: Colors.white,
-                        child: Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'D',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryRed,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.lg),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Text(
-                                  'Blood Group: ',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                                BloodTypeBadge(
-                                  bloodGroup: bloodGroup,
-                                  fontSize: 12,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+              Text(
+                snap.data?['loadError'] as String? ??
+                    AppFeedback.message(snap.error!),
+              ),
+              TextButton(
+                onPressed: _refresh,
+                child: Text(
+                  dashboardText(context, 'Retry', 'دوبارہ کوشش کریں'),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      final items = (snap.data?['items'] as List? ?? []);
+      if (items.isEmpty) {
+        return DashboardPanel(
+          child: Row(
+            children: [
+              Icon(
+                invitations
+                    ? Icons.mark_email_read_outlined
+                    : Icons.travel_explore,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  dashboardText(
+                    context,
+                    invitations
+                        ? 'No pending invitations. We will let you know when someone asks for your help.'
+                        : 'No matches within 25 km. Check your availability and location, or expand your search.',
+                    invitations
+                        ? 'ابھی کوئی دعوت نہیں۔ نئی دعوت آنے پر اطلاع ملے گی۔'
+                        : '۲۵ کلومیٹر میں کوئی درخواست نہیں۔ اپنی دستیابی اور مقام دیکھیں یا تلاش کا دائرہ بڑھائیں۔',
                   ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.xl),
-
-              PremiumSectionHeader(
-                title: AppLocalizations.of(context).dashboard,
-                subtitle: AppLocalizations.of(context).matchingMedicalNote,
-              ),
-
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Available to donate'),
-                subtitle: const Text('Keep this in sync with Settings'),
-                value: _userData?['isAvailable'] == true,
-                onChanged: (value) async {
-                  final uid = _auth.currentUser?.uid;
-                  if (uid == null) return;
-                  await _firestore.collection('users').doc(uid).update({
-                    'isAvailable': value,
-                  });
-                  if (mounted) {
-                    setState(
-                      () => _userData = {...?_userData, 'isAvailable': value},
-                    );
-                  }
-                },
-              ),
-
-              // ── Stats Row ──
-              SlideInAnimation(
-                delay: const Duration(milliseconds: 80),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width =
-                        constraints.maxWidth >= 420
-                            ? (constraints.maxWidth - AppSpacing.md - 3) / 2
-                            : constraints.maxWidth;
-                    return Wrap(
-                      spacing: AppSpacing.md + 3,
-                      runSpacing: AppSpacing.md,
+            ],
+          ),
+        );
+      }
+      return Column(
+        children:
+            items.take(invitations ? 1 : 2).map((item) {
+              final d = Map<String, dynamic>.from(item);
+              return OpportunityCard(
+                data: d,
+                onTap:
+                    () => _go(
+                      RequestTrackingScreen(requestId: d['id'] as String),
+                    ),
+              );
+            }).toList(),
+      );
+    },
+  );
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<AuthController>().currentUser;
+    final c = Theme.of(context).colorScheme;
+    final name = user?.name ?? '';
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: dashboardText(context, 'Switch mode', 'موڈ تبدیل کریں'),
+          onPressed:
+              () => Navigator.pushReplacementNamed(context, '/role-select'),
+          icon: const Icon(Icons.swap_horiz_rounded),
+        ),
+        title: Text(dashboardText(context, 'Donor home', 'عطیہ دہندہ ہوم')),
+        actions: [
+          IconButton(
+            tooltip: dashboardText(context, 'Notifications', 'اطلاعات'),
+            onPressed: () => _go(const NotificationHistoryScreen()),
+            icon: const Icon(Icons.notifications_none_rounded),
+          ),
+          IconButton(
+            tooltip: dashboardText(context, 'Settings', 'ترتیبات'),
+            onPressed: () => _go(const SettingsScreen()),
+            icon: const Icon(Icons.settings_outlined),
+          ),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 0,
+        onDestinationSelected: (i) {
+          if (i == 1) _requests();
+          if (i == 2) _go(const DonationHistoryScreen());
+          if (i == 3) _profile();
+        },
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home_rounded),
+            label: dashboardText(context, 'Home', 'ہوم'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.bloodtype_outlined),
+            label: dashboardText(context, 'Requests', 'درخواستیں'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.history),
+            label: dashboardText(context, 'History', 'تاریخ'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.person_outline),
+            label: dashboardText(context, 'Profile', 'پروفائل'),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            children: [
+              DashboardPanel(
+                tint: c.primaryContainer.withValues(alpha: .35),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        dashboardText(
+                          context,
+                          'Available to donate',
+                          'عطیہ دینے کے لیے دستیاب',
+                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      subtitle: Text(
+                        dashboardText(
+                          context,
+                          'Let nearby receivers know you can help.',
+                          'قریبی ضرورت مندوں کو اپنی دستیابی بتائیں۔',
+                        ),
+                      ),
+                      value: user?.isAvailable ?? false,
+                      onChanged: _saving || user == null ? null : _availability,
+                    ),
+                    const Divider(height: 24),
+                    Row(
                       children: [
-                        SizedBox(
-                          width: width,
-                          child: StatCard(
-                            label: 'Donations',
-                            value: '$_donationCount',
-                            icon: Icons.bloodtype,
-                            color: AppColors.primaryRed,
+                        CircleAvatar(
+                          backgroundColor: c.primary,
+                          foregroundColor: c.onPrimary,
+                          child: Text(
+                            user?.bloodGroup ?? '—',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
-                        SizedBox(
-                          width: width,
-                          child: StatCard(
-                            label: 'Points',
-                            value: '$rewardPoints',
-                            icon: Icons.stars,
-                            color: AppColors.warning,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                dashboardText(
+                                  context,
+                                  'Hello, $name',
+                                  'سلام، $name',
+                                ),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              Text(
+                                dashboardText(
+                                  context,
+                                  'Your next act of kindness starts here.',
+                                  'آپ کی مدد کا اگلا قدم یہیں سے شروع ہوتا ہے۔',
+                                ),
+                                style: TextStyle(color: c.onSurfaceVariant),
+                              ),
+                            ],
                           ),
                         ),
                       ],
+                    ),
+                  ],
+                ),
+              ),
+              DashboardHeading(
+                dashboardText(context, 'Your next step', 'آپ کا اگلا قدم'),
+                action: dashboardText(context, 'View all', 'سب دیکھیں'),
+                onTap: () => _requests(3),
+              ),
+              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('blood_requests')
+                        .where('acceptedDonorIds', arrayContains: _uid)
+                        .where(
+                          'status',
+                          whereIn: [
+                            'pending',
+                            'accepted',
+                            'partially_fulfilled',
+                          ],
+                        )
+                        .limit(3)
+                        .snapshots(),
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return DashboardPanel(
+                      child: Text(AppFeedback.message(snap.error!)),
                     );
+                  }
+                  if (!snap.hasData) return const PremiumLoading(rows: 1);
+                  if (snap.data!.docs.isEmpty) {
+                    return DashboardAction(
+                      title: dashboardText(
+                        context,
+                        'Ready for your next donation?',
+                        'اگلے عطیے کے لیے تیار ہیں؟',
+                      ),
+                      subtitle: dashboardText(
+                        context,
+                        'Review a request and confirm when you can help.',
+                        'درخواست دیکھیں اور دستیابی کی تصدیق کریں۔',
+                      ),
+                      icon: Icons.volunteer_activism_outlined,
+                      onTap: () => _requests(),
+                    );
+                  }
+                  return Column(
+                    children:
+                        snap.data!.docs
+                            .map(
+                              (doc) => OpportunityCard(
+                                data: doc.data(),
+                                action: dashboardText(
+                                  context,
+                                  'Continue active donation',
+                                  'جاری عطیہ دیکھیں',
+                                ),
+                                onTap:
+                                    () => _go(
+                                      RequestTrackingScreen(requestId: doc.id),
+                                    ),
+                              ),
+                            )
+                            .toList(),
+                  );
+                },
+              ),
+              DashboardHeading(
+                dashboardText(
+                  context,
+                  'Direct invitations',
+                  'براہ راست دعوتیں',
+                ),
+                action: dashboardText(context, 'View all', 'سب دیکھیں'),
+                onTap: () => _requests(1),
+              ),
+              _preview(_invitations, invitations: true),
+              if (user?.role == 'donor')
+                DonorAwareness(
+                  key: ValueKey(_refreshKey),
+                  onAction: (action) {
+                    if (action == 'profile') {
+                      _profile();
+                    } else if (action == 'history') {
+                      _go(const DonationHistoryScreen());
+                    } else {
+                      _requests();
+                    }
                   },
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-
-              // ── Eligibility Card ──
-              SlideInAnimation(
-                delay: const Duration(milliseconds: 140),
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg + 2),
-                  decoration: BoxDecoration(
-                    color:
-                        isEligible
-                            ? AppColors.success.withValues(alpha: 0.1)
-                            : AppColors.warning.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                    border: Border.all(
-                      color: isEligible ? AppColors.success : AppColors.warning,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isEligible ? Icons.check_circle : Icons.schedule,
-                        size: 34,
-                        color:
-                            isEligible ? AppColors.success : AppColors.warning,
-                      ),
-                      const SizedBox(width: AppSpacing.md + 3),
-                      Expanded(
-                        child: Text(
-                          isEligible
-                              ? 'Eligible to Donate'
-                              : 'Not Eligible Yet',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color:
-                                isEligible
-                                    ? AppColors.success
-                                    : AppColors.warning,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
+              DashboardHeading(
+                dashboardText(
+                  context,
+                  'Blood needed nearby',
+                  'قریب خون کی ضرورت',
                 ),
+                action: dashboardText(context, 'Explore', 'تلاش کریں'),
+                onTap: () => _requests(),
               ),
-              const SizedBox(height: AppSpacing.xxl + 1),
-
-              if ((_userData?['lastDonationDate'] as Timestamp?) != null)
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.calendar_today),
-                    title: const Text('You may be able to donate again'),
-                    subtitle: Text(
-                      'After ${EligibilityChecker.nextEligibleDate((_userData?['lastDonationDate'] as Timestamp).toDate())?.toLocal().toString().split(' ').first ?? 'the eligible date'}, subject to medical screening. Qualified medical staff decide actual eligibility.',
-                    ),
-                  ),
-                ),
-
-              // ── Available Blood Requests ──
-              Text(
-                'Matching Blood Requests',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+              _preview(_nearby, invitations: false),
+              DashboardHeading(
+                dashboardText(context, 'Your contribution', 'آپ کی مدد'),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'People who need blood donation',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: AppSpacing.md),
-
-              FutureBuilder<Map<String, dynamic>>(
-                future: WorkflowService.call('discoverRequests', {
-                  'radiusKm': 50,
-                  'limit': 3,
-                }),
-                builder: (context, snap) {
-                  final items = (snap.data?['requests'] as List?) ?? const [];
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (snap.connectionState == ConnectionState.waiting)
-                        const LinearProgressIndicator(),
-                      ...items
-                          .take(3)
-                          .map(
-                            (r) => ListTile(
-                              dense: true,
-                              title: Text(
-                                '${r['bloodGroup'] ?? '—'} • ${r['hospitalName'] ?? 'Blood request'}',
-                              ),
-                              subtitle: Text(
-                                '${r['unitsNeeded'] ?? 0} units • ${r['status'] ?? 'open'}',
-                              ),
-                            ),
-                          ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed:
-                              () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (_) => const BloodNeededNearYouScreen(),
-                                ),
-                              ),
-                          child: const Text('See all'),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-
-              _buildActionTile(
-                title: 'My Active Donations',
-                icon: Icons.volunteer_activism,
-                color: AppColors.primaryRed,
-                onTap:
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RequestListScreen(mode: 'active'),
-                      ),
-                    ),
-              ),
-              _buildActionTile(
-                title: 'Browse matching requests',
-                icon: Icons.search,
-                color: Colors.teal,
-                onTap:
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => const RequestListScreen(mode: 'discover'),
-                      ),
-                    ),
-              ),
-              _buildActionTile(
-                title: 'My responses',
-                icon: Icons.track_changes,
-                color: Colors.indigo,
-                onTap:
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const MyResponsesScreen(),
-                      ),
-                    ),
-              ),
-
-              const SizedBox(height: AppSpacing.xxl + 1),
-
-              Text(
-                'Quick Actions',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg - 1),
-
-              _buildActionTile(
-                title: 'My Profile',
-                icon: Icons.person,
-                color: AppColors.secondaryBlue,
-                onTap: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
+              DashboardPanel(
+                child: Wrap(
+                  spacing: 32,
+                  runSpacing: 16,
+                  children: [
+                    FutureBuilder<int?>(
+                      future: _donations,
                       builder:
-                          (_) => DonorProfileScreen(userData: _userData ?? {}),
+                          (context, snap) => _stat(
+                            dashboardText(context, 'Donations', 'عطیات'),
+                            snap.connectionState != ConnectionState.done
+                                ? '...'
+                                : '${snap.data ?? '-'}',
+                            Icons.bloodtype_outlined,
+                          ),
                     ),
-                  );
-                  // Profile update ke baad refresh karo
-                  _loadUserData();
-                },
-              ),
-
-              _buildActionTile(
-                title: 'Donation History',
-                icon: Icons.history,
-                color: AppColors.secondaryGreen,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const DonationHistoryScreen(),
+                    _stat(
+                      dashboardText(context, 'Points', 'پوائنٹس'),
+                      '${user?.rewardPoints ?? 0}',
+                      Icons.stars_outlined,
                     ),
-                  );
-                },
+                    TextButton(
+                      onPressed: () => _go(const RewardsScreen()),
+                      child: Text(
+                        dashboardText(
+                          context,
+                          'Rewards & certificates',
+                          'انعامات اور اسناد',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-
-              _buildActionTile(
-                title: 'Rewards & Certificates',
-                icon: Icons.card_giftcard,
-                color: AppColors.warning,
-                onTap: () {
-                  Navigator.push(
+              TextButton.icon(
+                onPressed: () => _go(const EligibilityStatusScreen()),
+                icon: const Icon(Icons.health_and_safety_outlined),
+                label: Text(
+                  dashboardText(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const RewardsScreen(),
-                    ), // ✅ now the real screen
-                  );
-                },
+                    'Recorded eligibility & next date',
+                    'ریکارڈ شدہ اہلیت اور اگلی تاریخ',
+                  ),
+                ),
               ),
-
-              // ✅ NEW — SettingsScreen (notifications, theme, privacy,
-              // help/about, legal, sign out) existed as a complete, working
-              // file but had no button anywhere in the app that opened it.
-              _buildActionTile(
-                title: 'Settings',
-                icon: Icons.settings_outlined,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  );
-                },
+              Text(
+                dashboardText(
+                  context,
+                  'Donation eligibility is confirmed by healthcare staff before donation.',
+                  'عطیہ دینے سے پہلے طبی عملہ اہلیت کی تصدیق کرتا ہے۔',
+                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: c.onSurfaceVariant),
               ),
             ],
           ),
@@ -543,27 +465,23 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
     );
   }
 
-  Widget _buildActionTile({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: AppSpacing.elevationLow,
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+  Widget _stat(String label, String value, IconData icon) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, color: Theme.of(context).colorScheme.primary),
+      const SizedBox(width: 10),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          Text(label),
+        ],
       ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.15),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(title),
-        trailing: Icon(Icons.arrow_forward_ios, size: 18),
-        onTap: onTap,
-      ),
-    );
-  }
+    ],
+  );
 }

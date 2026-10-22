@@ -1,3 +1,4 @@
+import 'admin_awareness_banners.dart';
 import 'admin_audit_screen.dart';
 import '../../settings/my_reports_screen.dart';
 import 'package:flutter/material.dart';
@@ -88,6 +89,7 @@ class _AdminWebDashboardState extends State<AdminWebDashboard>
     ('Notifications', Icons.notifications_rounded),
     ('Support', Icons.support_agent),
     ('Audit & Export', Icons.history),
+    ('Awareness Banners', Icons.campaign_outlined),
   ];
 
   @override
@@ -110,6 +112,7 @@ class _AdminWebDashboardState extends State<AdminWebDashboard>
       AdminWebNotifications(),
       const MyReportsScreen(admin: true),
       const AdminAuditScreen(),
+      const AdminAwarenessBanners(),
     ];
   }
 
@@ -169,40 +172,30 @@ class _AdminWebDashboardState extends State<AdminWebDashboard>
       bottomNavigationBar:
           isWide
               ? null
-              : Container(
-                decoration: BoxDecoration(
-                  color: _T.ink,
-                  border: Border(top: BorderSide(color: _T.inkBorder)),
-                ),
-                child: SafeArea(
-                  child: BottomNavigationBar(
-                    currentIndex: _selectedIndex,
-                    onTap: _selectSection,
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    selectedItemColor: _T.crimson,
-                    unselectedItemColor: _T.slate400,
-                    selectedLabelStyle: _T.body(
-                      size: 11,
-                      weight: FontWeight.w700,
+              : SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
+                  child: DropdownButtonFormField<int>(
+                    initialValue: _selectedIndex,
+                    key: ValueKey(_selectedIndex),
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Admin section',
+                      prefixIcon: Icon(Icons.menu),
                     ),
-                    unselectedLabelStyle: _T.body(
-                      size: 11,
-                      weight: FontWeight.w500,
+                    items: List.generate(
+                      _sections.length,
+                      (i) => DropdownMenuItem(
+                        value: i,
+                        child: Text(_sections[i].$1),
+                      ),
                     ),
-                    type: BottomNavigationBarType.fixed,
-                    items:
-                        _sections
-                            .map(
-                              (s) => BottomNavigationBarItem(
-                                icon: Icon(s.$2),
-                                label:
-                                    s.$1 == 'Blood Requests'
-                                        ? 'Requests'
-                                        : s.$1,
-                              ),
-                            )
-                            .toList(),
+                    onChanged: (i) {
+                      if (i != null) _selectSection(i);
+                    },
                   ),
                 ),
               ),
@@ -943,16 +936,52 @@ class _AdminPendingBadge extends StatelessWidget {
   const _AdminPendingBadge({required this.kind});
   Stream<QuerySnapshot<Map<String, dynamic>>> _stream() {
     final db = FirebaseFirestore.instance;
-    if (kind == 'Emergency Review') return db.collection('blood_requests').where('reviewStatus', isEqualTo: 'pending_review').limit(100).snapshots();
-    if (kind == 'Verification Review') return db.collection('verification_requests').where('status', isEqualTo: 'pending').limit(100).snapshots();
-    return db.collection('misuse_reports').where('status', isEqualTo: 'pending').limit(100).snapshots();
+    if (kind == 'Emergency Review') {
+      return db
+          .collection('blood_requests')
+          .where('reviewStatus', isEqualTo: 'pending_review')
+          .limit(100)
+          .snapshots();
+    }
+    if (kind == 'Verification Review') {
+      return db
+          .collection('verification_requests')
+          .where('status', isEqualTo: 'pending')
+          .limit(100)
+          .snapshots();
+    }
+    return db
+        .collection('misuse_reports')
+        .where('status', isEqualTo: 'pending')
+        .limit(100)
+        .snapshots();
   }
+
   @override
-  Widget build(BuildContext context) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: _stream(),
-    builder: (context, snap) {
-      if (!snap.hasData || snap.hasError || snap.data!.docs.isEmpty) return const SizedBox.shrink();
-      return Container(constraints: const BoxConstraints(minWidth: 20), padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: _T.crimson, borderRadius: BorderRadius.circular(10)), child: Text('${snap.data!.docs.length}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)));
-    },
-  );
+  Widget build(BuildContext context) =>
+      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: _stream(),
+        builder: (context, snap) {
+          if (!snap.hasData || snap.hasError || snap.data!.docs.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return Container(
+            constraints: const BoxConstraints(minWidth: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: _T.crimson,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '${snap.data!.docs.length}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          );
+        },
+      );
 }

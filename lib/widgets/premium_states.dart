@@ -8,6 +8,8 @@ class PremiumLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView.separated(
     padding: const EdgeInsets.all(16),
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
     itemCount: rows,
     separatorBuilder: (_, __) => const SizedBox(height: 10),
     itemBuilder: (_, __) => const _LoadingRow(),

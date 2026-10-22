@@ -32,6 +32,15 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
       allow delete: if active() && request.auth.uid == userId;
     }
+    match /awareness_banners/{fileName} {
+      allow read: if active();
+      allow create, update: if active()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        && request.resource.size < 3 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+      allow delete: if active()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
     match /{allPaths=**} { allow read, write: if false; }
   }
 }

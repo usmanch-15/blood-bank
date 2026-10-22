@@ -319,7 +319,7 @@ async function discoverRequests(request) {
     const page=await (cursor ? base.startAfter(cursor) : base).get();
     for (const doc of page.docs) {
       const r=doc.data();
-      if (r.requesterId!==user.uid && !expired(r) && inPakistan(r.latitude,r.longitude) &&
+      if (r.requesterId!==user.uid && !(r.acceptedDonorIds || []).includes(user.uid) && r.acceptedDonorId !== user.uid && !expired(r) && inPakistan(r.latitude,r.longitude) &&
           compatible(user.bloodGroup,r.bloodGroup) && !(user.declinedRequestIds || []).includes(doc.id) && distanceKm(user.latitude,user.longitude,r.latitude,r.longitude)<=radius) {
         items.push(summary(r,doc.id,user));
       }

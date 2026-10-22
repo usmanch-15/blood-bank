@@ -18,6 +18,9 @@ const {escalatePendingEmergencyReviews} = require('./emergencyEscalation');
 exports.notifyPendingEmergency = onDocumentCreated('blood_requests/{requestId}', notifyPendingEmergency);
 
 const workflows = require('./secureWorkflows');
+const awareness = require('./awarenessWorkflows');
+for (const name of ['manageAwarenessBanner', 'donorAwarenessBanners', 'recordBannerEvent']) exports[name] = onCall(awareness[name]);
+exports.donorInvitations = onCall(require('./donorInvitations').donorInvitations);
 const voice = require('./voiceWorkflows');
 const {nearbyDonors} = require('./nearbyDonors');
 const {notifyRequest} = require('./requestNotifications');

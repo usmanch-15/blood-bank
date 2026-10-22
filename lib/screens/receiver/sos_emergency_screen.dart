@@ -1,3 +1,5 @@
+import '../../widgets/dashboard_components.dart';
+import '../../utils/feedback.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -119,7 +121,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
         );
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = AppFeedback.message(e));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -132,11 +134,43 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
       key: _form,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
-          const Text(
-            'An SOS requests one urgent donation. For multiple units, create a blood request. Donor response is voluntary; contact emergency services when needed.',
+          DashboardPanel(
+            tint: Theme.of(
+              context,
+            ).colorScheme.errorContainer.withValues(alpha: .25),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.sos, color: Theme.of(context).colorScheme.error),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        dashboardText(
+                          context,
+                          'Reach nearby donors',
+                          'قریبی عطیہ دہندگان کو اطلاع دیں',
+                        ),
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  dashboardText(
+                    context,
+                    'An SOS requests one urgent donation. For multiple units, create a blood request. Donor response is voluntary; contact emergency services when needed.',
+                    'ایس او ایس ایک فوری عطیے کی درخواست ہے۔ زیادہ یونٹس کے لیے خون کی درخواست بنائیں۔ عطیہ رضاکارانہ ہے؛ ضرورت ہو تو ایمرجنسی خدمات سے رابطہ کریں۔',
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _group,
             decoration: InputDecoration(
@@ -151,6 +185,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                     ? null
                     : (v) => setState(() => _group = v!),
           ),
+          const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _urgency,
             decoration: const InputDecoration(labelText: 'Urgency'),
@@ -168,6 +203,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                     ? null
                     : (v) => setState(() => _urgency = v!),
           ),
+          const SizedBox(height: 16),
           TextFormField(
             controller: _hospital,
             focusNode: _hospitalFocusNode,
@@ -179,6 +215,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
             validator: AppValidators.validateHospitalName,
             enabled: !_sending && _count == 0,
           ),
+          const SizedBox(height: 16),
           TextFormField(
             controller: _phone,
             keyboardType: TextInputType.phone,
@@ -189,6 +226,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
             validator: AppValidators.validatePhone,
             enabled: !_sending && _count == 0,
           ),
+          const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: _sending || _count > 0 ? null : _pick,
             icon: const Icon(Icons.pin_drop),
@@ -227,6 +265,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                 ),
             child: const Text('My active SOS & history'),
           ),
+          const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: () async {
               try {
@@ -235,9 +274,9 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('$e')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(AppFeedback.message(e))),
+                  );
                 }
               }
             },

@@ -1,3 +1,4 @@
+import '../../utils/feedback.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
@@ -80,7 +81,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
       if (mounted) {
         setState(() {
           _data = null;
-          _error = e.toString();
+          _error = AppFeedback.message(e);
         });
       }
     }
@@ -123,7 +124,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ).showSnackBar(SnackBar(content: Text(AppFeedback.message(e))));
       }
     } finally {
       if (mounted) {
@@ -294,7 +295,7 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(
                                 context,
-                              ).showSnackBar(SnackBar(content: Text('$e')));
+                              ).showSnackBar(SnackBar(content: Text(AppFeedback.message(e))));
                             }
                           }
                         },

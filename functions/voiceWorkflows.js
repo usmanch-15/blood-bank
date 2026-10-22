@@ -107,7 +107,7 @@ async function inviteDonor(request) {
   if (uid !== data.requesterId) throw new HttpsError('permission-denied', 'Only the requester can invite a donor.');
   if (data.reviewStatus && data.reviewStatus !== 'approved') throw new HttpsError('failed-precondition', 'This request is awaiting approved review.');
   const donorRef = db.doc(`users/${donorId}`), donorSnap = await donorRef.get(), donor = donorSnap.data();
-  if (!donor || donor.status !== 'approved' || donor.isDonor !== true || donor.isAvailable !== true || !compatible(data.bloodGroup, donor.bloodGroup) || !eligible(donor, Date.now())) throw new HttpsError('failed-precondition', 'This donor is not currently eligible.');
+  if (!donor || donor.status !== 'approved' || donor.isDonor !== true || donor.isAvailable !== true || !compatible(donor.bloodGroup, data.bloodGroup) || !eligible(donor, Date.now())) throw new HttpsError('failed-precondition', 'This donor is not currently eligible.');
   const ref = db.doc(`blood_requests/${requestId}`), inviteRef = ref.collection('invites').doc(donorId);
   const now = admin.firestore.Timestamp.now();
   try { await inviteRef.create({donorId, requesterId:uid, status:'invited', createdAt:now, updatedAt:now}); } catch (e) { if (e.code === 6) return {invited:true, alreadyInvited:true}; throw e; }

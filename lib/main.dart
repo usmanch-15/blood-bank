@@ -27,7 +27,7 @@ import 'l10n/app_localizations.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/role_selection_screen.dart';
-import 'screens/donor/blood_needed_near_you_screen.dart';
+import 'screens/donor/donor_dashboard_screen.dart';
 import 'screens/receiver/receiver_dashboard_screen.dart';
 
 // Admin Web Screens
@@ -147,7 +147,7 @@ class BloodBankApp extends StatelessWidget {
                 '/donor':
                     (context) => const AccountAccessGuard(
                       role: 'donor',
-                      child: BloodNeededNearYouScreen(),
+                      child: DonorDashboardScreen(),
                     ),
                 '/receiver':
                     (context) => const AccountAccessGuard(

@@ -467,3 +467,69 @@ test('busy donor call is rejected and free donor call remains subject to provide
   await admin.firestore().doc('callSessions/active').set({participantIds:['receiver','donor'],status:'ringing',expiresAt:admin.firestore.Timestamp.fromMillis(Date.now()+60000)});
   await assert.rejects(voice.createVoiceCallSession({auth:auth('receiver'),data:{requestId:'request',calleeId:'donor'}}),{code:'resource-exhausted'});
 });
+
+test('awareness campaigns are admin managed, donor-only, scheduled and deduplicated',async()=>{
+  const a=require('../awarenessWorkflows');
+  await admin.firestore().doc('users/admin').set({...profile('admin'),role:'admin'});
+  const data={en:{title:'Help nearby',description:'Explore requests',button:'Explore'},ur:{title:'مدد کریں',description:'درخواستیں دیکھیں',button:'دیکھیں'},action:'requests',active:true,priority:10,startAt:Date.now()-1000,endAt:Date.now()+3600000};
+  await assert.rejects(a.manageAwarenessBanner({auth:auth('donor'),data}),{code:'permission-denied'});
+  const {id}=await a.manageAwarenessBanner({auth:auth('admin'),data});
+  assert.equal((await a.donorAwarenessBanners({auth:auth('receiver')})).items.length,0);
+  await admin.firestore().doc('users/receiver').update({isDonor:true});
+  assert.equal((await a.donorAwarenessBanners({auth:auth('receiver')})).items.length,0);
+  const feed=await a.donorAwarenessBanners({auth:auth('donor')});
+  assert.equal(feed.items.length,1);
+  const event={auth:auth('donor'),data:{id,revision:1,event:'view'}};
+  await Promise.all([a.recordBannerEvent(event),a.recordBannerEvent(event)]);
+  assert.equal((await admin.firestore().doc(`awareness_banners/${id}`).get()).data().views,1);
+  await assert.rejects(a.recordBannerEvent({...event,auth:auth('receiver')}),{code:'permission-denied'});
+  await assertFails(setDoc(doc(env.authenticatedContext('donor').firestore(),`awareness_banners/${id}`),data));
+  await assertFails(getDoc(doc(env.authenticatedContext('receiver').firestore(),`awareness_banners/${id}`)));
+  await assertSucceeds(getDoc(doc(env.authenticatedContext('admin').firestore(),`awareness_banners/${id}`)));
+  await a.manageAwarenessBanner({auth:auth('admin'),data:{...data,id,active:false}});
+  assert.equal((await a.donorAwarenessBanners({auth:auth('donor')})).items.length,0);
+  assert.equal((await a.recordBannerEvent(event)).recorded,false);
+});
+
+test('donor invitations are private and omit answered or closed requests',async()=>{
+  const {donorInvitations}=require('../donorInvitations');
+  await admin.firestore().doc('blood_requests/request/invites/donor').set({donorId:'donor',requesterId:'receiver',status:'invited'});
+  await admin.firestore().doc('notifications/invite_request_donor').set({userId:'donor',type:'donor_invite',requestId:'request'});
+  assert.equal((await donorInvitations({auth:auth('donor'),data:{}})).items.length,1);
+  assert.equal((await donorInvitations({auth:auth('other'),data:{}})).items.length,0);
+  const path='blood_requests/request/invites/donor';
+  await assertSucceeds(getDoc(doc(env.authenticatedContext('donor').firestore(),path)));
+  await assertSucceeds(getDoc(doc(env.authenticatedContext('receiver').firestore(),path)));
+  await assertFails(getDoc(doc(env.authenticatedContext('other').firestore(),path)));
+  await assertFails(updateDoc(doc(env.authenticatedContext('donor').firestore(),path),{status:'confirmed'}));
+  await admin.firestore().doc(path).update({status:'confirmed'});
+  assert.equal((await donorInvitations({auth:auth('donor'),data:{}})).items.length,0);
+  await admin.firestore().doc(path).update({status:'invited'});
+  await admin.firestore().doc('blood_requests/request').update({status:'cancelled'});
+  assert.equal((await donorInvitations({auth:auth('donor'),data:{}})).items.length,0);
+});
+
+test('donor search continues after a result limit without skipping the rest of a page',async()=>{
+  const {nearbyDonorsPaged}=require('../nearbyDonors');
+  for(const uid of ['donor','other']) await admin.firestore().doc(`users/${uid}`).update({latitude:31,longitude:74,locationSharingEnabled:true});
+  const first=await nearbyDonorsPaged(31,74,'O+',5,null,1);
+  assert.equal(first.matches.length,1); assert.ok(first.cursor);
+  const second=await nearbyDonorsPaged(31,74,'O+',5,first.cursor,1);
+  assert.equal(second.matches.length,1);
+  assert.notEqual(first.matches[0].uid,second.matches[0].uid);
+  assert.equal(second.cursor,null);
+});
+
+test('banner image uploads are administrator-only and limited to image formats',async()=>{
+  await admin.firestore().doc('users/admin').set({...profile('admin'),role:'admin'});
+  const donor=env.authenticatedContext('donor').storage();
+  const manager=env.authenticatedContext('admin').storage();
+  await assertFails(donor.ref('awareness_banners/donor.png').put(Buffer.from('image'),{contentType:'image/png'}));
+  await assertFails(manager.ref('awareness_banners/file.txt').put(Buffer.from('text'),{contentType:'text/plain'}));
+  await assertSucceeds(manager.ref('awareness_banners/admin.png').put(Buffer.from('image'),{contentType:'image/png'}));
+});
+
+test('invitations apply compatibility from donor to recipient',async()=>{
+  await admin.firestore().doc('blood_requests/request').update({bloodGroup:'A+'});
+  assert.equal((await voice.inviteDonor({auth:auth('receiver'),data:{requestId:'request',donorId:'donor'}})).invited,true);
+});

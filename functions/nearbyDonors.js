@@ -7,7 +7,7 @@ const MAX_SCAN_PAGES = 5;
 const PAGE_SIZE = 200;
 const DEFAULT_RESULT_LIMIT = 100;
 async function nearbyDonorsPaged(lat, lng, bloodGroup, radiusKm, cursor = null, resultLimit = DEFAULT_RESULT_LIMIT) {
-  if (!inPakistan(lat,lng)) return [];
+  if (!inPakistan(lat,lng)) return {matches:[], cursor:null, scannedPages:0};
   const delta = radiusKm / 110.574;
   const query = admin.firestore().collection('users')
     .where('isDonor','==',true).where('isAvailable','==',true)
@@ -17,10 +17,19 @@ async function nearbyDonorsPaged(lat, lng, bloodGroup, radiusKm, cursor = null, 
   const matches=[];
   let last;
   let scannedPages = 0;
-  if (cursor) { const [latitude, uid] = String(cursor).split('|'); last = {data:()=>({latitude:Number(latitude)}), id:uid}; }
-  for (; scannedPages < MAX_SCAN_PAGES; scannedPages++) {
+  let hasMore = false;
+  const limit = Math.min(1000, Math.max(1, resultLimit));
+  if (cursor) {
+    const [latitude, uid, extra] = String(cursor).split('|');
+    if (!uid || uid.includes('/') || uid.length > 128 || extra || !Number.isFinite(Number(latitude))) throw new (require('firebase-functions/v2/https').HttpsError)('invalid-argument','Invalid search cursor.');
+    last = {data:()=>({latitude:Number(latitude)}), id:uid};
+  }
+  while (scannedPages < MAX_SCAN_PAGES) {
     const page = await (last ? query.startAfter(last.data().latitude, last.id) : query).get();
-    for (const doc of page.docs) {
+    scannedPages++;
+    hasMore = page.size === PAGE_SIZE;
+    for (const [index, doc] of page.docs.entries()) {
+      last = doc;
       const d=doc.data();
       let stale = false;
       if (d.activeRequestId) {
@@ -34,13 +43,15 @@ async function nearbyDonorsPaged(lat, lng, bloodGroup, radiusKm, cursor = null, 
       if (inPakistan(d.latitude,d.longitude) && complete && (!bloodGroup || compatible(d.bloodGroup,bloodGroup)) && eligible(d,Date.now()) && d.isEligible !== false && (!d.activeRequestId || stale) &&
         distanceKm(lat,lng,d.latitude,d.longitude)<=radiusKm) {
         matches.push({uid:doc.id, data:d, distanceKm:distanceKm(lat,lng,d.latitude,d.longitude)});
-        if (matches.length >= Math.min(1000, Math.max(1, resultLimit))) break;
+        if (matches.length >= limit) {
+          hasMore = index < page.size - 1 || page.size === PAGE_SIZE;
+          break;
+        }
       }
     }
-    if (matches.length >= Math.min(1000, Math.max(1, resultLimit)) || page.size<PAGE_SIZE) break;
-    last=page.docs[page.size-1];
+    if (matches.length >= limit || page.size<PAGE_SIZE) break;
   }
-  const nextCursor = last && scannedPages >= MAX_SCAN_PAGES ? `${last.data().latitude}|${last.id}` : null;
+  const nextCursor = last && hasMore ? `${last.data().latitude}|${last.id}` : null;
   return {matches, cursor:nextCursor, scannedPages};
 }
 async function nearbyDonors(lat, lng, bloodGroup, radiusKm) {

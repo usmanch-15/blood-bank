@@ -93,6 +93,10 @@ service cloud.firestore {
     match /blood_requests/{id} {
       allow read: if admin() || participant(resource.data);
       allow write: if false;
+      match /invites/{donorId} {
+        allow read: if admin() || (active() && (request.auth.uid == donorId || request.auth.uid == get(/databases/$(database)/documents/blood_requests/$(id)).data.requesterId));
+        allow write: if false;
+      }
       match /events/{eventId} {
         allow read: if admin() || participant(get(/databases/$(database)/documents/blood_requests/$(id)).data);
         allow write: if false;
@@ -173,6 +177,10 @@ service cloud.firestore {
         && request.resource.data.body is string && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 2000;
       allow update: if false;
       allow delete: if admin();
+    }
+    match /awareness_banners/{id} {
+      allow read: if admin();
+      allow write: if false;
     }
     match /{document=**} { allow read, write: if false; }
   }

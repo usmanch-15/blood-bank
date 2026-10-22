@@ -9,11 +9,11 @@
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "test": "node --test test/policy.test.js test/hospital-policy.test.js",
+    "test": "node --test test/policy.test.js test/hospital-policy.test.js test/banner-policy.test.js",
     "test:emulator": "node --test --test-concurrency=1 test/emulator.test.js",
     "test:http": "node --test test/http-workflow.test.js",
     "test:browser": "node test/browser-audit.js",
-    "check": "node --check index.js && node --check secureWorkflows.js && node --check requestWorkflows.js && node --check requestNotifications.js && node --check adminWorkflows.js && node --check emergencyReviewWorkflows.js && node --check emergencyAlerts.js && node --check emergencyEscalation.js && node --check voiceWorkflows.js && node --check notificationService.js && node --check donationPolicy.js && node --check hospitalPolicy.js && node --check nearbyDonors.js && node --check searchPolicy.js && node --check chatNotifications.js && node --check chatWorkflows.js && node --check verificationWorkflows.js"
+    "check": "node --check index.js && node --check secureWorkflows.js && node --check requestWorkflows.js && node --check requestNotifications.js && node --check adminWorkflows.js && node --check emergencyReviewWorkflows.js && node --check emergencyAlerts.js && node --check emergencyEscalation.js && node --check voiceWorkflows.js && node --check notificationService.js && node --check donationPolicy.js && node --check hospitalPolicy.js && node --check nearbyDonors.js && node --check searchPolicy.js && node --check chatNotifications.js && node --check chatWorkflows.js && node --check verificationWorkflows.js && node --check awarenessWorkflows.js && node --check donorInvitations.js && node --check bannerPolicy.js"
   },
   "dependencies": {
     "firebase-admin": "^14.5.0",
