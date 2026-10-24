@@ -1,0 +1,11 @@
+{
+  "name": "blood-connect-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/worker.test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.50.0"
+  }
+}
