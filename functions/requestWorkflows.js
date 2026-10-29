@@ -7,6 +7,7 @@ const {validHospitalRecord, matchesHospitalSelection} = require('./hospitalPolic
 const db = admin.firestore();
 const now = () => admin.firestore.Timestamp.now();
 const fail = (code, message) => { throw new HttpsError(code, message); };
+const {assignments, actionable} = require('./requestPolicy');
 const openStatuses = ['pending', 'accepted', 'partially_fulfilled'];
 const DUPLICATE_REQUEST_WINDOW_MINUTES = Number(process.env.DUPLICATE_REQUEST_WINDOW_MINUTES || 30);
 function id(value) {
@@ -21,9 +22,6 @@ async function actor(request) {
 }
 const millis = value => value?.toMillis ? value.toMillis() : typeof value === 'number' ? value : 0;
 const expired = r => millis(r.requiredBy) > 0 && millis(r.requiredBy) <= Date.now();
-function assignments(r) {
-  return r.commitments || (r.acceptedDonorId ? {[r.acceptedDonorId]: {status:'accepted', name:'Assigned donor'}} : {});
-}
 function participants(r) {
   const activeCommitments = Object.keys(assignments(r)).filter((donorId) =>
     ['accepted', 'agreed', 'awaiting_confirmation', 'completed'].includes(
@@ -37,7 +35,7 @@ function participants(r) {
   );
   return [...new Set([...participantIds, r.requesterId, ...activeCommitments])];
 }
-function assertOpen(r) { if (!r || !openStatuses.includes(r.status) || expired(r)) fail('failed-precondition','This request is closed or expired.'); }
+function assertOpen(r) { if (!actionable(r)) fail('failed-precondition','This request is closed or expired.'); }
 function notification(tx, key, userId, requestId, title, body) {
   tx.set(db.doc(`notifications/${key}`), {userId, relatedId:requestId, type:'request_update', title, body, isRead:false, createdAt:now()});
 }
@@ -101,7 +99,7 @@ async function createBloodRequest(request) {
     }
   }
   const data = requestData(input, user);
-  if (['urgent','critical','life_threatening'].includes(input.urgency)) data.reviewStatus='pending_review';
+  if (['urgent','critical','life_threatening'].includes(data.urgency)) data.reviewStatus='pending_review';
   // Client-generated ID makes retries of a successful submission idempotent.
   const requestId = id(request.data?.requestId), ref = db.doc(`blood_requests/${requestId}`);
   await rateLimit(`requests_${user.uid}`,20);
@@ -111,17 +109,22 @@ async function createBloodRequest(request) {
     return {id:requestId};
   }
   const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - DUPLICATE_REQUEST_WINDOW_MINUTES * 60000);
-  const recent = await db.collection('blood_requests').where('requesterId','==',user.uid).where('createdAt','>=',cutoff).limit(25).get();
-  if (recent.docs.some(d => {
-    const r=d.data();
-    return r.bloodGroup===data.bloodGroup && String(r.hospitalId||'')===String(data.hospitalId||'') && r.hospitalName===data.hospitalName && ['pending','accepted','partially_fulfilled'].includes(r.status);
-  })) fail('already-exists','A similar blood request was created recently. Please review it before creating another.');
   await db.runTransaction(async tx => {
+    // Serialize submissions by this receiver even when concurrent calls use
+    // different request IDs. The recent-query check alone is not a mutex.
+    const guard = db.doc(`request_submission_guards/${user.uid}`);
+    await tx.get(guard);
     const existing = await tx.get(ref);
     if (existing.exists) {
       if (existing.data().requesterId !== user.uid) fail('permission-denied','Request belongs to another account.');
       return;
     }
+    const recent = await tx.get(db.collection('blood_requests').where('requesterId','==',user.uid).where('createdAt','>=',cutoff).limit(25));
+    if (recent.docs.some(d => {
+      const r=d.data();
+      return r.bloodGroup===data.bloodGroup && String(r.hospitalId||'')===String(data.hospitalId||'') && r.hospitalName===data.hospitalName && openStatuses.includes(r.status);
+    })) fail('already-exists','A similar blood request was created recently. Please review it before creating another.');
+    tx.set(guard,{updatedAt:now()});
     tx.create(ref,data); event(tx,ref,user.uid,'created');
   });
   return {id:requestId};
@@ -161,7 +164,7 @@ async function declineRequest(request) {
   if (!user.isDonor) fail('permission-denied','Donor account required.');
   return db.runTransaction(async tx=>{
     const snap=await tx.get(ref), r=snap.data();
-    if (!r || !openStatuses.includes(r.status) || expired(r)) fail('failed-precondition','This request is closed or expired.');
+    if (!actionable(r)) fail('failed-precondition','This request is closed or expired.');
     if (r.requesterId===user.uid || !compatible(user.bloodGroup,r.bloodGroup) || !eligible(user,Date.now()) || !user.isAvailable) fail('permission-denied','This request is not available to you.');
     const existing = assignments(r)[user.uid];
     if (existing && ['accepted','agreed','awaiting_confirmation','completed'].includes(existing.status)) fail('failed-precondition','You already accepted this request.');
@@ -238,7 +241,7 @@ async function confirmDonation(request) {
     const stamp=now(),next=admin.firestore.Timestamp.fromMillis(stamp.toMillis()+INTERVAL_MS);
     commitments[donorId]={...entry,status:'completed',receiverConfirmedAt:stamp,completedAt:stamp,units:1};
     const accepted=Object.keys(commitments).filter(k=>['accepted','agreed','awaiting_confirmation'].includes(commitments[k].status));
-    tx.create(donationRef,{donorId,requesterId:r.requesterId,donorName:d.name || '',bloodGroup:d.bloodGroup,donationDate:stamp,location:r.hospitalName,requestId,units:1,pointsEarned:POINTS,confirmedBy:caller});
+    tx.create(donationRef,{donorId,requesterId:r.requesterId,donorName:d.name || '',bloodGroup:d.bloodGroup,donationDate:stamp,completedAt:stamp,status:'completed',location:r.hospitalName,requestId,units:1,pointsEarned:POINTS,confirmedBy:caller});
     tx.update(donorRef,{lastDonationDate:stamp,nextEligibleDate:next,isEligible:false,rewardPoints:admin.firestore.FieldValue.increment(POINTS),activeRequestId:admin.firestore.FieldValue.delete()});
     tx.update(ref,{commitments,acceptedDonorIds:accepted,participantIds:participants(r),donatedUnits:total,remainingUnits:r.quantity-total,status:total===r.quantity?'fulfilled':'partially_fulfilled',...(total===r.quantity?{fulfilledAt:stamp}:{})});
     if (r.sosId && total===r.quantity) tx.update(db.doc(`sosRequests/${r.sosId}`),{isResolved:true,status:'resolved',resolvedAt:stamp});
@@ -248,7 +251,13 @@ async function confirmDonation(request) {
     return {donationId:donationRef.id,donatedUnits:total,remainingUnits:r.quantity-total};
   });
 }
-async function closeRequest(request) { return closeInternal(request,false); }
+async function closeRequest(request) {
+  uid(request);
+  if (request.data?.status != null && request.data.status !== 'cancelled') {
+    fail('invalid-argument','Only request cancellation is supported.');
+  }
+  return closeInternal(request,false);
+}
 async function closeInternal(request, system) {
   const caller=uid(request), ref=db.doc(`blood_requests/${id(request.data?.requestId)}`);
   return db.runTransaction(async tx=>{
@@ -289,19 +298,55 @@ function summary(r, requestId, viewer) {
 async function getRequest(request) {
   const user=await actor(request), requestId=id(request.data?.requestId), snap=await db.doc(`blood_requests/${requestId}`).get(),r=snap.data();
   if (!r) fail('not-found','Request no longer exists.');
-  const permitted=user.role==='admin' || participants(r).includes(user.uid);
-  if (!permitted && (!user.isDonor || !openStatuses.includes(r.status) || expired(r))) fail('permission-denied','Request is not available.');
-  const donorParticipant = user.isDonor && user.uid !== r.requesterId && user.role !== 'admin' && participants(r).includes(user.uid);
+  const privateOwner=user.role==='admin' || user.uid===r.requesterId;
+  const permitted=privateOwner || participants(r).includes(user.uid);
+  if (!permitted && (!user.isDonor || !actionable(r))) fail('permission-denied','Request is not available.');
+  const donorParticipant = !privateOwner && participants(r).includes(user.uid);
+  const ownAssignment=assignments(r)[user.uid];
   const donorView = donorParticipant ? {
     id:requestId, bloodGroup:r.bloodGroup, hospitalName:r.hospitalName,
     hospitalAddress:r.hospitalAddress, location:r.location, latitude:r.latitude,
     longitude:r.longitude, quantity:r.quantity, donatedUnits:r.donatedUnits || 0,
     remainingUnits:r.remainingUnits ?? r.quantity, urgency:r.urgency,
     status:expired(r)&&openStatuses.includes(r.status)?'expired':r.status,
-    requiredBy:r.requiredBy, createdAt:r.createdAt, commitments:r.commitments,
-    acceptedDonorIds:r.acceptedDonorIds, participantIds:r.participantIds
+    requesterId:r.requesterId,
+    requiredBy:r.requiredBy, createdAt:r.createdAt,
+    // Never expose other donors or unrecognised legacy assignment fields.
+    commitments:ownAssignment ? {[user.uid]:{
+      status:ownAssignment.status, units:ownAssignment.units || 1,
+      acceptedAt:ownAssignment.acceptedAt || null, agreedAt:ownAssignment.agreedAt || null,
+      donorConfirmedAt:ownAssignment.donorConfirmedAt || null,
+    }} : {}
   } : null;
-  return {...(permitted && !donorParticipant?serialize(r):donorView || summary(r,requestId)),id:requestId,canViewPrivate:permitted && !donorParticipant};
+  return {...(privateOwner?serialize(r):serialize(donorView) || summary(r,requestId)),id:requestId,canViewPrivate:privateOwner};
+}
+
+// Server-authenticated, bounded projections replace participant Firestore reads.
+// Query identity comes only from auth, never a caller-supplied donor ID.
+async function participantRequests(request) {
+  const user=await actor(request), data=request.data || {};
+  if(!user.isDonor) fail('permission-denied','Donor account required.');
+  if(!['active','responses'].includes(data.mode)) fail('invalid-argument','Invalid request mode.');
+  // Current writes populate participantIds; legacy acceptedDonorId records
+  // are included through an OR query without rewriting historical documents.
+  const Filter=admin.firestore.Filter;
+  let query=db.collection('blood_requests').where(Filter.or(
+    Filter.where('participantIds','array-contains',user.uid),
+    Filter.where('acceptedDonorIds','array-contains',user.uid),
+    Filter.where('acceptedDonorId','==',user.uid),
+  ));
+  if(data.mode==='active') query=query.where('status','in',openStatuses);
+  query=query.orderBy(admin.firestore.FieldPath.documentId()).limit(30);
+  if(data.cursor!=null) query=query.startAfter(id(data.cursor));
+  const page=await query.get(), items=[];
+  for(const doc of page.docs){
+    const r=doc.data(), assignment=assignments(r)[user.uid];
+    if(r.requesterId===user.uid || !participants(r).includes(user.uid)) continue;
+    if(data.mode==='active' && (!actionable(r) ||
+      !['accepted','agreed','awaiting_confirmation'].includes(assignment?.status))) continue;
+    items.push({...summary(r,doc.id,user),responseStatus:assignment?.status || 'accepted'});
+  }
+  return {items,cursor:page.size===30?page.docs.at(-1).id:null};
 }
 async function discoverRequests(request) {
   const user=await actor(request);
@@ -319,7 +364,7 @@ async function discoverRequests(request) {
     const page=await (cursor ? base.startAfter(cursor) : base).get();
     for (const doc of page.docs) {
       const r=doc.data();
-      if (r.requesterId!==user.uid && !(r.acceptedDonorIds || []).includes(user.uid) && r.acceptedDonorId !== user.uid && !expired(r) && inPakistan(r.latitude,r.longitude) &&
+      if (r.requesterId!==user.uid && !(r.acceptedDonorIds || []).includes(user.uid) && r.acceptedDonorId !== user.uid && actionable(r) && inPakistan(r.latitude,r.longitude) &&
           compatible(user.bloodGroup,r.bloodGroup) && !(user.declinedRequestIds || []).includes(doc.id) && distanceKm(user.latitude,user.longitude,r.latitude,r.longitude)<=radius) {
         items.push(summary(r,doc.id,user));
       }
@@ -349,11 +394,18 @@ async function createSosAlert(request) {
   const privateContact=(await db.doc(`users/${user.uid}/private/contact`).get()).data();
   const r=requestData({...data,quantity:1,requiredBy:Date.now()+6*3600000,hospitalName:data.hospitalName || 'Emergency meeting point',contactNumber:data.contactNumber || privateContact?.phoneNumber},user);
   await rateLimit(`sos_${user.uid}`,3);
-  const ref=db.collection('sosRequests').doc(), requestRef=db.collection('blood_requests').doc();
-  const batch=db.batch();
-  batch.create(requestRef,{...r,sosId:ref.id,reviewStatus:'pending_review'});
-  batch.create(ref,{receiverId:user.uid,requestId:requestRef.id,bloodGroup:r.bloodGroup,latitude:r.latitude,longitude:r.longitude,urgency:r.urgency,triggerTime:now(),requiredBy:r.requiredBy,isResolved:false,status:'queued',reviewStatus:'pending_review',notifiedDonors:[]});
-  await batch.commit(); return {id:ref.id,requestId:requestRef.id};
+  const ref=data.submissionId ? db.doc(`sosRequests/${id(data.submissionId)}`) : db.collection('sosRequests').doc();
+  const requestRef=db.collection('blood_requests').doc();
+  return db.runTransaction(async tx=>{
+    const existing=(await tx.get(ref)).data();
+    if(existing){
+      if(existing.receiverId!==user.uid) fail('permission-denied','SOS belongs to another account.');
+      return {id:ref.id,requestId:existing.requestId};
+    }
+    tx.create(requestRef,{...r,sosId:ref.id,reviewStatus:'pending_review'});
+    tx.create(ref,{receiverId:user.uid,requestId:requestRef.id,bloodGroup:r.bloodGroup,latitude:r.latitude,longitude:r.longitude,urgency:r.urgency,triggerTime:now(),requiredBy:r.requiredBy,isResolved:false,status:'queued',reviewStatus:'pending_review',notifiedDonors:[]});
+    return {id:ref.id,requestId:requestRef.id};
+  });
 }
 async function getSos(request) {
   const user=await actor(request), snap=await db.doc(`sosRequests/${id(request.data?.sosId)}`).get(),s=snap.data();
@@ -387,4 +439,4 @@ async function expireRequests() {
     cursor=page.size===100?page.docs.at(-1).id:null;
   } while(cursor);
 }
-module.exports={createBloodRequest,acceptDonation,declineRequest,updateAssignment,confirmDonation,closeRequest,getRequest,discoverRequests,findDonors,createSosAlert,getSos,resolveSos,getDonorContact,actor,rateLimit,serialize,expired,openStatuses,expireRequests};
+module.exports={createBloodRequest,acceptDonation,declineRequest,updateAssignment,confirmDonation,closeRequest,getRequest,participantRequests,discoverRequests,findDonors,createSosAlert,getSos,resolveSos,getDonorContact,actor,rateLimit,serialize,expired,openStatuses,expireRequests};

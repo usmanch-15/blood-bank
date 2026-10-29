@@ -1,3 +1,4 @@
+import 'package:bloodbank/services/workflow_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../utils/validators.dart';
 import 'package:flutter/material.dart';
@@ -132,9 +133,7 @@ class DonorController extends ChangeNotifier {
   }
 
   Future<void> acceptRequest(String requestId) async {
-    await FirebaseFunctions.instance.httpsCallable('acceptDonation').call({
-      'requestId': requestId,
-    });
+    await WorkflowService.call('acceptDonation', {'requestId': requestId});
     notifyListeners();
   }
 
@@ -168,7 +167,7 @@ class DonorController extends ChangeNotifier {
     String? requestId,
   }) async {
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable(
+      final callable = WorkflowService.functions.httpsCallable(
         'confirmDonation',
       );
       await callable.call({
@@ -196,6 +195,7 @@ class DonorController extends ChangeNotifier {
     required String donorId,
     required String requestId,
   }) async {
+    await WorkflowService.call('declineRequest', {'requestId': requestId});
     await FirebaseFirestore.instance
         .collection(AppConstants.usersCollection)
         .doc(donorId)

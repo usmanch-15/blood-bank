@@ -1,7 +1,6 @@
 import '../services/workflow_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart'; // ✅ NEW — adminDeleteUser Cloud Function
 import '../models/user_model.dart';
 import '../constants/app_constants.dart';
 
@@ -94,9 +93,7 @@ class AdminController extends ChangeNotifier {
   /// which verifies the caller is an approved admin, deletes the Firestore
   /// doc + private/contact subdoc, AND deletes the real Auth account.
   Future<void> deleteUser(String uid) async {
-    final callable = FirebaseFunctions.instance.httpsCallable(
-      'adminDeleteUser',
-    );
+    final callable = WorkflowService.functions.httpsCallable('adminDeleteUser');
     await callable.call({'uid': uid});
     await loadAllUsers();
   }

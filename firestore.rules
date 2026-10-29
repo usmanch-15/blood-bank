@@ -91,14 +91,16 @@ service cloud.firestore {
       return active() && (d.requesterId == request.auth.uid || request.auth.uid in d.get('participantIds', []) || request.auth.uid in d.get('acceptedDonorIds', []) || d.get('acceptedDonorId','') == request.auth.uid);
     }
     match /blood_requests/{id} {
-      allow read: if admin() || participant(resource.data);
+      // Canonical requests contain patient/contact data, including legacy
+      // records. Participants use server-redacted callable projections.
+      allow read: if admin() || (active() && resource.data.requesterId == request.auth.uid);
       allow write: if false;
       match /invites/{donorId} {
         allow read: if admin() || (active() && (request.auth.uid == donorId || request.auth.uid == get(/databases/$(database)/documents/blood_requests/$(id)).data.requesterId));
         allow write: if false;
       }
       match /events/{eventId} {
-        allow read: if admin() || participant(get(/databases/$(database)/documents/blood_requests/$(id)).data);
+        allow read: if admin() || (active() && request.auth.uid == get(/databases/$(database)/documents/blood_requests/$(id)).data.requesterId);
         allow write: if false;
       }
       match /private/contact {
@@ -109,6 +111,23 @@ service cloud.firestore {
         allow write: if false;
       }
     }
+    function liveChat(conversationId) {
+      let c = get(/databases/$(database)/documents/conversations/$(conversationId)).data;
+      let r = get(/databases/$(database)/documents/blood_requests/$(c.requestId)).data;
+      let donor = c.participantIds[0] == r.requesterId ? c.participantIds[1] : c.participantIds[0];
+      let legacy = donor in r.get('acceptedDonorIds', []) || donor == r.get('acceptedDonorId', '');
+      let assignment = r.get('commitments', {}).get(donor, {'status': legacy ? 'accepted' : 'none'});
+      return c.participantIds.size() == 2 && donor != r.requesterId
+        && r.requesterId in c.participantIds
+        && get(/databases/$(database)/documents/users/$(r.requesterId)).data.status == 'approved'
+        && get(/databases/$(database)/documents/users/$(donor)).data.status == 'approved'
+        && assignment.status in ['accepted','agreed','awaiting_confirmation']
+        && r.status in ['pending','accepted','partially_fulfilled']
+        && r.get('reviewStatus', '') != 'rejected'
+        && (r.get('requiredBy', null) == null
+          || (r.requiredBy is timestamp && r.requiredBy > request.time)
+          || (r.requiredBy is number && (r.requiredBy == 0 || r.requiredBy > request.time.toMillis())));
+    }
     match /conversations/{conversationId} {
       allow read: if active() && request.auth.uid in resource.data.participantIds;
       allow create, update, delete: if false;
@@ -117,9 +136,8 @@ service cloud.firestore {
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
         allow create: if active()
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
-          && !((get(/databases/$(database)/documents/conversations/$(conversationId)).data.blockedUserIds is list)
-            && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.blockedUserIds)
-          && get(/databases/$(database)/documents/blood_requests/$(get(/databases/$(database)/documents/conversations/$(conversationId)).data.requestId)).data.status in ['pending','accepted','partially_fulfilled']
+          && !(request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.get('blockedUserIds', []))
+          && liveChat(conversationId)
           && request.resource.data.keys().hasOnly(['senderId','body','createdAt'])
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.body is string

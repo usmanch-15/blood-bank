@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const {initializeTestEnvironment,assertSucceeds,assertFails}=require('@firebase/rules-unit-testing');
-const {doc,setDoc,updateDoc,getDoc,deleteDoc,writeBatch}=require('firebase/firestore');
+const {doc,setDoc,updateDoc,getDoc,deleteDoc,writeBatch,getDocs,collection,query,where,serverTimestamp}=require('firebase/firestore');
 const admin=require('../firebaseAdmin');
 if(!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST || !process.env.FIREBASE_STORAGE_EMULATOR_HOST) throw Error('Use emulators:exec. Production tests are forbidden.');
 const projectId='demo-bloodbank';
@@ -14,6 +14,117 @@ let env;
 const profile=(uid,role='donor')=>({uid,email:`${uid}@example.test`,name:'Test User',role,status:'approved',bloodGroup:'O+',isDonor:role==='donor',isReceiver:role==='receiver',isAvailable:true,locationSharingEnabled:false,latitude:null,longitude:null,rewardPoints:0,isEligible:true,lastDonationDate:null});
 const requestData={requesterId:'receiver',status:'pending',bloodGroup:'O+',quantity:1,hospitalName:"Children's Hospital"};
 const auth=uid=>({uid,token:{auth_time:Math.floor(Date.now()/1000)}});
+
+test('chat writes and phone sharing require a live assignment; history remains readable',async()=>{
+  const chat=require('../chatWorkflows');
+  await workflows.acceptDonation({auth:auth('donor'),data:{requestId:'request'}});
+  await admin.firestore().doc('users/donor/private/contact').set({phoneNumber:'+923001234567'});
+  const input={auth:auth('donor'),data:{conversationId:'request_donor',confirm:true}};
+  const db=env.authenticatedContext('donor').firestore();
+  const message=()=>({senderId:'donor',body:'Available',createdAt:serverTimestamp()});
+  await assertSucceeds(setDoc(doc(db,'conversations/request_donor/messages/allowed'),message()));
+  await admin.firestore().doc('blood_requests/request').update({requiredBy:Date.now()+3600000});
+  await assertSucceeds(setDoc(doc(db,'conversations/request_donor/messages/legacy-deadline'),message()));
+  assert.deepEqual(await chat.sharePhoneNumber(input),{shared:true});
+  await chat.blockUser({auth:auth('receiver'),data:{conversationId:'request_donor'}});
+  await assertFails(setDoc(doc(db,'conversations/request_donor/messages/blocked'),message()));
+  await assert.rejects(chat.sharePhoneNumber(input),{code:'permission-denied'});
+  await chat.unblockUser({auth:auth('receiver'),data:{conversationId:'request_donor'}});
+  await workflows.updateAssignment({auth:auth('donor'),data:{requestId:'request',donorId:'donor',action:'withdraw'}});
+  await assertFails(setDoc(doc(db,'conversations/request_donor/messages/withdrawn'),message()));
+  await assert.rejects(chat.sharePhoneNumber(input),{code:'permission-denied'});
+  await assertSucceeds(getDoc(doc(db,'conversations/request_donor/messages/allowed')));
+  assert.deepEqual(await chat.markConversationRead(input),{read:true});
+});
+
+test('expired requests and suspended peers deny chat writes and phone sharing',async()=>{
+  const chat=require('../chatWorkflows');
+  await workflows.acceptDonation({auth:auth('donor'),data:{requestId:'request'}});
+  await admin.firestore().doc('users/donor/private/contact').set({phoneNumber:'+923001234567'});
+  const db=env.authenticatedContext('donor').firestore();
+  const input={auth:auth('donor'),data:{conversationId:'request_donor',confirm:true}};
+  for(const state of ['expired','suspended']){
+    await admin.firestore().doc('blood_requests/request').update({requiredBy:admin.firestore.Timestamp.fromMillis(Date.now()+(state==='expired'?-1000:3600000))});
+    await admin.firestore().doc('users/receiver').update({status:state==='suspended'?'suspended':'approved'});
+    await assertFails(setDoc(doc(db,`conversations/request_donor/messages/${state}`),{senderId:'donor',body:'Denied',createdAt:serverTimestamp()}));
+    await assert.rejects(chat.sharePhoneNumber(input),{code:'permission-denied'});
+  }
+});
+
+test('legacy array and empty commitments preserve access but never override withdrawal',async()=>{
+  const ref=admin.firestore().doc('blood_requests/request');
+  await ref.update({acceptedDonorIds:['donor'],commitments:{},status:'accepted'});
+  const before=(await ref.get()).data();
+  const detail=await workflows.getRequest({auth:auth('donor'),data:{requestId:'request'}});
+  assert.equal(detail.commitments.donor.status,'accepted');
+  assert.equal((await workflows.participantRequests({auth:auth('donor'),data:{mode:'active'}})).items.length,1);
+  assert.deepEqual((await ref.get()).data(),before);
+  await ref.update({commitments:{donor:{status:'withdrawn'}}});
+  assert.equal((await workflows.participantRequests({auth:auth('donor'),data:{mode:'active'}})).items.length,0);
+});
+
+test('emergency rejection closes linked records, releases donors and denies new actions',async()=>{
+  const {reviewEmergencyRequest}=require('../emergencyReviewWorkflows');
+  await admin.firestore().doc('users/admin').set(profile('admin','admin'));
+  await workflows.acceptDonation({auth:auth('donor'),data:{requestId:'request'}});
+  await admin.firestore().doc('blood_requests/request').update({sosId:'sos',reviewStatus:'pending_review',patientName:'preserve-private'});
+  await admin.firestore().doc('sosRequests/sos').set({requestId:'request',receiverId:'receiver',isResolved:false});
+  await assert.rejects(reviewEmergencyRequest({auth:auth('donor'),data:{id:'sos',sos:true,decision:'rejected',note:'Review'}}),{code:'permission-denied'});
+  const input={auth:auth('admin'),data:{id:'sos',sos:true,decision:'rejected',note:'Review'}};
+  await reviewEmergencyRequest(input);
+  await reviewEmergencyRequest(input);
+  const r=(await admin.firestore().doc('blood_requests/request').get()).data();
+  assert.equal(r.status,'cancelled'); assert.equal(r.patientName,'preserve-private');
+  assert.equal(r.commitments.donor.status,'released');
+  assert.equal((await admin.firestore().doc('users/donor').get()).data().activeRequestId,undefined);
+  assert.equal((await admin.firestore().doc('sosRequests/sos').get()).data().isResolved,true);
+  await assert.rejects(workflows.acceptDonation({auth:auth('other'),data:{requestId:'request'}}),{code:'failed-precondition'});
+  await assert.rejects(require('../requestNotifications').notifyRequest({auth:auth('receiver'),data:{requestId:'request'}}),{code:'permission-denied'});
+  await assertSucceeds(getDoc(doc(env.authenticatedContext('receiver').firestore(),'blood_requests/request')));
+  await assertFails(getDoc(doc(env.authenticatedContext('donor').firestore(),'blood_requests/request')));
+  // A legacy rejected record may still say pending: guards must not rely on cancellation alone.
+  await admin.firestore().doc('blood_requests/request').update({status:'pending',latitude:31,longitude:74});
+  await admin.firestore().doc('users/other').update({latitude:31,longitude:74,locationSharingEnabled:true});
+  await assert.rejects(workflows.acceptDonation({auth:auth('other'),data:{requestId:'request'}}),{code:'failed-precondition'});
+  await assert.rejects(workflows.getRequest({auth:auth('other'),data:{requestId:'request'}}),{code:'permission-denied'});
+  assert.equal((await workflows.discoverRequests({auth:auth('other'),data:{radiusKm:50}})).items.length,0);
+});
+
+test('legacy assigned voice answers work, while rejected reviews deny answers',async()=>{
+  await admin.firestore().doc('blood_requests/request').update({acceptedDonorIds:['donor'],commitments:{},status:'accepted'});
+  const session={requestId:'request',participantIds:['receiver','donor'],createdBy:'receiver',status:'ringing',expiresAt:admin.firestore.Timestamp.fromMillis(Date.now()+3600000)};
+  await admin.firestore().doc('callSessions/legacy').set(session);
+  assert.deepEqual(await voice.updateVoiceCallSession({auth:auth('donor'),data:{sessionId:'legacy',status:'accepted'}}),{updated:true,status:'accepted'});
+  await admin.firestore().doc('callSessions/rejected').set(session);
+  await admin.firestore().doc('blood_requests/request').update({reviewStatus:'rejected'});
+  await assert.rejects(voice.updateVoiceCallSession({auth:auth('donor'),data:{sessionId:'rejected',status:'accepted'}}),{code:'failed-precondition'});
+});
+
+test('SOS retries reuse the same linked request and deny another owner',async()=>{
+  const data={submissionId:'retry-sos',bloodGroup:'O+',urgency:'critical',latitude:31,longitude:74,hospitalName:'Emergency Hospital',contactNumber:'+923001234567'};
+  const results=await Promise.all([1,2].map(()=>workflows.createSosAlert({auth:auth('receiver'),data})));
+  assert.deepEqual(results[0],results[1]);
+  assert.equal((await admin.firestore().collection('blood_requests').where('sosId','==','retry-sos').get()).size,1);
+  await admin.firestore().doc('users/other').update({isReceiver:true});
+  await assert.rejects(workflows.createSosAlert({auth:auth('other'),data}),{code:'permission-denied'});
+});
+
+test('normalized emergency urgency always enters review',async()=>{
+  await workflows.createBloodRequest({auth:auth('receiver'),data:{...requestData,requestId:'normalized-urgent',latitude:31,longitude:74,contactNumber:'+923001234567',requiredBy:Date.now()+3600000,urgency:' Critical '}});
+  const saved=(await admin.firestore().doc('blood_requests/normalized-urgent').get()).data();
+  assert.equal(saved.urgency,'critical');
+  assert.equal(saved.reviewStatus,'pending_review');
+});
+
+test('concurrent similar requests serialize across different IDs and retries remain idempotent',async()=>{
+  const data={...requestData,latitude:31,longitude:74,contactNumber:'+923001234567',requiredBy:Date.now()+3600000};
+  const results=await Promise.allSettled(['parallel-a','parallel-b'].map(requestId=>workflows.createBloodRequest({auth:auth('receiver'),data:{...data,requestId}})));
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal(results.find(r=>r.status==='rejected').reason.code,'already-exists');
+  const requestId=results.find(r=>r.status==='fulfilled').value.id;
+  assert.equal((await workflows.createBloodRequest({auth:auth('receiver'),data:{...data,requestId}})).id,requestId);
+  await assertFails(getDoc(doc(env.authenticatedContext('receiver').firestore(),'request_submission_guards/receiver')));
+});
 test('a receiver with donor capability retains owner tracking after role switching',async()=>{
   await admin.firestore().doc('users/receiver').update({isDonor:true});
   const result=await workflows.getRequest({auth:auth('receiver'),data:{requestId:'request'}});
@@ -215,8 +326,24 @@ test('owner can cancel but cannot forge fulfillment, assignment or ownership',as
   await assertFails(updateDoc(ref,{requesterId:'other'}));
   await assertFails(updateDoc(ref,{acceptedDonorId:'donor'}));
   await assertFails(updateDoc(ref,{status:'cancelled'}));
-  await workflows.closeRequest({auth:auth('receiver'),data:{requestId:'request'}});
+  await assert.rejects(
+    workflows.closeRequest({auth:auth('donor'),data:{requestId:'request',status:'cancelled'}}),
+    {code:'permission-denied'},
+  );
+  await assert.rejects(
+    workflows.closeRequest({auth:auth('receiver'),data:{requestId:'request',status:'fulfilled'}}),
+    {code:'invalid-argument'},
+  );
+  assert.equal((await admin.firestore().doc('blood_requests/request').get()).data().status,'pending');
+  await workflows.closeRequest({auth:auth('receiver'),data:{requestId:'request',status:'cancelled'}});
+  await workflows.closeRequest({auth:auth('receiver'),data:{requestId:'request',status:'cancelled'}});
+  assert.equal((await admin.firestore().doc('blood_requests/request').get()).data().status,'cancelled');
   await assertFails(updateDoc(ref,{status:'pending'}));
+
+  await admin.firestore().doc('users/admin').set(profile('admin','admin'));
+  await admin.firestore().doc('blood_requests/admin-close').set({...requestData,requesterId:'receiver'});
+  await workflows.closeRequest({auth:auth('admin'),data:{requestId:'admin-close',status:'cancelled'}});
+  assert.equal((await admin.firestore().doc('blood_requests/admin-close').get()).data().status,'cancelled');
 });
 test('request creation requires receiver capability, valid coordinates and no forged recipients',async()=>{
   const valid={...requestData,latitude:31,longitude:74,notifiedDonors:[]};
@@ -317,7 +444,82 @@ test('private profiles, patient data, donations and SOS coordinates are not read
   for(const key of ['patientName','contactNumber','latitude','longitude','requesterPhone','reason'])assert.equal(summary[key],undefined);
   await assertSucceeds(getDoc(doc(env.authenticatedContext('receiver').firestore(),'blood_requests/request')));
   await workflows.acceptDonation({auth:auth('donor'),data:{requestId:'request'}});
-  await assertSucceeds(getDoc(doc(env.authenticatedContext('donor').firestore(),'blood_requests/request')));
+  await assertFails(getDoc(doc(env.authenticatedContext('donor').firestore(),'blood_requests/request')));
+});
+
+test('privacy cutover protects existing participant records without changing stored data',async()=>{
+  const ref=admin.firestore().doc('blood_requests/request');
+  const secrets={patientName:'PRIVATE_PATIENT',patientAge:42,patientGender:'private',reason:'PRIVATE_REASON',notes:'PRIVATE_NOTES',contactNumber:'PRIVATE_CONTACT',requesterPhone:'PRIVATE_PHONE',requesterName:'PRIVATE_OWNER',reviewNote:'PRIVATE_REVIEW',clarificationReply:'PRIVATE_REPLY',futureSensitiveField:'PRIVATE_FUTURE'};
+  await ref.update({...secrets,quantity:2,participantIds:['receiver','donor','other'],acceptedDonorIds:['donor','other'],commitments:{donor:{status:'accepted',phone:'PRIVATE_ASSIGNMENT'},other:{status:'accepted',name:'PRIVATE_PEER'}}});
+  await admin.firestore().doc('users/admin').set({...profile('admin'),role:'admin'});
+  const before=(await ref.get()).data();
+  for(const uid of ['donor','other']){
+    const client=env.authenticatedContext(uid).firestore();
+    await assertFails(getDoc(doc(client,ref.path)));
+    await assertFails(getDocs(query(collection(client,'blood_requests'),where('participantIds','array-contains',uid))));
+    await assertFails(updateDoc(doc(client,ref.path),{patientName:'tamper',requesterId:uid}));
+    await assertFails(setDoc(doc(client,`${ref.path}/private/contact`),{phone:'tamper'}));
+    const view=await workflows.getRequest({auth:auth(uid),data:{requestId:'request'}});
+    assert.equal(view.canViewPrivate,false);
+    assert.equal(view.requesterId,'receiver');
+    assert.equal(view.commitments[uid].status,'accepted');
+    assert.deepEqual(Object.keys(view.commitments),[uid]);
+    assert.ok(!JSON.stringify(view).includes('PRIVATE_'));
+    const page=await workflows.participantRequests({auth:auth(uid),data:{mode:'active',donorId:'receiver'}});
+    assert.deepEqual(page.items.map(i=>i.id),['request']);
+    assert.ok(!JSON.stringify(page).includes('PRIVATE_'));
+  }
+  for(const uid of ['receiver','admin']){
+    await assertSucceeds(getDoc(doc(env.authenticatedContext(uid).firestore(),ref.path)));
+    const view=await workflows.getRequest({auth:auth(uid),data:{requestId:'request'}});
+    for(const [key,value] of Object.entries(secrets))assert.equal(view[key],value);
+    await assertFails(updateDoc(doc(env.authenticatedContext(uid).firestore(),ref.path),{patientName:'direct write'}));
+  }
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),ref.path)));
+  assert.deepEqual((await ref.get()).data(),before,'read-only compatibility cutover must preserve every legacy field');
+});
+
+test('private contact and events remain owner/admin-only after acceptance',async()=>{
+  await workflows.acceptDonation({auth:auth('donor'),data:{requestId:'request'}});
+  await admin.firestore().doc('users/admin').set({...profile('admin'),role:'admin'});
+  await admin.firestore().doc('blood_requests/request/private/contact').set({phone:'PRIVATE'});
+  await admin.firestore().doc('blood_requests/request/events/private-event').set({detail:'PRIVATE'});
+  for(const path of ['blood_requests/request/private/contact','blood_requests/request/events/private-event','users/receiver/private/contact']){
+    for(const uid of ['donor','other'])await assertFails(getDoc(doc(env.authenticatedContext(uid).firestore(),path)));
+    for(const uid of ['receiver','admin'])await assertSucceeds(getDoc(doc(env.authenticatedContext(uid).firestore(),path)));
+  }
+});
+
+test('legacy single-donor assignments and completed responses survive private-root cutover',async()=>{
+  await admin.firestore().doc('blood_requests/legacy').set({...requestData,acceptedDonorId:'donor',status:'accepted',patientName:'PRIVATE'});
+  let page=await workflows.participantRequests({auth:auth('donor'),data:{mode:'active'}});
+  assert.ok(page.items.some(i=>i.id==='legacy'));
+  assert.equal((await workflows.getRequest({auth:auth('donor'),data:{requestId:'legacy'}})).commitments.donor.status,'accepted');
+  await admin.firestore().doc('blood_requests/legacy').update({status:'fulfilled',commitments:{donor:{status:'completed'}},participantIds:['receiver','donor']});
+  page=await workflows.participantRequests({auth:auth('donor'),data:{mode:'responses'}});
+  assert.equal(page.items.find(i=>i.id==='legacy').responseStatus,'completed');
+  assert.equal((await workflows.participantRequests({auth:auth('donor'),data:{mode:'active'}})).items.length,0);
+  // Switching capability off must never turn participant access into private access.
+  await admin.firestore().doc('users/donor').update({isDonor:false,isReceiver:true,role:'receiver'});
+  const view=await workflows.getRequest({auth:auth('donor'),data:{requestId:'legacy'}});
+  assert.equal(view.canViewPrivate,false);assert.equal(view.patientName,undefined);
+});
+
+test('participant paging is auth-scoped, bounded, rejects invalid cursors and inactive users',async()=>{
+  const batch=admin.firestore().batch();
+  for(let i=0;i<35;i++)batch.set(admin.firestore().doc(`blood_requests/page-${String(i).padStart(2,'0')}`),{...requestData,participantIds:['receiver','donor'],acceptedDonorIds:['donor'],commitments:{donor:{status:'accepted'}},patientName:'PRIVATE'});
+  await batch.commit();
+  const first=await workflows.participantRequests({auth:auth('donor'),data:{mode:'active'}});
+  const second=await workflows.participantRequests({auth:auth('donor'),data:{mode:'active',cursor:first.cursor}});
+  assert.equal(first.items.length,30);assert.equal(second.items.length,5);assert.equal(second.cursor,null);
+  assert.equal(new Set([...first.items,...second.items].map(i=>i.id)).size,35);
+  assert.equal((await workflows.participantRequests({auth:auth('other'),data:{mode:'active',uid:'donor'}})).items.length,0);
+  for(const cursor of ['',22,'bad/path'])await assert.rejects(workflows.participantRequests({auth:auth('donor'),data:{mode:'active',cursor}}),{code:'invalid-argument'});
+  await assert.rejects(workflows.participantRequests({auth:auth('donor'),data:{mode:'all'}}),{code:'invalid-argument'});
+  await assert.rejects(workflows.participantRequests({data:{mode:'active'}}),{code:'unauthenticated'});
+  await admin.firestore().doc('users/donor').update({status:'suspended'});
+  await assert.rejects(workflows.participantRequests({auth:auth('donor'),data:{mode:'active'}}),{code:'permission-denied'});
+  await assert.rejects(workflows.getRequest({auth:auth('donor'),data:{requestId:'page-00'}}),{code:'permission-denied'});
 });
 
 test('two units require two contributions; concurrent retries cannot over-credit or fulfill early',async()=>{
@@ -532,4 +734,44 @@ test('banner image uploads are administrator-only and limited to image formats',
 test('invitations apply compatibility from donor to recipient',async()=>{
   await admin.firestore().doc('blood_requests/request').update({bloodGroup:'A+'});
   assert.equal((await voice.inviteDonor({auth:auth('receiver'),data:{requestId:'request',donorId:'donor'}})).invited,true);
+});
+
+test('donor cursors reject malformed and out-of-band values', async()=>{
+  const {nearbyDonorsPaged}=require('../nearbyDonors');
+  for(const cursor of ['', '|donor','31|donor|','31|donor||','31|','31|a/b','31|..','NaN|donor','90|donor',{},42]) {
+    await assert.rejects(nearbyDonorsPaged(31,74,'O+',5,cursor,1),{code:'invalid-argument'});
+  }
+});
+
+test('donor pagination spans full pages without gaps or duplicate donors',async()=>{
+  const {nearbyDonorsPaged}=require('../nearbyDonors');
+  const batch=admin.firestore().batch();
+  for(let i=0;i<205;i++) {
+    const uid=`paged${String(i).padStart(3,'0')}`;
+    batch.set(admin.firestore().doc(`users/${uid}`),{...profile(uid),latitude:31,longitude:74,locationSharingEnabled:true});
+  }
+  await batch.commit();
+  const found=[];let cursor=null;
+  do {
+    const page=await nearbyDonorsPaged(31,74,'O+',5,cursor,100);
+    found.push(...page.matches.map(d=>d.uid));cursor=page.cursor;
+    assert.ok(found.length<=205);
+  } while(cursor);
+  assert.equal(found.length,205);assert.equal(new Set(found).size,205);
+});
+
+test('invitation continuation is private and independent of deleted notifications',async()=>{
+  const {donorInvitations}=require('../donorInvitations');
+  const batch=admin.firestore().batch();
+  for(let i=0;i<31;i++) {
+    const id=`invitepage${String(i).padStart(2,'0')}`;
+    batch.set(admin.firestore().doc(`blood_requests/${id}`),requestData);
+    batch.set(admin.firestore().doc(`blood_requests/${id}/invites/donor`),{donorId:'donor',requesterId:'receiver',status:'invited'});
+  }
+  await batch.commit();
+  const first=await donorInvitations({auth:auth('donor'),data:{}});
+  const last=await donorInvitations({auth:auth('donor'),data:{cursor:first.cursor}});
+  assert.equal(first.items.length,30);assert.equal(last.items.length,1);assert.equal(last.cursor,null);
+  assert.equal(new Set([...first.items,...last.items].map(d=>d.id)).size,31);
+  await assert.rejects(donorInvitations({auth:auth('donor'),data:{cursor:'invalid'}}),{code:'invalid-argument'});
 });

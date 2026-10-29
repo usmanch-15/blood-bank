@@ -79,10 +79,7 @@ class FirestoreService {
               ? _firestore.collection('blood_requests').doc().id
               : request.id;
       final data = request.toFirestore();
-      // Callable Functions accept JSON-compatible values only. Keep the
-      // request workflow's existing millisecond timestamp contract for both
-      // dates; leaving createdAt as DateTime causes the client-side callable
-      // parameter assertion to fail before the Function is invoked.
+      // The Worker accepts JSON-compatible values and expects millisecond dates.
       data['createdAt'] = request.createdAt.millisecondsSinceEpoch;
       data['requiredBy'] = request.requiredBy?.millisecondsSinceEpoch;
       data['fulfilledAt'] = request.fulfilledAt?.millisecondsSinceEpoch;
@@ -97,8 +94,18 @@ class FirestoreService {
   }
 
   Future<void> updateBloodRequestStatus(String id, String status) async {
+    if (status != 'cancelled') {
+      throw ArgumentError.value(
+        status,
+        'status',
+        'Only request cancellation is supported.',
+      );
+    }
     try {
-      await WorkflowService.call('closeRequest', {'requestId': id});
+      await WorkflowService.call('closeRequest', {
+        'requestId': id,
+        'status': status,
+      });
     } catch (e) {
       throw FirestoreException('Error updating request: $e');
     }

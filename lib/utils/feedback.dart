@@ -29,8 +29,12 @@ class AppFeedback {
           return message;
       }
     }
-    return error
-        .toString()
+    final raw = error.toString();
+    if (raw.contains('firebase_functions/internal') ||
+        raw.contains('firebase_functions: internal')) {
+      return 'Blood request service is not available yet. Please try again after the Firebase backend is enabled.';
+    }
+    return raw
         .replaceFirst('Exception: ', '')
         .replaceFirst('Bad state: ', '');
   }

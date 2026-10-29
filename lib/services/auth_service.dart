@@ -4,6 +4,7 @@ import '../utils/validators.dart';
 import 'notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -79,6 +80,18 @@ class AuthService {
     }
     User? createdUser;
     bool profileSaved = false;
+    String stage = 'auth_create';
+    void diagnostic(Object error, [StackTrace? stack]) {
+      if (!kDebugMode) return;
+      final code =
+          error is FirebaseException ? error.code : 'non-firebase-error';
+      debugPrint(
+        '[signup] stage=$stage project=${Firebase.app().options.projectId} '
+        'code=$code paths=users/{uid},users/{uid}/private/contact',
+      );
+      if (stack != null) debugPrint('[signup] stack=$stack');
+    }
+
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
@@ -88,6 +101,7 @@ class AuthService {
       final userRef = _firestore.collection('users').doc(credential.user!.uid);
       createdUser = credential.user;
       final batch = _firestore.batch();
+      stage = 'firestore_batch_prepare';
 
       // Firestore mein user data save karo — status: approved
       // ✅ CHANGE: admin approval step removed — new signups get full
@@ -135,6 +149,43 @@ class AuthService {
           if (cnic != null && cnic.trim().isNotEmpty) 'cnic': cnic.trim(),
         }, SetOptions(merge: true));
       }
+      if (kDebugMode) {
+        final profileKeys = <String>[
+          'uid',
+          'email',
+          'name',
+          'role',
+          'bloodGroup',
+          'status',
+          'isDonor',
+          'isReceiver',
+          'isAvailable',
+          'locationSharingEnabled',
+          'isEligible',
+          'rewardPoints',
+          'createdAt',
+          'lastLoginAt',
+          'lastDonationDate',
+          'location',
+          'latitude',
+          'longitude',
+          'profileImageUrl',
+        ];
+        final nullFields = <String>[
+          'lastLoginAt',
+          'lastDonationDate',
+          'location',
+          'latitude',
+          'longitude',
+          'profileImageUrl',
+        ];
+        debugPrint(
+          '[signup] stage=$stage project=${Firebase.app().options.projectId} '
+          'profileKeys=${profileKeys.join(',')} nullFields=${nullFields.join(',')} '
+          'privateContactIncluded=${phoneNumber?.trim().isNotEmpty == true || cnic?.trim().isNotEmpty == true}',
+        );
+      }
+      stage = 'firestore_batch_commit';
       await batch.commit();
       profileSaved = true;
 
@@ -152,7 +203,8 @@ class AuthService {
       await _auth.signOut();
 
       return credential;
-    } catch (e) {
+    } catch (e, stack) {
+      diagnostic(e, stack);
       if (createdUser != null && !profileSaved) {
         try {
           await createdUser.delete();

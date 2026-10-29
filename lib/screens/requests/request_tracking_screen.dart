@@ -32,7 +32,10 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
     super.initState();
     _load();
     _timer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        if (_subscription == null && !_busy) _load();
+        setState(() {});
+      }
     });
   }
 
@@ -212,11 +215,35 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                   ),
                   if (owner)
                     StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                      stream: FirebaseFirestore.instance.collection('blood_requests/${widget.requestId}/invites').snapshots(),
+                      stream:
+                          FirebaseFirestore.instance
+                              .collection(
+                                'blood_requests/${widget.requestId}/invites',
+                              )
+                              .snapshots(),
                       builder: (context, invites) {
-                        if (!invites.hasData || invites.data!.docs.isEmpty) return const SizedBox.shrink();
+                        if (!invites.hasData || invites.data!.docs.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
                         final l = AppLocalizations.of(context);
-                        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const SizedBox(height: 8), Text('Donor invitations'), ...invites.data!.docs.map((invite) { final status = invite.data()['status']?.toString(); final label = status == 'confirmed' ? l.confirmedStatus : status == 'declined' ? l.declinedStatus : l.invitedStatus; return Text('${invite.id}: $label'); })]);
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 8),
+                            Text('Donor invitations'),
+                            ...invites.data!.docs.map((invite) {
+                              final status =
+                                  invite.data()['status']?.toString();
+                              final label =
+                                  status == 'confirmed'
+                                      ? l.confirmedStatus
+                                      : status == 'declined'
+                                      ? l.declinedStatus
+                                      : l.invitedStatus;
+                              return Text('${invite.id}: $label');
+                            }),
+                          ],
+                        );
                       },
                     ),
                   if (deadline != null)
@@ -293,9 +320,9 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                             }
                           } catch (e) {
                             if (context.mounted) {
-                              ScaffoldMessenger.of(
-                                context,
-                              ).showSnackBar(SnackBar(content: Text(AppFeedback.message(e))));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(AppFeedback.message(e))),
+                              );
                             }
                           }
                         },
@@ -310,16 +337,61 @@ class _RequestTrackingScreenState extends State<RequestTrackingScreen> {
                       !assigned &&
                       mine?['status'] != 'completed')
                     FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                      future: FirebaseFirestore.instance.doc('blood_requests/${widget.requestId}/invites/${_uid ?? ''}').get(),
+                      future:
+                          FirebaseFirestore.instance
+                              .doc(
+                                'blood_requests/${widget.requestId}/invites/${_uid ?? ''}',
+                              )
+                              .get(),
                       builder: (context, invite) {
-                        final status = invite.data?.data()?['status']?.toString();
+                        final status =
+                            invite.data?.data()?['status']?.toString();
                         if (status == 'invited') {
-                          return Wrap(spacing: 8, children: [
-                            FilledButton(onPressed: _busy ? null : () => _action('acceptDonation', {}, 'Confirm donation invitation?'), child: Text(AppLocalizations.of(context).acceptRespond)),
-                            OutlinedButton(onPressed: _busy ? null : () => _action('declineRequest', {}, 'Decline donation invitation?'), child: Text(AppLocalizations.of(context).donorDidNotAgree)),
-                          ]);
+                          return Wrap(
+                            spacing: 8,
+                            children: [
+                              FilledButton(
+                                onPressed:
+                                    _busy
+                                        ? null
+                                        : () => _action(
+                                          'acceptDonation',
+                                          {},
+                                          'Confirm donation invitation?',
+                                        ),
+                                child: Text(
+                                  AppLocalizations.of(context).acceptRespond,
+                                ),
+                              ),
+                              OutlinedButton(
+                                onPressed:
+                                    _busy
+                                        ? null
+                                        : () => _action(
+                                          'declineRequest',
+                                          {},
+                                          'Decline donation invitation?',
+                                        ),
+                                child: Text(
+                                  AppLocalizations.of(context).donorDidNotAgree,
+                                ),
+                              ),
+                            ],
+                          );
                         }
-                        return FilledButton(onPressed: _busy ? null : () => _action('acceptDonation', {}, 'Commit to donating one unit?'), child: Text(AppLocalizations.of(context).acceptRespond));
+                        return FilledButton(
+                          onPressed:
+                              _busy
+                                  ? null
+                                  : () => _action(
+                                    'acceptDonation',
+                                    {},
+                                    'Commit to donating one unit?',
+                                  ),
+                          child: Text(
+                            AppLocalizations.of(context).acceptRespond,
+                          ),
+                        );
                       },
                     ),
                   if (agreementPending && !owner)

@@ -30,6 +30,12 @@ async function main(){
       await page.locator('input').first().waitFor({timeout:60000});
       await page.locator('input').nth(0).click({force:true});
       await page.keyboard.type(`preview-${role}@example.test`,{delay:25});
+      if(await page.locator('input').nth(0).inputValue()!==`preview-${role}@example.test`){
+        await page.locator('input').nth(0).click({force:true});
+        await page.keyboard.press('Control+A');
+        await page.keyboard.type(`preview-${role}@example.test`,{delay:50});
+      }
+      if(await page.locator('input').nth(0).inputValue()!==`preview-${role}@example.test`)throw Error('Email input did not settle');
       await page.locator('input').nth(1).click({force:true});
       await page.keyboard.press('Control+A');
       await page.keyboard.type('Preview!12345',{delay:25});
@@ -60,10 +66,26 @@ async function main(){
       await page.mouse.move(200,600);await page.mouse.wheel(0,500);await page.waitForTimeout(6000);
       await page.screenshot({path:path.join(artifacts,`${role}-dark-lower.png`)});
       if(role==='donor'){
-        await page.getByRole('button',{name:'Explore requests',exact:true}).click();
+        const campaign=page.getByRole('button',{name:'Explore requests',exact:true});
+        for(let attempt=0;attempt<5 && !await campaign.count();attempt++){
+          await page.mouse.wheel(0,450);await page.waitForTimeout(700);
+        }
+        await campaign.waitFor({timeout:10000});
+        await page.screenshot({path:path.join(artifacts,'donor-awareness.png')});
+        await page.getByRole('button',{name:'Dismiss banner',exact:true}).click();
+        await campaign.waitFor({state:'hidden'});
+        console.log('BANNER DISMISS VERIFIED');
+        await page.mouse.wheel(0,-3000);await page.waitForTimeout(1000);
+        await page.getByRole('button',{name:'View all',exact:true}).first().click();
         await page.waitForTimeout(2000);
         await page.screenshot({path:path.join(artifacts,'blood-requests-tabs.png')});
         console.log('REQUEST TABS',await page.locator('body').innerText());
+        for(const name of ['For you','Invitations','My responses','Active donation']){
+          await page.getByRole('tab',{name:new RegExp(name)}).click();
+          await page.waitForTimeout(1500);
+          await page.getByRole('button',{name:'View details & next step',exact:true}).first().waitFor({timeout:15000});
+          console.log('TAB VERIFIED',name);
+        }
       }
       if(errors.length)throw Error(errors.join('\n'));
       await context.close();

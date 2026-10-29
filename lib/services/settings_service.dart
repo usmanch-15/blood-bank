@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'workflow_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'notification_service.dart';
 import 'geo_location_service.dart';
 import '../utils/location_helper.dart';
@@ -131,7 +130,7 @@ class SettingsService {
   }
 
   Future<void> deleteAccount() async {
-    await FirebaseFunctions.instance.httpsCallable('deleteAccount').call();
+    await WorkflowService.functions.httpsCallable('deleteAccount').call();
     await NotificationService().clearDeviceToken();
     await _auth.signOut();
   }

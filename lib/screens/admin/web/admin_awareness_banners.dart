@@ -19,7 +19,11 @@ class _AdminAwarenessBannersState extends State<AdminAwarenessBanners> {
   void _edit(BuildContext context, [Map<String, dynamic>? data]) =>
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => _BannerEditor(data: data)),
+        MaterialPageRoute(
+          builder:
+              (_) =>
+                  InheritedTheme.captureAll(context, _BannerEditor(data: data)),
+        ),
       );
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -311,7 +315,13 @@ class _BannerEditorState extends State<_BannerEditor> {
         child: Form(
           key: _form,
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.symmetric(
+              horizontal:
+                  MediaQuery.sizeOf(context).width > 948
+                      ? (MediaQuery.sizeOf(context).width - 900) / 2
+                      : 24,
+              vertical: 24,
+            ),
             children: [
               const Text(
                 'Audience: donor mode only. Educational health claims should be medically reviewed before publication.',

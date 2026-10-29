@@ -40,7 +40,8 @@ class EligibilityChecker {
     if (!nowUtc.isBefore(eligibleFrom)) return 0;
 
     final remaining = eligibleFrom.difference(nowUtc);
-    final daysLeft = (remaining.inHours / 24).ceil();
+    final daysLeft =
+        (remaining.inMilliseconds / Duration.millisecondsPerDay).ceil();
 
     return daysLeft > 0 ? daysLeft : 0;
   }
@@ -48,7 +49,7 @@ class EligibilityChecker {
   /// Get eligibility message
   static String getEligibilityMessage(DateTime? lastDonationDate) {
     if (isEligibleForDonation(lastDonationDate)) {
-      return 'You are eligible to donate blood!';
+      return 'The recorded 90-day interval is complete. Healthcare staff confirm donation eligibility.';
     }
 
     int? daysLeft = daysUntilEligible(lastDonationDate);
@@ -56,6 +57,6 @@ class EligibilityChecker {
       return 'You can donate again in $daysLeft days';
     }
 
-    return 'You are eligible to donate blood!';
+    return 'Your recorded donation interval is not complete yet.';
   }
 }

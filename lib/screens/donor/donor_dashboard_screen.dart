@@ -25,6 +25,7 @@ class DonorDashboardScreen extends StatefulWidget {
 
 class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
   late Future<Map<String, dynamic>> _nearby, _invitations;
+  late Stream<Map<String, dynamic>> _active;
   late Future<int?> _donations;
   bool _saving = false;
   int _refreshKey = 0;
@@ -60,9 +61,30 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
   }
 
   void _reload() {
+    _active = _watchActive();
     _nearby = _fetch('discoverRequests', {'radiusKm': 25});
     _invitations = _fetch('donorInvitations');
     _donations = _countDonations();
+  }
+
+  Stream<Map<String, dynamic>> _watchActive() async* {
+    yield await _loadActive();
+    yield* Stream.periodic(
+      const Duration(seconds: 30),
+    ).asyncMap((_) => _loadActive());
+  }
+
+  Future<Map<String, dynamic>> _loadActive() async {
+    String? cursor;
+    do {
+      final page = await WorkflowService.call('participantRequests', {
+        'mode': 'active',
+        if (cursor != null) 'cursor': cursor,
+      });
+      // An expired legacy page can be empty while a later page is active.
+      cursor = page['cursor'] as String?;
+      if ((page['items'] as List).isNotEmpty || cursor == null) return page;
+    } while (true);
   }
 
   Future<void> _refresh() async {
@@ -235,7 +257,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            padding: dashboardInsets(context),
             children: [
               DashboardPanel(
                 tint: c.primaryContainer.withValues(alpha: .35),
@@ -308,21 +330,8 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                 action: dashboardText(context, 'View all', 'سب دیکھیں'),
                 onTap: () => _requests(3),
               ),
-              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream:
-                    FirebaseFirestore.instance
-                        .collection('blood_requests')
-                        .where('acceptedDonorIds', arrayContains: _uid)
-                        .where(
-                          'status',
-                          whereIn: [
-                            'pending',
-                            'accepted',
-                            'partially_fulfilled',
-                          ],
-                        )
-                        .limit(3)
-                        .snapshots(),
+              StreamBuilder<Map<String, dynamic>>(
+                stream: _active,
                 builder: (context, snap) {
                   if (snap.hasError) {
                     return DashboardPanel(
@@ -330,7 +339,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                     );
                   }
                   if (!snap.hasData) return const PremiumLoading(rows: 1);
-                  if (snap.data!.docs.isEmpty) {
+                  if ((snap.data!['items'] as List).isEmpty) {
                     return DashboardAction(
                       title: dashboardText(
                         context,
@@ -348,10 +357,11 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                   }
                   return Column(
                     children:
-                        snap.data!.docs
+                        (snap.data!['items'] as List)
+                            .take(3)
                             .map(
                               (doc) => OpportunityCard(
-                                data: doc.data(),
+                                data: Map<String, dynamic>.from(doc),
                                 action: dashboardText(
                                   context,
                                   'Continue active donation',
@@ -359,7 +369,9 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                                 ),
                                 onTap:
                                     () => _go(
-                                      RequestTrackingScreen(requestId: doc.id),
+                                      RequestTrackingScreen(
+                                        requestId: doc['id'] as String,
+                                      ),
                                     ),
                               ),
                             )
@@ -377,6 +389,16 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                 onTap: () => _requests(1),
               ),
               _preview(_invitations, invitations: true),
+              DashboardHeading(
+                dashboardText(
+                  context,
+                  'Blood needed nearby',
+                  'قریب خون کی ضرورت',
+                ),
+                action: dashboardText(context, 'Explore', 'تلاش کریں'),
+                onTap: () => _requests(),
+              ),
+              _preview(_nearby, invitations: false),
               if (user?.role == 'donor')
                 DonorAwareness(
                   key: ValueKey(_refreshKey),
@@ -390,16 +412,7 @@ class _DonorDashboardScreenState extends State<DonorDashboardScreen> {
                     }
                   },
                 ),
-              DashboardHeading(
-                dashboardText(
-                  context,
-                  'Blood needed nearby',
-                  'قریب خون کی ضرورت',
-                ),
-                action: dashboardText(context, 'Explore', 'تلاش کریں'),
-                onTap: () => _requests(),
-              ),
-              _preview(_nearby, invitations: false),
+
               DashboardHeading(
                 dashboardText(context, 'Your contribution', 'آپ کی مدد'),
               ),

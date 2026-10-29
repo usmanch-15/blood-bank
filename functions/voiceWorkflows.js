@@ -4,6 +4,7 @@ const admin = require('./firebaseAdmin');
 const {RtcRole, RtcTokenBuilder} = require('agora-token');
 const {compatible, eligible, distanceKm} = require('./donationPolicy');
 
+const {assignments, actionable} = require('./requestPolicy');
 const db = admin.firestore();
 const agoraAppId = defineString('AGORA_APP_ID', {default: ''});
 const agoraCertificate = defineSecret('AGORA_APP_CERTIFICATE');
@@ -25,8 +26,8 @@ async function participantsFor(requestId, uid) {
   const user = (await db.doc(`users/${uid}`).get()).data();
   if (user?.status !== 'approved') throw new HttpsError('permission-denied', 'Active account required.');
   if (!data) throw new HttpsError('not-found', 'Request not found.');
-  if (!['pending','accepted','partially_fulfilled'].includes(data.status) || data.requiredBy?.toMillis() <= Date.now()) throw new HttpsError('failed-precondition', 'Request is closed.');
-  const commitments = data.commitments || {};
+  if (!actionable(data)) throw new HttpsError('failed-precondition', 'Request is closed.');
+  const commitments = assignments(data);
   const donorIds = Object.keys(commitments).filter((id) =>
     ['accepted', 'agreed', 'awaiting_confirmation'].includes(commitments[id]?.status));
   const allowed = new Set([data.requesterId, ...donorIds]);
@@ -65,7 +66,7 @@ async function createVoiceCallSession(request) {
   const {data, donorIds} = await participantsFor(requestId, uid);
   const calleeUser = (await db.doc(`users/${calleeId}`).get()).data();
   const preAccept = uid === data.requesterId && calleeUser?.isDonor === true && calleeUser.status === 'approved' && calleeUser.isAvailable === true &&
-    compatible(data.bloodGroup, calleeUser.bloodGroup) && eligible(calleeUser, Date.now()) && Number.isFinite(data.latitude) && Number.isFinite(data.longitude) && Number.isFinite(calleeUser.latitude) && Number.isFinite(calleeUser.longitude) && distanceKm(data.latitude, data.longitude, calleeUser.latitude, calleeUser.longitude) <= 1000;
+    compatible(calleeUser.bloodGroup, data.bloodGroup) && eligible(calleeUser, Date.now()) && Number.isFinite(data.latitude) && Number.isFinite(data.longitude) && Number.isFinite(calleeUser.latitude) && Number.isFinite(calleeUser.longitude) && distanceKm(data.latitude, data.longitude, calleeUser.latitude, calleeUser.longitude) <= 1000;
   const participants = new Set([data.requesterId, ...donorIds]);
   if (!participants.has(calleeId) && !preAccept || (uid !== data.requesterId && calleeId !== data.requesterId)) {
     throw new HttpsError('permission-denied', 'Calls must connect the requester and an assigned donor.');
@@ -122,12 +123,12 @@ async function markDonorNotReady(request) {
   if (uid !== data.requesterId || donorId === uid) throw new HttpsError('permission-denied','Only the request owner can mark a donor not ready.');
   const donor = (await db.doc(`users/${donorId}`).get()).data();
   if (!donor || donor.status !== 'approved' || donor.isDonor !== true || donor.isAvailable !== true ||
-      !compatible(data.bloodGroup, donor.bloodGroup) || !eligible(donor, Date.now())) throw new HttpsError('failed-precondition','This donor is not a valid candidate.');
+      !compatible(donor.bloodGroup, data.bloodGroup) || !eligible(donor, Date.now())) throw new HttpsError('failed-precondition','This donor is not a valid candidate.');
   const limitRef=db.doc(`rate_limits/not_ready_${uid}_${requestId}`), now=admin.firestore.Timestamp.now();
   const target=db.doc(`blood_requests/${requestId}/notReadyDonors/${donorId}`);
   await db.runTransaction(async tx=>{
     const [limit, existing, req]=await Promise.all([tx.get(limitRef),tx.get(target),tx.get(db.doc(`blood_requests/${requestId}`))]);
-    const r=req.data(); if(!r || r.requesterId!==uid || !['pending','accepted','partially_fulfilled'].includes(r.status) || r.requiredBy?.toMillis?.()<=Date.now()) throw new HttpsError('failed-precondition','Request is closed or expired.');
+    const r=req.data(); if(!actionable(r) || r.requesterId!==uid) throw new HttpsError('failed-precondition','Request is closed or expired.');
     if(existing.exists) return;
     if(limit.exists && limit.data().until?.toMillis?.()>Date.now()) throw new HttpsError('resource-exhausted','Please wait before marking another donor.');
     tx.create(target,{donorId,requesterId:uid,createdAt:now});
@@ -172,9 +173,8 @@ async function updateVoiceCallSession(request) {
       const r = (await tx.get(db.doc(`blood_requests/${data.requestId}`))).data();
       const other = (await tx.get(db.doc(`users/${data.createdBy}`))).data();
       const donorId = data.participantIds.find(id => id !== r?.requesterId);
-      if (other?.status !== 'approved' || !r || !['pending','accepted','partially_fulfilled'].includes(r.status) ||
-          r.requiredBy?.toMillis() <= Date.now() || data.expiresAt?.toMillis() <= Date.now() ||
-          !['accepted','agreed','awaiting_confirmation'].includes(r.commitments?.[donorId]?.status)) throw new HttpsError('failed-precondition','Call is no longer available.');
+      if (other?.status !== 'approved' || !actionable(r) || data.expiresAt?.toMillis() <= Date.now() ||
+          !['accepted','agreed','awaiting_confirmation'].includes(assignments(r)[donorId]?.status)) throw new HttpsError('failed-precondition','Call is no longer available.');
     }
     const allowed = {ringing: ['accepted', 'rejected', 'missed'], accepted: ['ended'], ended: [], rejected: [], missed: []};
     if (!allowed[data.status]?.includes(status)) throw new HttpsError('failed-precondition', 'Invalid call state transition.');

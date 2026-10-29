@@ -1,6 +1,7 @@
 const {HttpsError} = require('firebase-functions/v2/https');
 const admin = require('./firebaseAdmin');
 const db = admin.firestore();
+const {actionable} = require('./requestPolicy');
 const workflows = require('./requestWorkflows');
 const {nearbyDonors} = require('./nearbyDonors');
 const {radiusKm} = require('./searchPolicy');
@@ -11,7 +12,7 @@ async function notifyRequest(request) {
   const ref = db.doc(`blood_requests/${requestId}`);
   const [req, user] = await Promise.all([ref.get(), db.doc(`users/${request.auth.uid}`).get()]);
   const r=req.data();
-  if (!r || r.requesterId !== request.auth.uid || user.data()?.status !== 'approved' || !workflows.openStatuses.includes(r.status) || workflows.expired(r)) {
+  if (!r || r.requesterId !== request.auth.uid || user.data()?.status !== 'approved' || !actionable(r)) {
     throw new HttpsError('permission-denied','An active request belonging to you is required.');
   }
   let radius;

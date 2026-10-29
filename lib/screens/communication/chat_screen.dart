@@ -49,13 +49,14 @@ class _ChatScreenState extends State<ChatScreen> {
     if (rid == null) {
       return;
     }
-    final r =
-        (await FirebaseFirestore.instance
-                .collection('blood_requests')
-                .doc(rid)
-                .get())
-            .data() ??
-        {};
+    Map<String, dynamic> r;
+    try {
+      r = await WorkflowService.request(rid);
+    } catch (_) {
+      // Archived/revoked requests remain readable as chat history, but no
+      // new message is enabled when request authorization cannot be checked.
+      r = {'status': 'unavailable'};
+    }
     if (mounted) {
       setState(() {
         _readOnly =
@@ -91,12 +92,26 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     setState(() => _sending = true);
     try {
-      await _messages.add({
+      final message = await _messages.add({
         'senderId': uid,
         'body': text,
         'createdAt': FieldValue.serverTimestamp(),
       });
       _body.clear();
+      try {
+        await WorkflowService.notifyChatMessage(
+          conversationId: widget.conversationId,
+          messageId: message.id,
+        );
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).operationFailed),
+            ),
+          );
+        }
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -277,7 +292,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Text(AppLocalizations.of(context).noMessages),
                   );
                 }
-                _call('markConversationRead', {});
                 return ListView(
                   children:
                       docs.map((m) {

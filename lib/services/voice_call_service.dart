@@ -1,5 +1,5 @@
+import 'package:bloodbank/services/workflow_service.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 
 class VoiceCallSession {
   final String sessionId;
@@ -29,7 +29,7 @@ class VoiceCallSession {
 }
 
 class VoiceCallService {
-  static final _functions = FirebaseFunctions.instance;
+  static final _functions = WorkflowService.functions;
 
   static Future<VoiceCallSession> create({
     required String requestId,

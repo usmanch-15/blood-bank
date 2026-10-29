@@ -2,12 +2,16 @@
 const { onCall } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const {setGlobalOptions} = require('firebase-functions/v2');
+setGlobalOptions({region:'us-central1'});
+const {actionable} = require('./requestPolicy');
 const admin = require("./firebaseAdmin");
 
 admin.initializeApp();
 const db = admin.firestore();
 
 const { sendPushToUsers, sendPushToUser } = require("./notificationService");
+const { createNotificationPushHandler } = require("./notificationTrigger");
 const { sendSmsFallback, twilioAuthToken } = require("./smsFallback");
 const { checkEligibilityReminders } = require("./eligibilityReminder");
 const donationHistory = require('./donationHistoryWorkflows');
@@ -15,12 +19,15 @@ const verification = require('./verificationWorkflows');
 const emergencyReview = require('./emergencyReviewWorkflows');
 const {notifyPendingEmergency} = require('./emergencyAlerts');
 const {escalatePendingEmergencyReviews} = require('./emergencyEscalation');
-exports.notifyPendingEmergency = onDocumentCreated('blood_requests/{requestId}', notifyPendingEmergency);
+exports.notifyPendingEmergency = onDocumentCreated('blood_requests/{requestId}', async event => {
+  return notifyPendingEmergency(event);
+});
 
 const workflows = require('./secureWorkflows');
 const awareness = require('./awarenessWorkflows');
 for (const name of ['manageAwarenessBanner', 'donorAwarenessBanners', 'recordBannerEvent']) exports[name] = onCall(awareness[name]);
 exports.donorInvitations = onCall(require('./donorInvitations').donorInvitations);
+exports.participantRequests = onCall(workflows.participantRequests);
 const voice = require('./voiceWorkflows');
 const {nearbyDonors} = require('./nearbyDonors');
 const {notifyRequest} = require('./requestNotifications');
@@ -52,26 +59,16 @@ exports.markDonorNotReady = onCall(voice.markDonorNotReady);
 
 exports.sendPushNotification = onDocumentCreated(
   "notifications/{notificationId}",
-  async (event) => {
-    const data = event.data?.data();
-    if (!data || !data.userId) return;
-    if (data.pushSentDirectly) return; // already sent by notificationService — avoid duplicate push
-
-    const delivery = await sendPushToUser(data.userId, {
-      title: data.title || 'Smart Blood Bank', body: data.body || '',
-      data: {type: data.type || 'general', relatedId: data.relatedId || ''},
-      record: false,
-    });
-    await event.data.ref.update({pushStatus:delivery.sent?'sent':delivery.reason});
-  }
+  createNotificationPushHandler(sendPushToUser)
 );
 
 exports.notifyNearbyDonorsOnSOS = onDocumentCreated(
   { document: "sosRequests/{sosId}", secrets: process.env.FUNCTIONS_EMULATOR === 'true' ? [] : [twilioAuthToken] },
   async (event) => {
     const sosRef = event.data?.ref;
-    const sos = event.data?.data();
-    if (!sos || !sos.bloodGroup || !sos.receiverId || !sosRef || sos.isResolved) return;
+    const sos = sosRef ? (await sosRef.get()).data() : null;
+    if (!sos || sos.source === 'cloudflare' || !sos.bloodGroup || !sos.receiverId || sos.isResolved || sos.reviewStatus==='rejected') return;
+    if (sos.requestId && !actionable((await db.doc(`blood_requests/${sos.requestId}`).get()).data())) return;
 
     const owner = (await db.doc(`users/${sos.receiverId}`).get()).data();
     if (owner?.status !== 'approved') return;
@@ -89,7 +86,14 @@ exports.notifyNearbyDonorsOnSOS = onDocumentCreated(
         break;
       }
     }
-    await sosRef.update({notifiedDonors: donorIds, radiusKm, status:'processed'});
+    const canSend=await db.runTransaction(async tx=>{
+      const current=(await tx.get(sosRef)).data();
+      const root=current?.requestId?(await tx.get(db.doc(`blood_requests/${current.requestId}`))).data():null;
+      if(!current||current.isResolved||current.reviewStatus==='rejected'||(current.requestId&&!actionable(root))) return false;
+      tx.update(sosRef,{notifiedDonors:donorIds,radiusKm,status:'processed'});
+      return true;
+    });
+    if(!canSend) return;
     if (!donorIds.length) return;
 
     const result = await sendPushToUsers(donorIds, {
@@ -166,7 +170,7 @@ exports.notifyRequest = onCall(notifyRequest);
 // Matching runs on the server even if the client closes after saving.
 exports.onBloodRequestCreated = onDocumentCreated('blood_requests/{requestId}', async event => {
   const data = event.data?.data();
-  if (!data || data.sosId || data.status !== 'pending' || !Number.isFinite(data.latitude) || !Number.isFinite(data.longitude)) return;
+  if (!data || data.source === 'cloudflare' || data.sosId || data.status !== 'pending' || !Number.isFinite(data.latitude) || !Number.isFinite(data.longitude)) return;
   let recipients = [];
   let selectedRadius = 5;
   // Keep automatic matching aligned with the client-supported radius choices.
@@ -182,5 +186,4 @@ exports.onBloodRequestCreated = onDocumentCreated('blood_requests/{requestId}', 
   }});
 });
 
-exports.expireOpenRequests = onSchedule('every 15 minutes', workflows.expireRequests);
 exports.escalateEmergencyReviews = onSchedule('every 15 minutes', escalatePendingEmergencyReviews);

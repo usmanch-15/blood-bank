@@ -1,9 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat;
+import '../constants/app_spacing.dart';
 
 String dashboardText(BuildContext context, String en, String ur) =>
     Localizations.localeOf(context).languageCode == 'ur' ? ur : en;
+
+EdgeInsets dashboardInsets(BuildContext context) {
+  final width = MediaQuery.sizeOf(context).width;
+  final horizontal = width > 760 ? (width - 720) / 2 : 16.0;
+  return EdgeInsets.fromLTRB(horizontal, 8, horizontal, 24);
+}
 
 class DashboardPanel extends StatelessWidget {
   final Widget child;
@@ -12,11 +19,11 @@ class DashboardPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    margin: const EdgeInsets.only(bottom: 14),
-    padding: const EdgeInsets.all(18),
+    margin: const EdgeInsets.only(bottom: AppSpacing.md),
+    padding: const EdgeInsets.all(AppSpacing.lg),
     decoration: BoxDecoration(
       color: tint ?? Theme.of(context).colorScheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
       border: Border.all(
         color: Theme.of(
           context,
@@ -147,6 +154,7 @@ class OpportunityCard extends StatelessWidget {
                 ),
                 child: Text(
                   '${data['bloodGroup'] ?? '—'}',
+                  textDirection: TextDirection.ltr,
                   style: TextStyle(
                     color: c.onPrimaryContainer,
                     fontSize: 22,

@@ -51,11 +51,11 @@ async function sendSmsFallback(uid, message) {
       from: twilioPhone.value(),
       to: phoneNumber, // must be in E.164 format e.g. +923001234567
     });
-    console.log(`SMS fallback sent to ${uid}`);
+    console.log('SMS fallback sent.');
     return { sent: true };
   } catch (err) {
-    console.error(`SMS fallback failed for ${uid}:`, err.message);
-    return { sent: false, reason: 'twilio-error', error: err.message };
+    console.error('SMS fallback failed.', {code:Number.isInteger(err.code) ? err.code : 'provider-error'});
+    return { sent: false, reason: 'twilio-error', error: 'provider-error' };
   }
 }
 

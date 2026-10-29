@@ -28,7 +28,9 @@ class _RequestListScreenState extends State<RequestListScreen> {
   bool _loading = false, _more = true;
   double _radius = 5;
   String? _urgency;
-  bool get _remote => ['discover', 'invitations'].contains(widget.mode);
+  int _recordsVersion = 0;
+  bool get _remote =>
+      ['discover', 'invitations', 'active', 'responses'].contains(widget.mode);
   @override
   void initState() {
     super.initState();
@@ -48,8 +50,12 @@ class _RequestListScreenState extends State<RequestListScreen> {
     });
     try {
       final page = await WorkflowService.call(
-        widget.mode == 'invitations' ? 'donorInvitations' : 'discoverRequests',
-        {'cursor': _cursor, 'radiusKm': _radius},
+        widget.mode == 'invitations'
+            ? 'donorInvitations'
+            : ['active', 'responses'].contains(widget.mode)
+            ? 'participantRequests'
+            : 'discoverRequests',
+        {'cursor': _cursor, 'radiusKm': _radius, 'mode': widget.mode},
       );
       if (!mounted) return;
       setState(() {
@@ -78,7 +84,12 @@ class _RequestListScreenState extends State<RequestListScreen> {
                     : RequestTrackingScreen(requestId: id),
       ),
     );
-    if (mounted && _remote) await _load(refresh: true);
+    if (!mounted) return;
+    if (_remote) {
+      await _load(refresh: true);
+    } else {
+      setState(() => _recordsVersion++);
+    }
   }
 
   Widget _card(Map<String, dynamic> d, String id, {String? sosId}) =>
@@ -97,7 +108,13 @@ class _RequestListScreenState extends State<RequestListScreen> {
     final discover = widget.mode == 'discover';
     final visible =
         _items
-            .where((d) => _urgency == null || d['urgency'] == _urgency)
+            .where(
+              (d) =>
+                  _urgency == null ||
+                  d['urgency'] == _urgency ||
+                  (_urgency == 'critical' &&
+                      d['urgency'] == 'life_threatening'),
+            )
             .toList();
     Widget body;
     if (uid == null) {
@@ -198,7 +215,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
                     (v) => setState(() => _urgency = v == 'all' ? null : v),
               ),
               const SizedBox(height: 16),
-            ] else
+            ] else if (widget.mode == 'invitations')
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Text(
@@ -216,10 +233,18 @@ class _RequestListScreenState extends State<RequestListScreen> {
               PremiumEmptyState(
                 title: dashboardText(
                   context,
-                  discover
+                  ['active', 'responses'].contains(widget.mode)
+                      ? dashboardText(
+                        context,
+                        'No donation activity in this view yet.',
+                        'اس فہرست میں ابھی عطیے کی کوئی سرگرمی نہیں۔',
+                      )
+                      : discover
                       ? 'No matching requests in this view. Check your availability and saved location, or broaden the search.'
                       : 'No pending invitations. New invitations will appear here.',
-                  discover
+                  ['active', 'responses'].contains(widget.mode)
+                      ? 'اس فہرست میں ابھی عطیے کی کوئی سرگرمی نہیں۔'
+                      : discover
                       ? 'کوئی موزوں درخواست نہیں۔ دستیابی اور محفوظ مقام دیکھیں یا تلاش کا دائرہ بڑھائیں۔'
                       : 'ابھی کوئی دعوت نہیں۔ نئی دعوتیں یہاں نظر آئیں گی۔',
                 ),
@@ -260,16 +285,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
       Query<Map<String, dynamic>> q = FirebaseFirestore.instance.collection(
         'blood_requests',
       );
-      if (widget.mode == 'active') {
-        q = q
-            .where('acceptedDonorIds', arrayContains: uid)
-            .where(
-              'status',
-              whereIn: ['pending', 'accepted', 'partially_fulfilled'],
-            );
-      } else if (widget.mode == 'responses') {
-        q = q.where('participantIds', arrayContains: uid);
-      } else if (widget.mode == 'sos') {
+      if (widget.mode == 'sos') {
         q = FirebaseFirestore.instance
             .collection('sosRequests')
             .where('receiverId', isEqualTo: uid);
@@ -279,6 +295,7 @@ class _RequestListScreenState extends State<RequestListScreen> {
       body = Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: PagedRecords(
+          key: ValueKey(_recordsVersion),
           query: q.orderBy(FieldPath.documentId),
           emptyMessage: dashboardText(
             context,

@@ -27,6 +27,18 @@ void main() {
       expect(EligibilityChecker.daysUntilEligible(null), equals(0));
     });
 
+    test('remaining minutes do not report an eligible donation interval', () {
+      final last = DateTime.now()
+          .subtract(const Duration(days: 90))
+          .add(const Duration(minutes: 30));
+      expect(EligibilityChecker.isEligibleForDonation(last), isFalse);
+      expect(EligibilityChecker.daysUntilEligible(last), 1);
+      expect(
+        EligibilityChecker.getEligibilityMessage(last),
+        contains('1 days'),
+      );
+    });
+
     test('daysUntilEligible returns correct remaining days', () {
       final lastDonation = DateTime.now().subtract(const Duration(days: 30));
       final days = EligibilityChecker.daysUntilEligible(lastDonation);

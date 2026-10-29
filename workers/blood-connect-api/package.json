@@ -3,7 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/worker.test.js"
+    "test": "node --test test/worker.test.js test/worker-stage3.test.js",
+    "test:emulator": "node --test test/emulator.test.js"
+  },
+  "dependencies": {
+    "jose": "^6.1.3"
   },
   "devDependencies": {
     "wrangler": "^4.50.0"

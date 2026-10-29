@@ -1,15 +1,15 @@
 const {HttpsError}=require('firebase-functions/v2/https');
 const admin=require('./firebaseAdmin');
 const {actor,rateLimit}=require('./requestWorkflows');
+const {liveConversation}=require('./requestPolicy');
 const db=admin.firestore();
 const fail=(c,m)=>{throw new HttpsError(c,m)};
 async function conversation(request) {
   const user=await actor(request), id=request.data?.conversationId;
-  if(typeof id!=='string'||id.length>128||id.includes('/')) fail('invalid-argument','Invalid conversation.');
+  if(typeof id!=='string'||!id.length||id.length>128||id.includes('/')) fail('invalid-argument','Invalid conversation.');
   const ref=db.doc(`conversations/${id}`), snap=await ref.get(), c=snap.data();
   if(!c||!Array.isArray(c.participantIds)||!c.participantIds.includes(user.uid)) fail('permission-denied','Conversation unavailable.');
   const r=(await db.doc(`blood_requests/${c.requestId}`).get()).data();
-  if(!r||!['pending','accepted','partially_fulfilled'].includes(r.status)||r.requiredBy?.toMillis?.()<=Date.now()) fail('failed-precondition','Conversation is read-only.');
   const other=c.participantIds.find(x=>x!==user.uid); if(!other) fail('failed-precondition','Conversation has no other participant.');
   return {user,c,ref,other,r};
 }
@@ -38,9 +38,20 @@ async function reportConversation(request) {
 }
 async function sharePhoneNumber(request) {
   if(request.data?.confirm!==true) fail('failed-precondition','Explicit confirmation is required.');
-  const {user,ref,other}=await conversation(request); const contact=(await db.doc(`users/${user.uid}/private/contact`).get()).data();
-  if(!contact?.phoneNumber) fail('failed-precondition','No verified phone number is available.');
-  const msg=ref.collection('messages').doc(); await msg.create({senderId:user.uid,type:'phone_share',sharedWith:other,phoneNumber:contact.phoneNumber,body:'Phone number shared by participant.',createdAt:admin.firestore.FieldValue.serverTimestamp()});
+  const {user,ref}=await conversation(request);
+  await db.runTransaction(async tx=>{
+    const c=(await tx.get(ref)).data();
+    const other=c?.participantIds?.find(uid=>uid!==user.uid);
+    if(!other) fail('permission-denied','Conversation unavailable.');
+    const [root,sender,receiver,privateContact]=await Promise.all([
+      tx.get(db.doc(`blood_requests/${c.requestId}`)),tx.get(db.doc(`users/${user.uid}`)),
+      tx.get(db.doc(`users/${other}`)),tx.get(db.doc(`users/${user.uid}/private/contact`)),
+    ]);
+    if(sender.data()?.status!=='approved'||receiver.data()?.status!=='approved'||!liveConversation(c,root.data(),user.uid)) fail('permission-denied','Conversation is read-only.');
+    const contact=privateContact.data();
+    if(!contact?.phoneNumber) fail('failed-precondition','No verified phone number is available.');
+    tx.create(ref.collection('messages').doc(),{senderId:user.uid,type:'phone_share',sharedWith:other,phoneNumber:contact.phoneNumber,body:'Phone number shared by participant.',createdAt:admin.firestore.FieldValue.serverTimestamp()});
+  });
   return {shared:true};
 }
 module.exports={blockUser,unblockUser,markConversationRead,reportConversation,sharePhoneNumber};

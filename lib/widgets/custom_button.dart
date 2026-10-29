@@ -55,7 +55,7 @@ class CustomButton extends StatelessWidget {
   double get _defaultHeight {
     switch (size) {
       case ButtonSize.small:
-        return 40;
+        return 48;
       case ButtonSize.medium:
         return 50;
       case ButtonSize.large:
@@ -76,7 +76,11 @@ class CustomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resolvedHeight = height ?? _defaultHeight;
+    final resolvedHeight = (height ?? _defaultHeight).clamp(
+      48.0,
+      double.infinity,
+    );
+    final colors = Theme.of(context).colorScheme;
     final resolvedTextStyle =
         textStyle ??
         TextStyle(fontSize: _fontSize, fontWeight: FontWeight.bold);
@@ -103,19 +107,25 @@ class CustomButton extends StatelessWidget {
                   Icon(icon, size: AppSpacing.iconSm),
                   const SizedBox(width: AppSpacing.sm),
                 ],
-                Text(text, style: resolvedTextStyle),
+                Flexible(
+                  child: Text(
+                    text,
+                    style: resolvedTextStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
             );
 
     // ── Ghost — no background, no border, just colored text ──
     if (variant == ButtonVariant.ghost) {
-      return SizedBox(
+      return Container(
         width: width,
-        height: resolvedHeight,
+        constraints: BoxConstraints(minHeight: resolvedHeight),
         child: TextButton(
           onPressed: isLoading ? null : onPressed,
           style: TextButton.styleFrom(
-            foregroundColor: textColor ?? AppColors.primaryRed,
+            foregroundColor: textColor ?? colors.primary,
           ),
           child: content,
         ),
@@ -124,13 +134,13 @@ class CustomButton extends StatelessWidget {
 
     // ── Outlined — transparent background, colored border ──
     if (variant == ButtonVariant.outlined) {
-      return SizedBox(
+      return Container(
         width: width ?? double.infinity,
-        height: resolvedHeight,
+        constraints: BoxConstraints(minHeight: resolvedHeight),
         child: OutlinedButton(
           onPressed: isLoading ? null : onPressed,
           style: OutlinedButton.styleFrom(
-            foregroundColor: textColor ?? AppColors.primaryRed,
+            foregroundColor: textColor ?? colors.primary,
             side: BorderSide(color: backgroundColor ?? AppColors.primaryRed),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(borderRadius.toDouble()),
@@ -143,15 +153,15 @@ class CustomButton extends StatelessWidget {
 
     // ── Secondary — light/white background, colored text ──
     if (variant == ButtonVariant.secondary) {
-      return SizedBox(
+      return Container(
         width: width ?? double.infinity,
-        height: resolvedHeight,
+        constraints: BoxConstraints(minHeight: resolvedHeight),
         child: ElevatedButton(
           onPressed: isLoading ? null : onPressed,
           style: ElevatedButton.styleFrom(
-            backgroundColor: backgroundColor ?? Colors.white,
-            foregroundColor: textColor ?? AppColors.primaryRed,
-            elevation: AppSpacing.elevationLow,
+            backgroundColor: backgroundColor ?? colors.surfaceContainerHigh,
+            foregroundColor: textColor ?? colors.primary,
+            elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(borderRadius.toDouble()),
               side: BorderSide(
@@ -183,9 +193,9 @@ class CustomButton extends StatelessWidget {
     );
 
     if (gradient == null) {
-      return SizedBox(
+      return Container(
         width: width ?? double.infinity,
-        height: resolvedHeight,
+        constraints: BoxConstraints(minHeight: resolvedHeight),
         child: button,
       );
     }
@@ -194,7 +204,7 @@ class CustomButton extends StatelessWidget {
     // itself only accepts a solid backgroundColor.
     return Container(
       width: width ?? double.infinity,
-      height: resolvedHeight,
+      constraints: BoxConstraints(minHeight: resolvedHeight),
       decoration: BoxDecoration(
         gradient: gradient,
         borderRadius: BorderRadius.circular(borderRadius.toDouble()),

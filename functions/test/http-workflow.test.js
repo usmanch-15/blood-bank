@@ -31,6 +31,14 @@ test('real Auth JWTs and callable HTTP endpoints complete the request lifecycle'
   await ref.set({requesterId:receiver.uid,bloodGroup:'O+',hospitalName:'HTTP Audit Hospital',
     quantity:1,status:'pending',latitude:31,longitude:74,createdAt:admin.firestore.Timestamp.now()});
   assert.equal((await callable('acceptDonation',{requestId:ref.id},donor.token)).status,200);
+  const active=await callable('participantRequests',{mode:'active'},donor.token);
+  assert.equal(active.status,200);
+  assert.ok(active.body.result.items.some(i=>i.id===ref.id));
+  const donorView=await callable('getRequest',{requestId:ref.id},donor.token);
+  assert.equal(donorView.status,200);
+  assert.equal(donorView.body.result.canViewPrivate,false);
+  assert.equal(donorView.body.result.requesterId,receiver.uid);
+  assert.equal(typeof donorView.body.result.createdAt,'number');
   assert.equal((await callable('updateAssignment',{requestId:ref.id,action:'agree'},donor.token)).status,200);
   assert.equal((await callable('updateAssignment',{requestId:ref.id,action:'ready'},donor.token)).status,200);
   const args={requestId:ref.id,donorId:donor.uid};
@@ -42,9 +50,27 @@ test('real Auth JWTs and callable HTTP endpoints complete the request lifecycle'
   assert.equal((await ref.get()).data().status,'fulfilled');
   assert.equal((await admin.firestore().doc(`users/${donor.uid}`).get()).data().rewardPoints,50);
   assert.equal((await callable('adminDeleteUser',{uid:donor.uid},receiver.token)).status,403);
-  const sos=await callable('createSosAlert',{bloodGroup:'O+',latitude:31,longitude:74,urgency:'critical'},receiver.token);
+  const sos=await callable('createSosAlert',{bloodGroup:'O+',latitude:31,longitude:74,urgency:'critical',contactNumber:'+923001234567',submissionId:`http-sos-${Date.now()}`},receiver.token);
   assert.equal(sos.status,200);
   const record=(await admin.firestore().doc(`sosRequests/${sos.body.result.id}`).get()).data();
   assert.equal(record.receiverId,receiver.uid);
   assert.equal(record.urgency,'critical');
+  const reviewer=await account('admin');
+  // Both dispute workflows write targetDonationId, including legacy records;
+  // none requires the nonexistent reportType field.
+  await admin.firestore().collection('misuse_reports').doc('legacy-dispute').set({status:'pending',targetDonationId:'legacy-donation'});
+  await admin.firestore().collection('misuse_reports').doc('closed-dispute').set({status:'resolved',targetDonationId:'closed-donation'});
+  await admin.firestore().collection('misuse_reports').doc('unrelated-report').set({status:'pending',targetConversationId:'conversation'});
+  const analytics=await callable('adminAnalytics',{startMs:Date.now()-86400000,endMs:Date.now()+60000,forceRefresh:true},reviewer.token);
+  assert.equal(analytics.status,200);
+  assert.equal(analytics.body.result.counts.pending_review,1);
+  assert.equal(analytics.body.result.counts.open,1);
+  assert.equal(analytics.body.result.fulfilmentRate.denominator,2);
+  assert.equal(analytics.body.result.openDonationDisputes,1);
+  const rejected=await callable('reviewEmergencyRequest',{id:sos.body.result.id,sos:true,decision:'rejected',note:'Staging regression review'},reviewer.token);
+  assert.equal(rejected.status,200);
+  const linked=(await admin.firestore().doc(`blood_requests/${record.requestId}`).get()).data();
+  assert.equal(linked.reviewStatus,'rejected');
+  assert.equal(linked.status,'cancelled');
+  assert.equal((await callable('acceptDonation',{requestId:record.requestId},donor.token)).status,400);
 });

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'workflow_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class NotificationService {
@@ -113,7 +113,7 @@ class NotificationService {
     if (relatedId == null) {
       throw StateError('Create a blood request before notifying donors.');
     }
-    await FirebaseFunctions.instance.httpsCallable('notifyRequest').call({
+    await WorkflowService.call('notifyRequest', {
       'requestId': relatedId,
       'userIds': userIds,
     });

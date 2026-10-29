@@ -1,3 +1,4 @@
+import '../../../constants/app_theme.dart';
 import 'admin_awareness_banners.dart';
 import 'admin_audit_screen.dart';
 import '../../settings/my_reports_screen.dart';
@@ -134,7 +135,14 @@ class _AdminWebDashboardState extends State<AdminWebDashboard>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Theme(
+    // Legacy console tables intentionally use a light workspace. Keep their
+    // inherited fields/dialogs readable when the mobile app uses dark mode.
+    data: AppTheme.lightTheme,
+    child: Builder(builder: _buildConsole),
+  );
+
+  Widget _buildConsole(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 900;
 
     return Scaffold(

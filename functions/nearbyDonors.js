@@ -19,9 +19,14 @@ async function nearbyDonorsPaged(lat, lng, bloodGroup, radiusKm, cursor = null, 
   let scannedPages = 0;
   let hasMore = false;
   const limit = Math.min(1000, Math.max(1, resultLimit));
-  if (cursor) {
-    const [latitude, uid, extra] = String(cursor).split('|');
-    if (!uid || uid.includes('/') || uid.length > 128 || extra || !Number.isFinite(Number(latitude))) throw new (require('firebase-functions/v2/https').HttpsError)('invalid-argument','Invalid search cursor.');
+  if (cursor != null) {
+    const parts = typeof cursor === 'string' ? cursor.split('|') : [];
+    const [latitude, uid] = parts;
+    if (parts.length !== 2 || !latitude.trim() || !uid || ['.','..'].includes(uid) || uid.includes('/') || uid.length > 128 ||
+        !Number.isFinite(Number(latitude)) || Number(latitude) < Math.max(-90, lat-delta) ||
+        Number(latitude) > Math.min(90, lat+delta)) {
+      throw new (require('firebase-functions/v2/https').HttpsError)('invalid-argument','Invalid search cursor.');
+    }
     last = {data:()=>({latitude:Number(latitude)}), id:uid};
   }
   while (scannedPages < MAX_SCAN_PAGES) {

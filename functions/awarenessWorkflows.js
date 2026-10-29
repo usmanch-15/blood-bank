@@ -25,7 +25,7 @@ async function donorAwarenessBanners(request) {
   const snap = await db.collection('awareness_banners').where('active','==',true).get();
   const items = snap.docs.map(doc => ({...doc.data(), id:doc.id})).filter(b => visibleBanner(b, Date.now()))
     .sort((a,b) => b.priority - a.priority).slice(0, 5)
-    .map(({id,en,ur,action,imageUrl,revision}) => ({id,en,ur,action,imageUrl,revision}));
+    .map(({id,en,ur,action,imageUrl,revision,startAt,endAt}) => ({id,en,ur,action,imageUrl,revision,startAt,endAt}));
   return {items};
 }
 async function recordBannerEvent(request) {

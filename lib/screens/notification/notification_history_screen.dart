@@ -42,7 +42,9 @@ class NotificationHistoryScreen extends StatelessWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                '${AppLocalizations.of(context).unableToOpenNotification} $e',
+                                AppLocalizations.of(
+                                  context,
+                                ).unableToOpenNotification,
                               ),
                             ),
                           );

@@ -3,12 +3,72 @@ import 'package:bloodbank/models/awareness_banner.dart';
 import 'package:bloodbank/utils/feedback.dart';
 import 'package:bloodbank/widgets/awareness_banner_card.dart';
 import 'package:bloodbank/widgets/dashboard_components.dart';
+import 'package:bloodbank/widgets/custom_button.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('shared buttons grow for long labels at 200 percent text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var taps = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        builder:
+            (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  for (final variant in ButtonVariant.values)
+                    CustomButton(
+                      text: 'Confirm this donation request',
+                      variant: variant,
+                      size: ButtonSize.small,
+                      onPressed: () => taps++,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Confirm this donation request').first);
+    expect(taps, 1);
+  });
+  test('loaded campaigns stop displaying at their scheduled end', () {
+    final banner = AwarenessBanner.fromMap({
+      'id': 'scheduled',
+      'startAt': 100,
+      'endAt': 200,
+    });
+    expect(banner.visibleAt(DateTime.fromMillisecondsSinceEpoch(99)), isFalse);
+    expect(banner.visibleAt(DateTime.fromMillisecondsSinceEpoch(100)), isTrue);
+    expect(banner.visibleAt(DateTime.fromMillisecondsSinceEpoch(199)), isTrue);
+    expect(banner.visibleAt(DateTime.fromMillisecondsSinceEpoch(200)), isFalse);
+    expect(
+      AwarenessBanner.fromMap({
+        'id': 'missing-schedule',
+      }).visibleAt(DateTime.now()),
+      isFalse,
+    );
+  });
   test('technical function failures do not expose stack traces', () {
     final error = FirebaseException(
       plugin: 'cloud_functions',
@@ -51,7 +111,7 @@ void main() {
                   (context, child) => MediaQuery(
                     data: MediaQuery.of(
                       context,
-                    ).copyWith(textScaler: const TextScaler.linear(1.5)),
+                    ).copyWith(textScaler: const TextScaler.linear(2)),
                     child: child!,
                   ),
               home: Scaffold(

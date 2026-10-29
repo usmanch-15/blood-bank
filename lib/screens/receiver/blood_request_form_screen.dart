@@ -176,11 +176,6 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
             context.read<AuthController>().currentUser?.name ??
             user.displayName ??
             '',
-        // ✅ FIX: `user.phoneNumber` here is FirebaseAuth's linked-phone
-        // field, which is null for the vast majority of accounts (email/
-        // password signup, no phone-auth linking) — so this was always
-        // saving an empty string. The number the receiver actually typed
-        // into this form is `_contactNumberController`, so use that.
         requesterPhone: AppValidators.normalizePhone(
           _contactNumberController.text,
         ),
@@ -205,8 +200,6 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
         latitude: _currentLat,
         longitude: _currentLng,
       );
-
-      /// 🔥 SAVE TO FIRESTORE
       final requestId = await _firestoreService.createBloodRequest(request);
 
       if (mounted) {
@@ -221,13 +214,8 @@ class _BloodRequestFormScreenState extends State<BloodRequestFormScreen> {
           ),
         );
 
-        // ✅ NEW — Uber/InDrive-style flow: instead of silently popping
-        // back to the dashboard, take the receiver straight to the map so
-        // they can SEE who was found, drag the search radius, tap a donor
-        // for full details, and notify anyone the automatic nearby-notify
-        // above may have missed (e.g. it only auto-notifies once at
-        // submit time — the map lets them re-notify with a wider radius
-        // later without creating a new request).
+        // The map lets the receiver inspect compatible donors and widen the
+        // search radius without creating another request.
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(

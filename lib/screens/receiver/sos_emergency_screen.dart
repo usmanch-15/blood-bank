@@ -1,6 +1,7 @@
 import '../../widgets/dashboard_components.dart';
 import '../../utils/feedback.dart';
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,6 +22,8 @@ class SosEmergencyScreen extends StatefulWidget {
 
 class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
   final _form = GlobalKey<FormState>();
+  final _submissionId =
+      FirebaseFirestore.instance.collection('sosRequests').doc().id;
   final _hospital = TextEditingController(), _phone = TextEditingController();
   final _hospitalFocusNode = FocusNode();
   LatLng? _point;
@@ -72,6 +75,7 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
   }
 
   void _start() {
+    if (_sending || _count > 0) return;
     if (!_form.currentState!.validate()) return;
     if (_point == null) {
       setState(
@@ -97,9 +101,11 @@ class _SosEmergencyScreenState extends State<SosEmergencyScreen> {
   }
 
   Future<void> _send() async {
+    if (_sending) return;
     setState(() => _sending = true);
     try {
       final result = await WorkflowService.call('createSosAlert', {
+        'submissionId': _submissionId,
         'bloodGroup': _group,
         'urgency': _urgency,
         'latitude': _point!.latitude,

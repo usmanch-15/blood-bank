@@ -85,7 +85,7 @@ class _ReceiverDashboardScreenState extends State<ReceiverDashboardScreen> {
         child: RefreshIndicator(
           onRefresh: () async => setState(() => _refresh++),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            padding: dashboardInsets(context),
             children: [
               DashboardPanel(
                 tint: c.primaryContainer.withValues(alpha: .35),

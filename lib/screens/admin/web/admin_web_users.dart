@@ -1,6 +1,5 @@
 import '../../../services/workflow_service.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/user_model.dart';
 import '../../../services/firestore_service.dart';
@@ -1073,7 +1072,7 @@ class _AdminWebUsersState extends State<AdminWebUsers>
                             );
                             if (confirmed != true) return;
                             try {
-                              await FirebaseFunctions.instance
+                              await WorkflowService.functions
                                   .httpsCallable('adminDeleteUser')
                                   .call({'uid': user.uid});
                               if (mounted) Navigator.pop(context);

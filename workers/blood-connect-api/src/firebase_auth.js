@@ -1,4 +1,8 @@
-const JWKS_URL = 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
+import { importJWK, jwtVerify } from 'jose';
+
+const JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+let cachedJwks;
+let jwksExpiresAt = 0;
 
 const decode = (value) => {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
@@ -37,22 +41,31 @@ export async function verifyFirebaseIdToken(token, env, fetchImpl = fetch) {
       || !Number.isFinite(payload.iat) || payload.iat > now + 60) {
     throw unauthorized('Invalid Firebase ID token claims.');
   }
-  const response = await fetchImpl(JWKS_URL);
-  if (!response.ok) throw new Error('Firebase signing keys are unavailable.');
-  const keys = await response.json();
-  const certificate = keys[header.kid];
-  if (!certificate) throw unauthorized('Unknown Firebase signing key.');
-  const pem = certificate.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s/g, '');
-  const der = decode(pem);
-  const key = await crypto.subtle.importKey(
-    'spki', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify'],
-  );
-  const valid = await crypto.subtle.verify(
-    'RSASSA-PKCS1-v1_5', key, decode(encodedSignature),
-    new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`),
-  );
-  if (!valid) throw unauthorized('Invalid Firebase ID token signature.');
-  return { uid: payload.sub, email: typeof payload.email === 'string' ? payload.email : null };
+  if (!cachedJwks || Date.now() >= jwksExpiresAt) {
+    const response = await fetchImpl(JWKS_URL);
+    if (!response.ok) throw new Error('Firebase signing keys are unavailable.');
+    cachedJwks = await response.json();
+    const maxAge = Number(response.headers?.get('cache-control')?.match(/max-age=(\d+)/)?.[1] || 300);
+    jwksExpiresAt = Date.now() + maxAge * 1000;
+  }
+  const keys = cachedJwks;
+  const jwk = keys.keys?.find((key) => key.kid === header.kid && key.alg === 'RS256' && key.use === 'sig');
+  if (!jwk) throw unauthorized('Unknown Firebase signing key.');
+  const key = await importJWK(jwk, 'RS256');
+  try {
+    const verified = await jwtVerify(token, key, {
+      algorithms: ['RS256'],
+      audience: projectId,
+      issuer: `https://securetoken.google.com/${projectId}`,
+      clockTolerance: 60,
+    });
+    return {
+      uid: verified.payload.sub,
+      email: typeof verified.payload.email === 'string' ? verified.payload.email : null,
+    };
+  } catch {
+    throw unauthorized('Invalid Firebase ID token signature or claims.');
+  }
 }
 
 export function bearerToken(request) {

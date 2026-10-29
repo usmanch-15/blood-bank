@@ -256,7 +256,12 @@ class _SignUpScreenState extends State<SignUpScreen>
 
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      padding: EdgeInsets.symmetric(
+                        horizontal:
+                            MediaQuery.sizeOf(context).width > 560
+                                ? (MediaQuery.sizeOf(context).width - 504) / 2
+                                : 24,
+                      ),
                       child: SlideTransition(
                         position: _slideAnim,
                         child: Column(
@@ -288,7 +293,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                         'Join the lifesaving community',
                                         style: TextStyle(
                                           fontSize: 13,
-                                          color: Color(0xFF616161),
+                                          color: Color(0xFFBFC6CC),
                                         ),
                                       ),
                                     ],
@@ -446,7 +451,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                         _obscurePassword
                                             ? Icons.visibility_off_outlined
                                             : Icons.visibility_outlined,
-                                        color: const Color(0xFF616161),
+                                        color: const Color(0xFFBFC6CC),
                                         size: 20,
                                       ),
                                     ),
@@ -477,7 +482,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                         _obscureConfirmPassword
                                             ? Icons.visibility_off_outlined
                                             : Icons.visibility_outlined,
-                                        color: const Color(0xFF616161),
+                                        color: const Color(0xFFBFC6CC),
                                         size: 20,
                                       ),
                                     ),
@@ -509,7 +514,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                       const Text(
                                         'Already have an account? ',
                                         style: TextStyle(
-                                          color: Color(0xFF616161),
+                                          color: Color(0xFFBFC6CC),
                                           fontSize: 14,
                                         ),
                                       ),
@@ -648,10 +653,10 @@ class _SignUpScreenState extends State<SignUpScreen>
       style: const TextStyle(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF3D3D3D), fontSize: 15),
+        hintStyle: const TextStyle(color: Color(0xFFBFC6CC), fontSize: 15),
         filled: true,
         fillColor: const Color(0xFF1C1C1C),
-        prefixIcon: Icon(icon, color: const Color(0xFF616161), size: 20),
+        prefixIcon: Icon(icon, color: const Color(0xFFBFC6CC), size: 20),
         suffixIcon:
             suffix != null
                 ? Padding(
@@ -659,7 +664,10 @@ class _SignUpScreenState extends State<SignUpScreen>
                   child: suffix,
                 )
                 : null,
-        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 48,
+          minHeight: 48,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
@@ -696,16 +704,16 @@ class _SignUpScreenState extends State<SignUpScreen>
       style: const TextStyle(color: Colors.white, fontSize: 15),
       icon: const Icon(
         Icons.keyboard_arrow_down_rounded,
-        color: Color(0xFF616161),
+        color: Color(0xFFBFC6CC),
       ),
       decoration: InputDecoration(
         hintText: 'Select blood group',
-        hintStyle: const TextStyle(color: Color(0xFF3D3D3D), fontSize: 15),
+        hintStyle: const TextStyle(color: Color(0xFFBFC6CC), fontSize: 15),
         filled: true,
         fillColor: const Color(0xFF1C1C1C),
         prefixIcon: const Icon(
           Icons.bloodtype_outlined,
-          color: Color(0xFF616161),
+          color: Color(0xFFBFC6CC),
           size: 20,
         ),
         border: OutlineInputBorder(
@@ -748,8 +756,8 @@ class _SignUpScreenState extends State<SignUpScreen>
   }
 
   Widget _buildSignUpButton() {
-    return SizedBox(
-      height: 54,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 54),
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleSignUp,
         style: ElevatedButton.styleFrom(

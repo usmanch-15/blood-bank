@@ -17,19 +17,25 @@ class DonorAwareness extends StatefulWidget {
 class _DonorAwarenessState extends State<DonorAwareness> {
   final _cardKey = GlobalKey();
   final _viewed = <String>{};
+  final _dismissed = <String>{};
   List<AwarenessBanner> _items = [];
   int _index = 0;
   Timer? _visibility;
+  bool _loading = false;
+  int _ticks = 0;
   String get _prefKey =>
       'dismissed_banners_${FirebaseAuth.instance.currentUser?.uid}';
   @override
   void initState() {
     super.initState();
     _load();
-    _visibility = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) => _recordVisible(),
-    );
+    _visibility = Timer.periodic(const Duration(seconds: 1), (_) {
+      _expire();
+      _recordVisible();
+      if (++_ticks % 30 == 0 && ModalRoute.of(context)?.isCurrent == true) {
+        _load();
+      }
+    });
   }
 
   @override
@@ -39,9 +45,12 @@ class _DonorAwarenessState extends State<DonorAwareness> {
   }
 
   Future<void> _load() async {
+    if (_loading) return;
+    _loading = true;
     try {
       final prefs = await SharedPreferences.getInstance();
       final dismissed = prefs.getStringList(_prefKey) ?? [];
+      _dismissed.addAll(dismissed);
       final page = await WorkflowService.call('donorAwarenessBanners');
       if (!mounted) return;
       setState(
@@ -52,12 +61,27 @@ class _DonorAwarenessState extends State<DonorAwareness> {
                       (d) =>
                           AwarenessBanner.fromMap(Map<String, dynamic>.from(d)),
                     )
-                    .where((b) => !dismissed.contains(b.dismissalKey))
+                    .where(
+                      (b) =>
+                          !_dismissed.contains(b.dismissalKey) &&
+                          b.visibleAt(DateTime.now()),
+                    )
                     .toList(),
       );
+      if (_index >= _items.length) _index = 0;
     } catch (_) {
       /* Optional campaigns never block requests. */
+    } finally {
+      _loading = false;
     }
+  }
+
+  void _expire() {
+    if (!mounted || !_items.any((b) => !b.visibleAt(DateTime.now()))) return;
+    setState(() {
+      _items.removeWhere((b) => !b.visibleAt(DateTime.now()));
+      _index = 0;
+    });
   }
 
   Future<void> _event(AwarenessBanner b, String event) async {
@@ -73,7 +97,9 @@ class _DonorAwarenessState extends State<DonorAwareness> {
   }
 
   void _recordVisible() {
-    if (!mounted || _items.isEmpty || ModalRoute.of(context)?.isCurrent != true) {
+    if (!mounted ||
+        _items.isEmpty ||
+        ModalRoute.of(context)?.isCurrent != true) {
       return;
     }
     final b = _items[_index];
@@ -89,12 +115,17 @@ class _DonorAwarenessState extends State<DonorAwareness> {
 
   Future<void> _dismiss(AwarenessBanner b) async {
     setState(() {
+      _dismissed.add(b.dismissalKey);
       _items.remove(b);
       _index = 0;
     });
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getStringList(_prefKey) ?? [];
-    await prefs.setStringList(_prefKey, {...saved, b.dismissalKey}.toList());
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList(_prefKey) ?? [];
+      await prefs.setStringList(_prefKey, {...saved, b.dismissalKey}.toList());
+    } catch (_) {
+      // The current-session dismissal remains effective if local storage fails.
+    }
   }
 
   @override
@@ -108,6 +139,10 @@ class _DonorAwarenessState extends State<DonorAwareness> {
           banner: b,
           onDismiss: () => _dismiss(b),
           onAction: () {
+            if (!b.visibleAt(DateTime.now())) {
+              _expire();
+              return;
+            }
             _event(b, 'click');
             widget.onAction(b.action);
           },

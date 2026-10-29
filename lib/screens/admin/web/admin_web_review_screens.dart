@@ -1,3 +1,4 @@
+import '../../../utils/feedback.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -55,7 +56,7 @@ class _AdminEmergencyReviewScreenState
         _cursor = page.docs.last;
       }
     } catch (e) {
-      _error = e.toString();
+      _error = AppFeedback.message(e);
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -76,6 +77,7 @@ class _AdminEmergencyReviewScreenState
           (ctx) => StatefulBuilder(
             builder:
                 (ctx, set) => AlertDialog(
+                  scrollable: true,
                   title: Text(
                     _a(
                       ctx,
@@ -300,7 +302,7 @@ class _AdminVerificationReviewScreenState
         _cursor = p.docs.last;
       }
     } catch (e) {
-      _error = e.toString();
+      _error = AppFeedback.message(e);
     }
     if (mounted) {
       setState(() => _loading = false);
@@ -323,6 +325,7 @@ class _AdminVerificationReviewScreenState
           (ctx) => StatefulBuilder(
             builder:
                 (ctx, set) => AlertDialog(
+                  scrollable: true,
                   title: Text(_a(ctx, 'Verification review', 'تصدیق کا جائزہ')),
                   content: SingleChildScrollView(
                     child: Column(
